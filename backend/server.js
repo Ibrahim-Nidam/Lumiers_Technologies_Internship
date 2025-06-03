@@ -16,6 +16,7 @@ const {
 const { seedInitialData } = require("./seed-initial-data");
 
 const authRoutes = require("./routes/auth");
+const profileRoutes = require("./routes/profile");
 const authMiddleware = require("./middleware/authMiddleware");
 
 const app = express();
@@ -33,6 +34,7 @@ app.use(express.json());
 
     // 3) Register routes, middleware, etc.
     app.use("/api/auth", authRoutes);
+    app.use("/api", profileRoutes);
 
     app.get("/api/dashboard-data", authMiddleware, async (req, res) => {
       const userId = req.user.userId;
