@@ -1,8 +1,8 @@
-// src/components/Login.jsx
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import { colors } from "../colors";
 
 export default function Login() {
@@ -14,7 +14,7 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
-  // On mount: if user+token is already stored, redirect to /dashboard
+  // On mount: if user + token are already in storage, set axios default and redirect to /dashboard
   useEffect(() => {
     const savedUser =
       JSON.parse(localStorage.getItem("user") || "null") ||
@@ -23,8 +23,33 @@ export default function Login() {
       localStorage.getItem("token") || sessionStorage.getItem("token");
 
     if (savedUser && savedToken) {
+      // set default header so that any future axios calls include the token
+      axios.defaults.headers.common["Authorization"] = `Bearer ${savedToken}`;
       navigate("/dashboard");
     }
+  }, [navigate]);
+
+  // Global Axios interceptor: if any response returns 401, force logout + redirect
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          // Clear any stored data
+          localStorage.removeItem("user");
+          localStorage.removeItem("token");
+          sessionStorage.removeItem("user");
+          sessionStorage.removeItem("token");
+          delete axios.defaults.headers.common["Authorization"];
+          navigate("/login");
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
   }, [navigate]);
 
   const handleChange = (e) => {
@@ -41,33 +66,46 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const res = await fetch("http://localhost:3001/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const data = await res.json();
+      const res = await axios.post(
+        "http://localhost:3001/api/auth/login",
+        form,
+        { headers: { "Content-Type": "application/json" } }
+      );
 
-      if (res.ok) {
+      const data = res.data;
+
+      // If login succeeded, data.user and data.token should exist
+      if (data.user && data.token) {
         // 1) Persist user & token
         const storage = rememberMe ? localStorage : sessionStorage;
         storage.setItem("user", JSON.stringify(data.user));
-        if (data.token) storage.setItem("token", data.token);
+        storage.setItem("token", data.token);
 
-        // 2) Show welcome message momentarily
+        // 2) Set default Authorization header for all future axios calls
+        axios.defaults.headers.common["Authorization"] = `Bearer ${data.token}`;
+
+        // 3) Show a brief welcome message
         setMessage(`Bienvenue, ${data.user.nom_complete} !`);
         setMessageType("success");
 
-        // 3) After a short delay, navigate to /dashboard
+        // 4) Navigate to /dashboard after a short delay
         setTimeout(() => {
           navigate("/dashboard");
         }, 800);
       } else {
-        setMessage(data.error || "Échec de la connexion. Veuillez réessayer.");
+        // In case the back end returns some other shape
+        setMessage("Échec de la connexion. Réponse inattendue du serveur.");
         setMessageType("error");
       }
-    } catch {
-      setMessage("Erreur réseau. Veuillez vérifier votre connexion.");
+    } catch (err) {
+      // If server returned a 4xx or 5xx
+      if (err.response) {
+        setMessage(
+          err.response.data.error || "Échec de la connexion. Veuillez réessayer."
+        );
+      } else {
+        setMessage("Erreur réseau. Veuillez vérifier votre connexion.");
+      }
       setMessageType("error");
     } finally {
       setIsLoading(false);
@@ -190,7 +228,7 @@ export default function Login() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
                   />
                 </svg>
               ) : (
