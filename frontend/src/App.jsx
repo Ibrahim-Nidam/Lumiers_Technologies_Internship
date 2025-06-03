@@ -11,6 +11,8 @@ import Features from "./pages/Features";
 import Contact from "./pages/Contact";
 import Dashboard from "./components/dash/Dashboard";
 import PrivateRoute from "./components/PrivateRoute";
+import ProfileSettings from "./components/dash/ProfileSettings";
+
 import { colors } from "./colors";
 
 // Home component that toggles between Login and Register
@@ -80,6 +82,14 @@ export default function App() {
               element={
                 <PrivateRoute>
                   <Dashboard />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/profile-settings"
+              element={
+                <PrivateRoute>
+                  <ProfileSettings />
                 </PrivateRoute>
               }
             />
