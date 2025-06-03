@@ -1,4 +1,3 @@
-// src/components/Header.jsx
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { colors } from "../colors";
@@ -74,17 +73,38 @@ const Header = () => {
             </Link>
 
             {isLoggedIn ? (
-              <button
-                onClick={handleLogout}
-                className="ml-4 px-6 py-2.5 rounded-lg text-white font-semibold text-sm transition-all duration-200 hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2"
-                style={{
-                  backgroundColor: colors.primary,
-                  "--tw-ring-color": `${colors.primary}40`,
-                }}
-              >
-                Déconnexion
-              </button>
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={handleLogout}
+                  className="px-6 py-2.5 rounded-lg text-white font-semibold text-sm transition-all duration-200 hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  style={{
+                    backgroundColor: colors.primary,
+                    "--tw-ring-color": `${colors.primary}40`,
+                  }}
+                >
+                  Déconnexion
+                </button>
+                <div
+                  onClick={() => navigate("/profile-settings")}
+                  className="flex flex-col items-center cursor-pointer hover:scale-105 transition-transform duration-200 hover:underline"
+                >
+                  <img
+                    src="/profile.png"
+                    alt="Profile"
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                  <span className="text-xs text-slate-700 font-medium text-center">
+                    {new Date().getHours() < 12 ? "Bonjour, " : new Date().getHours() < 18 ? "Bon après-midi, " : "Bonsoir, "}
+                    <span className="text-primary font-bold">
+                      {JSON.parse(localStorage.getItem("user") || sessionStorage.getItem("user"))?.nom_complete || "Utilisateur"}
+                    </span>
+                  </span>
+                </div>
+
+                
+              </div>
             ) : (
+
               <Link
                 to="/get-started"
                 className="ml-4 px-6 py-2.5 rounded-lg text-white font-semibold text-sm transition-all duration-200 hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2"
