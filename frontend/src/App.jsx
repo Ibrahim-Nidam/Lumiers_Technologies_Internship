@@ -1,22 +1,96 @@
-import { useEffect, useState } from 'react'
-import axios from 'axios'
+"use client";
 
-function App() {
-  const [msg, setMsg] = useState('')
+import React, { useState } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import Header from "./components/Header";
+import Footer from "./components/Footer";
+import Login from "./components/Login";
+import Register from "./components/Register";
+import About from "./pages/About";
+import Features from "./pages/Features";
+import Contact from "./pages/Contact";
+import Dashboard from "./components/dash/Dashboard";
+import PrivateRoute from "./components/PrivateRoute";
+import { colors } from "./colors";
 
-  useEffect(() => {
-    axios.get('http://localhost:3001/api/test')
-      .then(res => setMsg(res.data.message))
-      .catch(err => console.error(err))
-  }, [])
+// Home component that toggles between Login and Register
+function Home() {
+  const [showRegister, setShowRegister] = useState(false);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 text-gray-800">
-      <h1 className="text-4xl font-bold mb-4">✅ Tailwind is working!</h1>
-      <p className="text-lg">You're now using Tailwind with React + Vite 🎉</p>
-      <p>{msg}</p>
-    </div>
+    <main className="max-w-3xl mx-auto px-4 py-12">
+      <div className="bg-white rounded-lg shadow-md border border-slate-200 overflow-hidden max-w-md mx-auto">
+        {/* Tabs */}
+        <div className="flex border-b border-slate-200">
+          <button
+            onClick={() => setShowRegister(false)}
+            className={`flex-1 py-4 px-6 font-medium transition-colors cursor-pointer ${
+              !showRegister
+                ? `border-b-2 text-slate-900`
+                : "text-slate-500 hover:text-slate-700"
+            }`}
+            style={{
+              borderColor: !showRegister ? colors.primary : "transparent",
+            }}
+          >
+            Sign In
+          </button>
+          <button
+            onClick={() => setShowRegister(true)}
+            className={`flex-1 py-4 px-6 font-medium transition-colors cursor-pointer ${
+              showRegister
+                ? `border-b-2 text-slate-900`
+                : "text-slate-500 hover:text-slate-700"
+            }`}
+            style={{
+              borderColor: showRegister ? colors.primary : "transparent",
+            }}
+          >
+            Register
+          </button>
+        </div>
+
+        {/* Form Content */}
+        <div className="p-6">{showRegister ? <Register /> : <Login />}</div>
+      </div>
+    </main>
   );
 }
 
-export default App
+export default function App() {
+  return (
+    <Router>
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <Header />
+
+        <div className="flex-1">
+          <Routes>
+            {/* Public Home: toggles Login / Register */}
+            <Route path="/" element={<Home />} />
+
+            {/* Static pages */}
+            <Route path="/about" element={<About />} />
+            <Route path="/features" element={<Features />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/get-started" element={<Home />} />
+
+            {/* Protected Dashboard */}
+            <Route
+              path="/dashboard"
+              element={
+                <PrivateRoute>
+                  <Dashboard />
+                </PrivateRoute>
+              }
+            />
+
+            {/* Fallback: any unknown route → redirect to Home */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
+
+        <Footer />
+      </div>
+    </Router>
+  );
+}
