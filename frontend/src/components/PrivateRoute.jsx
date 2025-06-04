@@ -1,14 +1,11 @@
-import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, Outlet } from "react-router-dom";
 
 /**
- * If there is no “token” in localStorage → redirect to “/” (your Login/Register toggle).
- * Otherwise, render the children.
+ * Protects routes by checking for a token in localStorage or sessionStorage.
+ * If no token is found, redirects to Home ("/").
+ * Otherwise, renders the nested route using <Outlet />.
  */
-export default function PrivateRoute({ children }) {
+export default function PrivateRoute() {
   const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-  if (!token) {
-    return <Navigate to="/" replace />;
-  }
-  return children;
+  return token ? <Outlet /> : <Navigate to="/" replace />;
 }
