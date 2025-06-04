@@ -20,9 +20,10 @@ const profileRoutes = require("./routes/profile");
 const authMiddleware = require("./middleware/authMiddleware");
 const expenseTypesRoutes = require("./routes/expenseTypes");
 const travelTypesRouter = require('./routes/travelTypes');
+const usersRoutes = require("./routes/users");
+
 
 const app = express();
-
 const corsOptions = {
   origin: "http://localhost:5173", // Vite default port
   credentials: true,
@@ -46,6 +47,7 @@ app.use(express.json());
     app.use("/api", profileRoutes);
     app.use("/api/expense-types", expenseTypesRoutes);
     app.use('/api/travel-types', travelTypesRouter);
+    app.use("/api/users", usersRoutes);
 
     app.get("/api/dashboard-data", authMiddleware, async (req, res) => {
       const userId = req.user.userId;
