@@ -25,7 +25,7 @@ const About = () => {
             accessibles aux organisations de toutes tailles.
           </p>
         </div>
-        <div className="bg-slate-100 rounded-lg p-8 text-center">
+        <div className="bg-slate-100 rounded p-8 text-center">
           <div 
             className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
             style={{ backgroundColor: colors.primary }}

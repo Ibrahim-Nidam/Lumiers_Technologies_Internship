@@ -106,7 +106,7 @@ const Header = () => {
               <div className="flex items-center space-x-4">
                 <button
                   onClick={handleLogout}
-                  className="px-6 py-2.5 rounded-lg text-white font-semibold text-sm transition-all duration-200 hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  className="px-6 py-2.5 rounded text-white font-semibold text-sm transition-all duration-200 hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2"
                   style={{
                     backgroundColor: colors.primary,
                     "--tw-ring-color": `${colors.primary}40`,
@@ -133,7 +133,7 @@ const Header = () => {
             ) : (
               <Link
                 to="/get-started"
-                className="ml-4 px-6 py-2.5 rounded-lg text-white font-semibold text-sm transition-all duration-200 hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                className="ml-4 px-6 py-2.5 rounded text-white font-semibold text-sm transition-all duration-200 hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{
                   backgroundColor: colors.primary,
                   "--tw-ring-color": `${colors.primary}40`,

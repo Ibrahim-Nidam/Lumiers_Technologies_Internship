@@ -23,7 +23,7 @@ export default function CarLoanForm({
         {carLoanEntries.map((entry, index) => (
           <div
             key={index}
-            className="flex space-x-4 p-4 border border-slate-200 rounded-lg"
+            className="flex space-x-4 p-4 border border-slate-200 rounded"
           >
             <div className="flex-1">
               <label className="block text-sm font-medium text-slate-700 mb-1">

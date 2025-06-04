@@ -398,7 +398,7 @@ export default function ProfileSettings() {
 
       <div className="space-y-6 sm:space-y-8">
         {/* Informations personnelles */}
-        <div className="bg-gray-50 p-4 sm:p-6 rounded-lg">
+        <div className="bg-gray-50 p-4 sm:p-6 rounded">
           <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">
             Informations personnelles
           </h2>
@@ -453,7 +453,7 @@ export default function ProfileSettings() {
         </div>
 
         {/* Mot de passe */}
-        <div className="bg-gray-50 p-4 sm:p-6 rounded-lg">
+        <div className="bg-gray-50 p-4 sm:p-6 rounded">
           <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">
             Mot de passe
           </h2>
@@ -538,7 +538,7 @@ export default function ProfileSettings() {
 
         {/* Taux de déplacement – conditionnel */}
         {formData.possedeVoiturePersonnelle && (
-          <div className="bg-gray-50 p-4 sm:p-6 rounded-lg">
+          <div className="bg-gray-50 p-4 sm:p-6 rounded">
             <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">
               Taux de déplacement
             </h2>
@@ -553,7 +553,7 @@ export default function ProfileSettings() {
               {carLoans.map((loan, index) => (
                 <div
                   key={index}
-                  className="bg-white p-3 sm:p-4 rounded-lg border border-gray-200"
+                  className="bg-white p-3 sm:p-4 rounded border border-gray-200"
                 >
                   {/* Mobile layout: Stack everything */}
                   <div className="space-y-3 sm:space-y-4">

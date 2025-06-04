@@ -8,7 +8,7 @@ export default function Home() {
 
   return (
     <main className="max-w-3xl mx-auto px-4 py-12">
-      <div className="bg-white rounded-lg shadow-md border border-slate-200 overflow-hidden max-w-md mx-auto">
+      <div className="bg-white rounded shadow-md border border-slate-200 overflow-hidden max-w-md mx-auto">
         <div className="flex border-b border-slate-200">
           <button
             onClick={() => setShowRegister(false)}
