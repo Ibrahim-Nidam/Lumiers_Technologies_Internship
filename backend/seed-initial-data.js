@@ -6,7 +6,9 @@ const { sequelize, Role, TypeDeDeplacement, TypeDepense } = require("./models");
 const rolesToSeed = [
   { nom: "agent", label: "Agent", description: "Niveau d'accès de base" },
   { nom: "manager", label: "Gestionnaire", description: "Accès à la gestion d'équipe" },
+  { nom: "SuperManager", label: "Gestionnaire", description: "Accès à la gestion d'équipe" },
   { nom: "admin",   label: "Administrateur", description: "Accès complet au système" },
+  { nom: "SuperAdmin",   label: "Above Administrateur", description: "Accès complet au système" },
 ];
 
 const typesDeDeplacementToSeed = [
