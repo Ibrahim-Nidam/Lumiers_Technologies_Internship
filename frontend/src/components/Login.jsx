@@ -88,10 +88,24 @@ export default function Login() {
         setMessage(`Bienvenue, ${data.user.nom_complete} !`);
         setMessageType("success");
 
-        // 4) Navigate to /dashboard after a short delay
+        // 4) Navigate based on role after a short delay
         setTimeout(() => {
-          navigate("/dashboard");
+          const role = data.user.role;
+
+          switch (role) {
+            case "admin":
+            case "SuperAdmin":
+              navigate("/adminDashboard");
+              break;
+            case "manager":
+            case "SuperManager":
+              navigate("/managerDashboard");
+              break;
+            default:
+              navigate("/agentDashboard");
+          }
         }, 800);
+
       } else {
         // In case the back end returns some other shape
         setMessage("Échec de la connexion. Réponse inattendue du serveur.");

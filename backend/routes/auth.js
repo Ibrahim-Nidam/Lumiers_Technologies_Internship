@@ -143,7 +143,7 @@ router.post("/login", async (req, res) => {
       token,
       user: {
         id: user.id,
-        nom_complete: user.nomComplete,    // <-- deliver nomComplete here
+        nom_complete: user.nomComplete,
         email: user.courriel,
         role: user.Role.nom,
         possede_voiture_personnelle: user.possedeVoiturePersonnelle,
