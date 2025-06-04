@@ -1,0 +1,204 @@
+import { useState, useEffect } from "react";
+import axios from "axios";
+import Message from "../../components/Message"; // Adjust path
+import ConfirmDialog from "../../components/ConfirmDialog";
+
+export default function TravelTypes() {
+  const [travelTypes, setTravelTypes] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [newType, setNewType] = useState({ nom: "", description: "" });
+  const [editId, setEditId] = useState(null);
+  const [message, setMessage] = useState({ type: "", text: "" });
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+
+  const fetchTravelTypes = () => {
+    axios
+      .get("http://localhost:3001/api/travel-types", { withCredentials: true })
+      .then(res => setTravelTypes(res.data))
+      .catch(() =>
+        setMessage({ type: "error", text: "Échec du chargement des types." })
+      );
+  };
+
+  useEffect(() => {
+    fetchTravelTypes();
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const existing = travelTypes.find(
+        (type) => type.nom.toLowerCase() === newType.nom.toLowerCase()
+      );
+      if (!editId && existing) {
+        setMessage({ type: "error", text: "Ce nom existe déjà." });
+        return;
+      }
+
+      if (editId) {
+        await axios.put(
+          `http://localhost:3001/api/travel-types/${editId}`,
+          newType,
+          { withCredentials: true }
+        );
+        setMessage({ type: "success", text: "Type modifié avec succès." });
+      } else {
+        await axios.post("http://localhost:3001/api/travel-types", newType, {
+          withCredentials: true,
+        });
+        setMessage({ type: "success", text: "Type ajouté avec succès." });
+      }
+
+      setNewType({ nom: "", description: "" });
+      setShowForm(false);
+      setEditId(null);
+      fetchTravelTypes();
+    } catch (error) {
+      console.error("Error saving travel type:", error);
+      setMessage({ type: "error", text: "Erreur lors de l'enregistrement." });
+    }
+  };
+
+  const handleDeleteClick = (id) => {
+    setDeleteId(id);
+    setShowConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      await axios.delete(`http://localhost:3001/api/travel-types/${deleteId}`, {
+        withCredentials: true,
+      });
+      setMessage({ type: "success", text: "Type supprimé avec succès." });
+      fetchTravelTypes();
+    } catch {
+      setMessage({ type: "error", text: "Erreur lors de la suppression." });
+    } finally {
+      setShowConfirm(false);
+      setDeleteId(null);
+    }
+  };
+
+  const handleEdit = (type) => {
+    setNewType({ nom: type.nom, description: type.description });
+    setEditId(type.id);
+    setShowForm(true);
+  };
+
+  const cancelEdit = () => {
+    setNewType({ nom: "", description: "" });
+    setEditId(null);
+    setShowForm(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-[#585e5c]">Types de déplacements</h1>
+          <p className="text-gray-600 mt-1">Gérez les modes de transport</p>
+        </div>
+        <button
+          onClick={() => {
+            setShowForm(!showForm);
+            setEditId(null);
+            setNewType({ nom: "", description: "" });
+          }}
+          className="bg-[#a52148] cursor-pointer text-white px-6 py-3 rounded font-medium hover:bg-[#8a1c3c] transition-colors shadow-lg shadow-[#a52148]/25"
+        >
+          {showForm ? "Fermer" : "+ Nouveau type"}
+        </button>
+      </div>
+
+      <Message
+        message={message.text}
+        messageType={message.type}
+        onClear={() => setMessage({ type: "", text: "" })}
+      />
+
+      {showForm && (
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white p-6 rounded shadow space-y-4"
+        >
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Nom</label>
+            <input
+              required
+              type="text"
+              value={newType.nom}
+              onChange={(e) => setNewType({ ...newType, nom: e.target.value })}
+              className="mt-1 block w-full border border-gray-300 rounded p-2"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Description
+            </label>
+            <textarea
+              value={newType.description}
+              onChange={(e) =>
+                setNewType({ ...newType, description: e.target.value })
+              }
+              className="mt-1 block w-full border border-gray-300 rounded p-2"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              className="bg-[#a52148] text-white px-6 py-2 rounded hover:bg-[#8a1c3c]"
+            >
+              {editId ? "Mettre à jour" : "Ajouter"}
+            </button>
+            {editId && (
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="text-gray-600 hover:underline"
+              >
+                Annuler
+              </button>
+            )}
+          </div>
+        </form>
+      )}
+
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {travelTypes.map((type) => (
+          <div
+            key={type.id}
+            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
+          >
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">{type.nom}</h3>
+            <p className="text-gray-600 mb-6 text-sm leading-relaxed">
+              {type.description}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleEdit(type)}
+                className="flex-1 bg-[#a52148] cursor-pointer text-white py-2 px-4 rounded text-sm font-medium hover:bg-[#8a1c3c] transition-colors"
+              >
+                Modifier
+              </button>
+              <button
+                onClick={() => handleDeleteClick(type.id)}
+                className="px-4 py-2 cursor-pointer text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+              >
+                🗑️
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <ConfirmDialog
+        open={showConfirm}
+        title="Supprimer le type ?"
+        message="Êtes-vous sûr de vouloir supprimer ce type de déplacement ? Cette action est irréversible."
+        onConfirm={confirmDelete}
+        onCancel={() => setShowConfirm(false)}
+      />
+    </div>
+  );
+}
