@@ -1,5 +1,4 @@
 "use client"
-
 import { useState } from "react"
 import Navigation from "../../pages/manager/Navigation"
 import AccountApproval from "../../pages/manager/ApproveAccounts"
@@ -10,21 +9,21 @@ import CarLoanRates from "../../pages/manager/CarLoanRates"
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("accounts")
-
+  
   const renderContent = () => {
     switch (activeTab) {
       case "accounts":
-        return <AccountApproval />
+        return <AccountApproval key="accounts" />
       case "expenses":
-        return <ExpenseTypes />
+        return <ExpenseTypes key="expenses" />
       case "travel":
-        return <TravelTypes />
+        return <TravelTypes key="travel" />
       case "mission":
-        return <MissionRates />
+        return <MissionRates key="mission" />
       case "carloan":
-        return <CarLoanRates />
+        return <CarLoanRates key="carloan" />
       default:
-        return <AccountApproval />
+        return <AccountApproval key="accounts-default" />
     }
   }
 

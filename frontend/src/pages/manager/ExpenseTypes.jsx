@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import apiClient from "../../utils/axiosConfig"; // Import the configured axios instance
 import Message from "../../components/Message";
 import ConfirmDialog from "../../components/ConfirmDialog";
+import { toast } from "sonner";
 
 export default function ExpenseTypes() {
   const [expenseTypes, setExpenseTypes] = useState([]);
@@ -11,17 +12,32 @@ export default function ExpenseTypes() {
   const [message, setMessage] = useState({ type: "", text: "" });
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const fetchExpenseTypes = () => {
-    axios
-      .get("http://localhost:3001/api/expense-types", { withCredentials: true })
-      .then(res => setExpenseTypes(res.data))
-      .catch(() =>
-        setMessage({ type: "error", text: "Échec du chargement des types." })
-      );
+  const fetchExpenseTypes = async () => {
+    try {
+      setLoading(true);
+      console.log('Fetching expense types...');
+      
+      const res = await apiClient.get("/expense-types");
+      console.log('Expense types fetched successfully:', res.data);
+      setExpenseTypes(res.data);
+    } catch (error) {
+      console.error('Fetch expense types error:', error);
+      
+      if (error.response?.status === 401) {
+        toast.error("Session expirée. Redirection vers la connexion...");
+        // The interceptor will handle the redirect
+      } else {
+        setMessage({ type: "error", text: "Échec du chargement des types." });
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
+    console.log('ExpenseTypes component mounted');
     fetchExpenseTypes();
   }, []);
 
@@ -37,16 +53,10 @@ export default function ExpenseTypes() {
       }
 
       if (editId) {
-        await axios.put(
-          `http://localhost:3001/api/expense-types/${editId}`,
-          newType,
-          { withCredentials: true }
-        );
+        await apiClient.put(`/expense-types/${editId}`, newType);
         setMessage({ type: "success", text: "Type modifié avec succès." });
       } else {
-        await axios.post("http://localhost:3001/api/expense-types", newType, {
-          withCredentials: true,
-        });
+        await apiClient.post("/expense-types", newType);
         setMessage({ type: "success", text: "Type ajouté avec succès." });
       }
 
@@ -56,7 +66,13 @@ export default function ExpenseTypes() {
       fetchExpenseTypes();
     } catch (error) {
       console.error("Error saving expense type:", error);
-      setMessage({ type: "error", text: "Erreur lors de l'enregistrement." });
+      
+      if (error.response?.status === 401) {
+        toast.error("Session expirée. Redirection vers la connexion...");
+      } else {
+        const errorMsg = error?.response?.data?.error || "Erreur lors de l'enregistrement.";
+        setMessage({ type: "error", text: errorMsg });
+      }
     }
   };
 
@@ -67,14 +83,17 @@ export default function ExpenseTypes() {
 
   const confirmDelete = async () => {
     try {
-      await axios.delete(
-        `http://localhost:3001/api/expense-types/${deleteId}`,
-        { withCredentials: true }
-      );
+      await apiClient.delete(`/expense-types/${deleteId}`);
       setMessage({ type: "success", text: "Type supprimé avec succès." });
       fetchExpenseTypes();
-    } catch {
-      setMessage({ type: "error", text: "Erreur lors de la suppression." });
+    } catch (error) {
+      console.error('Delete expense type error:', error);
+      
+      if (error.response?.status === 401) {
+        toast.error("Session expirée. Redirection vers la connexion...");
+      } else {
+        setMessage({ type: "error", text: "Erreur lors de la suppression." });
+      }
     } finally {
       setShowConfirm(false);
       setDeleteId(null);
@@ -92,6 +111,14 @@ export default function ExpenseTypes() {
     setEditId(null);
     setShowForm(false);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-gray-500">Chargement des types de dépenses...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -1,8 +1,7 @@
 "use client";
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import apiClient from "../utils/axiosConfig"; // Use the configured axios instance
 import { colors } from "../colors";
 
 const getRedirectPath = (role) => {
@@ -30,10 +29,6 @@ const storeCredentials = (user, token, remember) => {
   storage.setItem("token", token);
 };
 
-const setAxiosAuthHeader = (token) => {
-  axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-};
-
 export default function Login() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: "", password: "" });
@@ -46,7 +41,7 @@ export default function Login() {
   useEffect(() => {
     const { user, token } = getStoredCredentials();
     if (user && token) {
-      setAxiosAuthHeader(token);
+      // No need to set axios headers manually - interceptor handles it
       navigate(getRedirectPath(user.role));
     }
   }, [navigate]);
@@ -65,18 +60,15 @@ export default function Login() {
     setMessage("");
 
     try {
-      const { data } = await axios.post(
-        "http://localhost:3001/api/auth/login",
-        form,
-        { headers: { "Content-Type": "application/json" } }
-      );
+      // Use apiClient instead of axios directly
+      const { data } = await apiClient.post("/auth/login", form);
 
       if (data.user && data.token) {
         storeCredentials(data.user, data.token, rememberMe);
-        setAxiosAuthHeader(data.token);
+        // No need to set axios headers manually - interceptor handles it
         setMessage(`Bienvenue, ${data.user.nom_complete} !`);
         setMessageType("success");
-
+        
         setTimeout(() => {
           navigate(getRedirectPath(data.user.role));
         }, 800);

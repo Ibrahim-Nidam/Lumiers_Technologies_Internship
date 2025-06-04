@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
-import Message from "../../components/Message"; // Adjust path
+import apiClient from "../../utils/axiosConfig"; // Import the configured axios instance
+import Message from "../../components/Message";
 import ConfirmDialog from "../../components/ConfirmDialog";
+import { toast } from "sonner";
 
 export default function TravelTypes() {
   const [travelTypes, setTravelTypes] = useState([]);
@@ -11,17 +12,32 @@ export default function TravelTypes() {
   const [message, setMessage] = useState({ type: "", text: "" });
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const fetchTravelTypes = () => {
-    axios
-      .get("http://localhost:3001/api/travel-types", { withCredentials: true })
-      .then(res => setTravelTypes(res.data))
-      .catch(() =>
-        setMessage({ type: "error", text: "Échec du chargement des types." })
-      );
+  const fetchTravelTypes = async () => {
+    try {
+      setLoading(true);
+      console.log('Fetching travel types...');
+      
+      const res = await apiClient.get("/travel-types");
+      console.log('Travel types fetched successfully:', res.data);
+      setTravelTypes(res.data);
+    } catch (error) {
+      console.error('Fetch travel types error:', error);
+      
+      if (error.response?.status === 401) {
+        toast.error("Session expirée. Redirection vers la connexion...");
+        // The interceptor will handle the redirect
+      } else {
+        setMessage({ type: "error", text: "Échec du chargement des types." });
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
+    console.log('TravelTypes component mounted');
     fetchTravelTypes();
   }, []);
 
@@ -37,16 +53,10 @@ export default function TravelTypes() {
       }
 
       if (editId) {
-        await axios.put(
-          `http://localhost:3001/api/travel-types/${editId}`,
-          newType,
-          { withCredentials: true }
-        );
+        await apiClient.put(`/travel-types/${editId}`, newType);
         setMessage({ type: "success", text: "Type modifié avec succès." });
       } else {
-        await axios.post("http://localhost:3001/api/travel-types", newType, {
-          withCredentials: true,
-        });
+        await apiClient.post("/travel-types", newType);
         setMessage({ type: "success", text: "Type ajouté avec succès." });
       }
 
@@ -56,7 +66,13 @@ export default function TravelTypes() {
       fetchTravelTypes();
     } catch (error) {
       console.error("Error saving travel type:", error);
-      setMessage({ type: "error", text: "Erreur lors de l'enregistrement." });
+      
+      if (error.response?.status === 401) {
+        toast.error("Session expirée. Redirection vers la connexion...");
+      } else {
+        const errorMsg = error?.response?.data?.error || "Erreur lors de l'enregistrement.";
+        setMessage({ type: "error", text: errorMsg });
+      }
     }
   };
 
@@ -67,13 +83,17 @@ export default function TravelTypes() {
 
   const confirmDelete = async () => {
     try {
-      await axios.delete(`http://localhost:3001/api/travel-types/${deleteId}`, {
-        withCredentials: true,
-      });
+      await apiClient.delete(`/travel-types/${deleteId}`);
       setMessage({ type: "success", text: "Type supprimé avec succès." });
       fetchTravelTypes();
-    } catch {
-      setMessage({ type: "error", text: "Erreur lors de la suppression." });
+    } catch (error) {
+      console.error('Delete travel type error:', error);
+      
+      if (error.response?.status === 401) {
+        toast.error("Session expirée. Redirection vers la connexion...");
+      } else {
+        setMessage({ type: "error", text: "Erreur lors de la suppression." });
+      }
     } finally {
       setShowConfirm(false);
       setDeleteId(null);
@@ -91,6 +111,14 @@ export default function TravelTypes() {
     setEditId(null);
     setShowForm(false);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-gray-500">Chargement des types de voyage...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
