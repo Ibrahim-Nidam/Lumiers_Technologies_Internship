@@ -18,7 +18,7 @@ const typesDeDeplacementToSeed = [
 ];
 
 const typesDepensesToSeed = [
-  { nom: "Repas",       description: "Frais de nourriture durant le déplacement" },
+  { nom: "Déjeuner",       description: "Frais de nourriture durant le déplacement" },
   { nom: "Gazole",      description: "Frais de carburant" },
   { nom: "Parking",     description: "Frais de stationnement" },
   { nom: "Hébergement", description: "Frais d'hôtel ou de logement" },
