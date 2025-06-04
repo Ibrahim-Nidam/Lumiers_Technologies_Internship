@@ -5,6 +5,35 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { colors } from "../colors";
 
+const getRedirectPath = (role) => {
+  switch (role) {
+    case "admin":
+    case "SuperAdmin":
+      return "/adminDashboard";
+    case "manager":
+    case "SuperManager":
+      return "/managerDashboard";
+    default:
+      return "/agentDashboard";
+  }
+};
+
+const getStoredCredentials = () => {
+  const user = JSON.parse(localStorage.getItem("user") || sessionStorage.getItem("user") || "null");
+  const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+  return { user, token };
+};
+
+const storeCredentials = (user, token, remember) => {
+  const storage = remember ? localStorage : sessionStorage;
+  storage.setItem("user", JSON.stringify(user));
+  storage.setItem("token", token);
+};
+
+const setAxiosAuthHeader = (token) => {
+  axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+};
+
 export default function Login() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: "", password: "" });
@@ -14,42 +43,12 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
-  // On mount: if user + token are already in storage, set axios default and redirect to /dashboard
   useEffect(() => {
-    const savedUser =
-      JSON.parse(localStorage.getItem("user") || "null") ||
-      JSON.parse(sessionStorage.getItem("user") || "null");
-    const savedToken =
-      localStorage.getItem("token") || sessionStorage.getItem("token");
-
-    if (savedUser && savedToken) {
-      // set default header so that any future axios calls include the token
-      axios.defaults.headers.common["Authorization"] = `Bearer ${savedToken}`;
-      navigate("/dashboard");
+    const { user, token } = getStoredCredentials();
+    if (user && token) {
+      setAxiosAuthHeader(token);
+      navigate(getRedirectPath(user.role));
     }
-  }, [navigate]);
-
-  // Global Axios interceptor: if any response returns 401, force logout + redirect
-  useEffect(() => {
-    const interceptor = axios.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response?.status === 401) {
-          // Clear any stored data
-          localStorage.removeItem("user");
-          localStorage.removeItem("token");
-          sessionStorage.removeItem("user");
-          sessionStorage.removeItem("token");
-          delete axios.defaults.headers.common["Authorization"];
-          navigate("/login");
-        }
-        return Promise.reject(error);
-      }
-    );
-
-    return () => {
-      axios.interceptors.response.eject(interceptor);
-    };
   }, [navigate]);
 
   const handleChange = (e) => {
@@ -62,64 +61,32 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage("");
     setIsLoading(true);
+    setMessage("");
 
     try {
-      const res = await axios.post(
+      const { data } = await axios.post(
         "http://localhost:3001/api/auth/login",
         form,
         { headers: { "Content-Type": "application/json" } }
       );
 
-      const data = res.data;
-
-      // If login succeeded, data.user and data.token should exist
       if (data.user && data.token) {
-        // 1) Persist user & token
-        const storage = rememberMe ? localStorage : sessionStorage;
-        storage.setItem("user", JSON.stringify(data.user));
-        storage.setItem("token", data.token);
-
-        // 2) Set default Authorization header for all future axios calls
-        axios.defaults.headers.common["Authorization"] = `Bearer ${data.token}`;
-
-        // 3) Show a brief welcome message
+        storeCredentials(data.user, data.token, rememberMe);
+        setAxiosAuthHeader(data.token);
         setMessage(`Bienvenue, ${data.user.nom_complete} !`);
         setMessageType("success");
 
-        // 4) Navigate based on role after a short delay
         setTimeout(() => {
-          const role = data.user.role;
-
-          switch (role) {
-            case "admin":
-            case "SuperAdmin":
-              navigate("/adminDashboard");
-              break;
-            case "manager":
-            case "SuperManager":
-              navigate("/managerDashboard");
-              break;
-            default:
-              navigate("/agentDashboard");
-          }
+          navigate(getRedirectPath(data.user.role));
         }, 800);
-
       } else {
-        // In case the back end returns some other shape
         setMessage("Échec de la connexion. Réponse inattendue du serveur.");
         setMessageType("error");
       }
     } catch (err) {
-      // If server returned a 4xx or 5xx
-      if (err.response) {
-        setMessage(
-          err.response.data.error || "Échec de la connexion. Veuillez réessayer."
-        );
-      } else {
-        setMessage("Erreur réseau. Veuillez vérifier votre connexion.");
-      }
+      const errorMsg = err.response?.data?.error || "Erreur réseau. Veuillez vérifier votre connexion.";
+      setMessage(errorMsg);
       setMessageType("error");
     } finally {
       setIsLoading(false);
