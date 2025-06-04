@@ -1,4 +1,3 @@
-// src/components/ProfileSettings.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -10,6 +9,7 @@ export default function ProfileSettings() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
+  const [messageSection, setMessageSection] = useState(""); // New state to track which section has the error
 
   const [formData, setFormData] = useState({
     nomComplete: "",
@@ -88,6 +88,7 @@ export default function ProfileSettings() {
               "Erreur lors du chargement."
           );
           setMessageType("error");
+          setMessageSection("general");
         }
       } finally {
         setLoading(false);
@@ -106,6 +107,7 @@ export default function ProfileSettings() {
     if (message) {
       setMessage("");
       setMessageType("");
+      setMessageSection("");
     }
   };
 
@@ -116,6 +118,7 @@ export default function ProfileSettings() {
     if (message) {
       setMessage("");
       setMessageType("");
+      setMessageSection("");
     }
   };
 
@@ -151,6 +154,7 @@ export default function ProfileSettings() {
       
       setMessage("Taux de déplacement supprimé avec succès !");
       setMessageType("success");
+      setMessageSection("taux");
     } catch (error) {
       console.error("removeCarLoan ERROR →", error);
       setMessage(
@@ -159,36 +163,50 @@ export default function ProfileSettings() {
         "Erreur lors de la suppression."
       );
       setMessageType("error");
+      setMessageSection("taux");
     } finally {
       setSaving(false);
     }
   };
 
   const validateForm = () => {
+    // Clear any existing messages
+    setMessage("");
+    setMessageType("");
+    setMessageSection("");
+
+    // Validate personal information
     if (!formData.nomComplete.trim()) {
       setMessage("Le nom complet est requis");
       setMessageType("error");
+      setMessageSection("personal");
       return false;
     }
     if (!formData.courriel.trim() || !formData.courriel.includes("@")) {
       setMessage("Une adresse email valide est requise");
       setMessageType("error");
+      setMessageSection("personal");
       return false;
     }
+
+    // Validate password
     if (
       formData.motDePasse &&
       formData.motDePasse !== formData.confirmPassword
     ) {
       setMessage("Les mots de passe ne correspondent pas");
       setMessageType("error");
+      setMessageSection("password");
       return false;
     }
     if (formData.motDePasse && formData.motDePasse.length < 6) {
       setMessage("Le mot de passe doit contenir au moins 6 caractères");
       setMessageType("error");
+      setMessageSection("password");
       return false;
     }
 
+    // Validate car loans
     if (formData.possedeVoiturePersonnelle) {
       const validCarLoans = carLoans.filter(
         (loan) => loan.libelle.trim() || loan.tarifParKm
@@ -197,11 +215,13 @@ export default function ProfileSettings() {
         if (!loan.libelle.trim()) {
           setMessage("Le libellé ne peut pas être vide");
           setMessageType("error");
+          setMessageSection("taux");
           return false;
         }
         if (!loan.tarifParKm || parseFloat(loan.tarifParKm) <= 1) {
           setMessage("Le tarif par km doit être supérieur à 1");
           setMessageType("error");
+          setMessageSection("taux");
           return false;
         }
       }
@@ -216,6 +236,7 @@ export default function ProfileSettings() {
     setSaving(true);
     setMessage("");
     setMessageType("");
+    setMessageSection("");
 
     try {
       // 1) PUT /api/users/me
@@ -251,6 +272,7 @@ export default function ProfileSettings() {
 
       setMessage("Profil mis à jour avec succès !");
       setMessageType("success");
+      setMessageSection("general"); // Success message appears at the top
       setFormData((prev) => ({
         ...prev,
         motDePasse: "",
@@ -265,11 +287,86 @@ export default function ProfileSettings() {
             "Erreur lors de la mise à jour."
         );
         setMessageType("error");
+        setMessageSection("general");
       }
       // 401 will be handled by your global interceptor
     } finally {
       setSaving(false);
     }
+  };
+
+  // Helper component for displaying messages
+  const MessageDisplay = ({ section }) => {
+    if (!message || messageSection !== section) return null;
+
+    return (
+      <div
+        className={`mb-4 sm:mb-6 p-3 sm:p-4 rounded-md ${
+          messageType === "success"
+            ? "bg-green-50 border border-green-200 text-green-700"
+            : "bg-red-50 border border-red-200 text-red-700"
+        }`}
+      >
+        <div className="flex">
+          <div className="flex-shrink-0">
+            {messageType === "success" ? (
+              <svg
+                className="h-5 w-5 text-green-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            ) : (
+              <svg
+                className="h-5 w-5 text-red-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            )}
+          </div>
+          <div className="ml-3 flex-1">
+            <p className="text-sm sm:text-base">{message}</p>
+          </div>
+          <button
+            onClick={() => {
+              setMessage("");
+              setMessageType("");
+              setMessageSection("");
+            }}
+            className="ml-auto text-gray-400 hover:text-gray-600 flex-shrink-0"
+          >
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -296,70 +393,8 @@ export default function ProfileSettings() {
         </p>
       </div>
 
-      {message && (
-        <div
-          className={`mb-4 sm:mb-6 p-3 sm:p-4 rounded-md ${
-            messageType === "success"
-              ? "bg-green-50 border border-green-200 text-green-700"
-              : "bg-red-50 border border-red-200 text-red-700"
-          }`}
-        >
-          <div className="flex">
-            <div className="flex-shrink-0">
-              {messageType === "success" ? (
-                <svg
-                  className="h-5 w-5 text-green-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  className="h-5 w-5 text-red-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              )}
-            </div>
-            <div className="ml-3 flex-1">
-              <p className="text-sm sm:text-base">{message}</p>
-            </div>
-            <button
-              onClick={() => setMessage("")}
-              className="ml-auto text-gray-400 hover:text-gray-600 flex-shrink-0"
-            >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
+      {/* General success messages appear at the top */}
+      <MessageDisplay section="general" />
 
       <div className="space-y-6 sm:space-y-8">
         {/* Informations personnelles */}
@@ -367,6 +402,10 @@ export default function ProfileSettings() {
           <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">
             Informations personnelles
           </h2>
+          
+          {/* Personal info error messages appear here */}
+          <MessageDisplay section="personal" />
+          
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -421,6 +460,10 @@ export default function ProfileSettings() {
           <p className="text-sm text-gray-600 mb-3 sm:mb-4">
             Laissez vide pour conserver le mot de passe actuel
           </p>
+          
+          {/* Password error messages appear here */}
+          <MessageDisplay section="password" />
+          
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -470,7 +513,7 @@ export default function ProfileSettings() {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={2}
-                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542 7z"
                       />
                     </svg>
                   )}
@@ -502,6 +545,9 @@ export default function ProfileSettings() {
             <p className="text-sm text-gray-600 mb-3 sm:mb-4">
               Gérez vos tarifs de déplacement par itinéraire
             </p>
+
+            {/* Taux error messages appear here */}
+            <MessageDisplay section="taux" />
 
             <div className="space-y-4">
               {carLoans.map((loan, index) => (
