@@ -14,6 +14,14 @@ import ManagerDashboard from "../components/dash/ManagerDashboard";
 import AdminDashboard from "../components/dash/AdminDashboard";
 import ProfileSettings from "../components/dash/ProfileSettings";
 
+
+// Manager Dashboard Sub-Pages
+import ApproveAccounts from "../pages/manager/ApproveAccounts";
+import ExpenseTypes from "../pages/manager/ExpenseTypes";
+import DisplacementTypes from "../pages/manager/DisplacementTypes";
+import MissionRates from "../pages/manager/MissionRates";
+import CarLoanRates from "../pages/manager/CarLoanRates";
+
 export default function AppRoutes() {
   return (
     <Routes>
@@ -28,7 +36,17 @@ export default function AppRoutes() {
         {/* Protected Routes */}
         <Route element={<PrivateRoute />}>
           <Route path="/agentDashboard" element={<AgentDashboard />} />
-          <Route path="/managerDashboard" element={<ManagerDashboard />} />
+
+          {/* Manager Dashboard with nested pages */}
+          <Route path="/managerDashboard" element={<ManagerDashboard />}>
+            <Route index element={<ApproveAccounts />} />
+            <Route path="approve-accounts" element={<ApproveAccounts />} />
+            <Route path="expense-types" element={<ExpenseTypes />} />
+            <Route path="displacement-types" element={<DisplacementTypes />} />
+            <Route path="mission-rates" element={<MissionRates />} />
+            <Route path="car-loan-rates" element={<CarLoanRates />} />
+          </Route>
+
           <Route path="/adminDashboard" element={<AdminDashboard />} />
           <Route path="/profile-settings" element={<ProfileSettings />} />
         </Route>
