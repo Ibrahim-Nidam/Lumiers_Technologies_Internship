@@ -1,4 +1,3 @@
-// routes/auth.js
 const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -31,13 +30,30 @@ router.post("/register", async (req, res) => {
     const saltRounds = 10;
     const hashed = await bcrypt.hash(password, saltRounds);
 
-    // 4. Find roleId
-    const roleInstance = await Role.findOne({ where: { nom: role } });
+    // 4. Determine correct role to assign
+    let selectedRoleName = role;
+
+    // If selected role is "manager", check if it's the first one
+    if (role === "manager") {
+      const existingManagers = await User.count({
+        include: {
+          model: Role,
+          where: { nom: ["manager", "SuperManager"] },
+        },
+      });
+
+      if (existingManagers === 0) {
+        selectedRoleName = "SuperManager"; // First manager becomes SuperManager
+      }
+    }
+
+    const roleInstance = await Role.findOne({ where: { nom: selectedRoleName } });
     if (!roleInstance) {
       return res
         .status(400)
-        .json({ error: `Role '${role}' introuvable dans la base.` });
+        .json({ error: `Role '${selectedRoleName}' introuvable dans la base.` });
     }
+
 
     // 5. Create the user
     const newUser = await User.create({
