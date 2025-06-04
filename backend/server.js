@@ -18,9 +18,18 @@ const { seedInitialData } = require("./seed-initial-data");
 const authRoutes = require("./routes/auth");
 const profileRoutes = require("./routes/profile");
 const authMiddleware = require("./middleware/authMiddleware");
+const expenseTypesRoutes = require("./routes/expenseTypes");
+const travelTypesRouter = require('./routes/travelTypes');
 
 const app = express();
-app.use(cors());
+
+const corsOptions = {
+  origin: "http://localhost:5173", // Vite default port
+  credentials: true,
+};
+app.use(cors(corsOptions));
+// app.options('*', cors(corsOptions)); 
+
 app.use(express.json());
 
 (async () => {
@@ -35,6 +44,8 @@ app.use(express.json());
     // 3) Register routes, middleware, etc.
     app.use("/api/auth", authRoutes);
     app.use("/api", profileRoutes);
+    app.use("/api/expense-types", expenseTypesRoutes);
+    app.use('/api/travel-types', travelTypesRouter);
 
     app.get("/api/dashboard-data", authMiddleware, async (req, res) => {
       const userId = req.user.userId;
