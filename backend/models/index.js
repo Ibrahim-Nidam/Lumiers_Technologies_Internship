@@ -22,6 +22,7 @@ const Deplacement = require("./Deplacement")(sequelize, DataTypes);
 const TypeDepense = require("./TypeDepense")(sequelize, DataTypes);
 const Depense = require("./Depense")(sequelize, DataTypes);
 const TypeDeDeplacement = require("./TypeDeDeplacement")(sequelize, DataTypes);
+const TauxMissionUtilisateur = require("./TauxMissionUtilisateur")(sequelize, DataTypes); // new model
 
 // 3) Set up associations…
 
@@ -29,15 +30,23 @@ const TypeDeDeplacement = require("./TypeDeDeplacement")(sequelize, DataTypes);
 Role.hasMany(User, { foreignKey: "roleId", onDelete: "SET NULL" });
 User.belongsTo(Role, { foreignKey: "roleId" });
 
-// ─── Users ↔ CarLoans
+// ─── Users ↔ CarLoans (TauxKilometriqueUtilisateur)
 User.hasMany(CarLoan, { foreignKey: "userId", onDelete: "CASCADE" });
 CarLoan.belongsTo(User, { foreignKey: "userId" });
+
+// ─── Users ↔ TauxMissionUtilisateur (daily mission rates)
+User.hasMany(TauxMissionUtilisateur, { foreignKey: "userId", onDelete: "CASCADE" });
+TauxMissionUtilisateur.belongsTo(User, { foreignKey: "userId" });
+
+// ─── TypeDeDeplacement ↔ TauxMissionUtilisateur
+TypeDeDeplacement.hasMany(TauxMissionUtilisateur, { foreignKey: "typeDeDeplacementId" });
+TauxMissionUtilisateur.belongsTo(TypeDeDeplacement, { foreignKey: "typeDeDeplacementId" });
 
 // ─── Users ↔ Deplacements
 User.hasMany(Deplacement, { foreignKey: "userId", onDelete: "CASCADE" });
 Deplacement.belongsTo(User, { foreignKey: "userId" });
 
-// ─── CarLoans ↔ Deplacements
+// ─── CarLoans ↔ Deplacements (optional foreign key)
 CarLoan.hasMany(Deplacement, {
   foreignKey: "carLoanId",
   onDelete: "SET NULL",
@@ -60,11 +69,11 @@ Depense.belongsTo(TypeDepense, { foreignKey: "typeDepenseId" });
 
 // ─── TypeDeDeplacement ↔ Deplacements
 TypeDeDeplacement.hasMany(Deplacement, {
-  foreignKey: "typeDeDeplacement",
+  foreignKey: "typeDeDeplacementId",
   onDelete: "SET NULL",
 });
 Deplacement.belongsTo(TypeDeDeplacement, {
-  foreignKey: "typeDeDeplacement",
+  foreignKey: "typeDeDeplacementId",
 });
 
 // 4) Export everything
@@ -78,4 +87,5 @@ module.exports = {
   TypeDepense,
   Depense,
   TypeDeDeplacement,
+  TauxMissionUtilisateur,
 };
