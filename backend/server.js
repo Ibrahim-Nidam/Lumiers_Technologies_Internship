@@ -21,6 +21,8 @@ const authMiddleware = require("./middleware/authMiddleware");
 const expenseTypesRoutes = require("./routes/expenseTypes");
 const travelTypesRouter = require('./routes/travelTypes');
 const usersRoutes = require("./routes/users");
+const missionRatesRouter  =  require("./routes/missionRates");
+
 
 
 const app = express();
@@ -48,6 +50,7 @@ app.use(express.json());
     app.use("/api/expense-types", expenseTypesRoutes);
     app.use('/api/travel-types', travelTypesRouter);
     app.use("/api/users", usersRoutes);
+    app.use("/api/mission-rates", missionRatesRouter);
 
     app.get("/api/dashboard-data", authMiddleware, async (req, res) => {
       const userId = req.user.userId;
