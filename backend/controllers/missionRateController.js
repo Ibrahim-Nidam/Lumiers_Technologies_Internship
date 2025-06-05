@@ -36,7 +36,9 @@ exports.getAllMissionRates = async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 exports.updateMissionRateStatus = async (req, res) => {
   const { id } = req.params;
-  const { statut, approuveParGestionnaireId } = req.body;
+  const { statut } = req.body;
+  const approuveParGestionnaireId = req.user.userId;
+
 
   const validStatuses = ["en_attente", "approuvé", "rejeté"];
   if (!validStatuses.includes(statut)) {

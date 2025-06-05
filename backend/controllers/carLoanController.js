@@ -33,7 +33,8 @@ exports.getAllCarLoans = async (req, res) => {
 exports.updateCarLoanStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { statut, approuveParGestionnaireId } = req.body;
+    const { statut } = req.body;
+    const approuveParGestionnaireId = req.user.userId;
 
 
     const validStatuses = ["en_attente", "approuvé", "rejeté"];

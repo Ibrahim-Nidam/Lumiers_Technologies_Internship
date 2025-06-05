@@ -38,7 +38,7 @@ export default function CarLoanRates() {
 
       const res = await apiClient.patch(`/car-loan-rates/${id}/status`, {
         statut: newStatus,
-        approuveParGestionnaireId: 1, // TODO: replace with actual logged-in user ID
+        // approuveParGestionnaireId: 1, // TODO: replace with actual logged-in user ID
       });
 
 

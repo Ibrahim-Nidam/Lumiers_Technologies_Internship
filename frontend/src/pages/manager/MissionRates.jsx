@@ -1,4 +1,3 @@
-// src/components/MissionRates.jsx
 import { useEffect, useState } from "react";
 import apiClient from "../../utils/axiosConfig";
 import { toast } from "sonner";
@@ -42,7 +41,6 @@ export default function MissionRates() {
 
       const res = await apiClient.patch(`/mission-rates/${id}/status`, {
         statut: newStatus,
-        approuveParGestionnaireId: 1, // Replace with actual user ID
       });
 
 

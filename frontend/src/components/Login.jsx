@@ -8,7 +8,6 @@ const getRedirectPath = (role) => {
   switch (role) {
     case "admin":
     case "SuperAdmin":
-      return "/adminDashboard";
     case "manager":
     case "SuperManager":
       return "/managerDashboard";
