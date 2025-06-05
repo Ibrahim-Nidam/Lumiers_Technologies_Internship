@@ -11,10 +11,8 @@ export default function MissionRates() {
     const fetchRates = async () => {
       try {
         setLoading(true);
-        console.log("Fetching mission rates...");
 
         const res = await apiClient.get("/mission-rates");
-        console.log("Mission rates fetched successfully:", res.data);
 
         // Group by user
         const grouped = {};
@@ -41,14 +39,12 @@ export default function MissionRates() {
 
   const handleStatusChange = async (id, newStatus) => {
     try {
-      console.log(`Updating rate ${id} to status: ${newStatus}`);
 
       const res = await apiClient.patch(`/mission-rates/${id}/status`, {
         statut: newStatus,
         approuveParGestionnaireId: 1, // Replace with actual user ID
       });
 
-      console.log("Rate status updated successfully:", res.data);
 
       setGroupedRates((prev) => {
         const updated = {};

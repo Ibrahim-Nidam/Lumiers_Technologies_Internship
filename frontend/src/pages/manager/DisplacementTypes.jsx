@@ -17,10 +17,8 @@ export default function TravelTypes() {
   const fetchTravelTypes = async () => {
     try {
       setLoading(true);
-      console.log('Fetching travel types...');
       
       const res = await apiClient.get("/travel-types");
-      console.log('Travel types fetched successfully:', res.data);
       setTravelTypes(res.data);
     } catch (error) {
       console.error('Fetch travel types error:', error);
@@ -37,7 +35,6 @@ export default function TravelTypes() {
   };
 
   useEffect(() => {
-    console.log('TravelTypes component mounted');
     fetchTravelTypes();
   }, []);
 

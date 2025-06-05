@@ -11,10 +11,8 @@ export default function CarLoanRates() {
     const fetchRates = async () => {
       try {
         setLoading(true);
-        console.log("Fetching car-loan rates...");
 
         const res = await apiClient.get("/car-loan-rates");
-        console.log("Car-loan rates fetched successfully:", res.data);
 
         // res.data is an array of CarLoan objects, each with a nested `user`
         setCarLoanRates(res.data);
@@ -37,14 +35,12 @@ export default function CarLoanRates() {
   // 2) Handler to update status for a single rate
   const handleStatusChange = async (id, newStatus) => {
     try {
-      console.log(`Updating car-loan rate ${id} → ${newStatus}`);
 
       const res = await apiClient.patch(`/car-loan-rates/${id}/status`, {
         statut: newStatus,
         approuveParGestionnaireId: 1, // TODO: replace with actual logged-in user ID
       });
 
-      console.log("Car-loan rate updated:", res.data);
 
       // Update local state so the UI refreshes
       setCarLoanRates((prev) =>

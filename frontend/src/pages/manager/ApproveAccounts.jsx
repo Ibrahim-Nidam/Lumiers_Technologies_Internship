@@ -9,10 +9,8 @@ export default function AccountApproval() {
   const fetchAccounts = useCallback(async () => {
     try {
       setLoading(true);
-      console.log('Fetching accounts...');
       
       const res = await apiClient.get("/users");
-      console.log('Accounts fetched successfully:', res.data);
       setAccounts(res.data);
     } catch (error) {
       console.error('Fetch accounts error:', error);
@@ -29,7 +27,6 @@ export default function AccountApproval() {
   }, []);
 
   useEffect(() => {
-    console.log('AccountApproval component mounted');
     fetchAccounts();
   }, [fetchAccounts]);
 

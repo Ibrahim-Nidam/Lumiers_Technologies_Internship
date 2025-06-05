@@ -5,7 +5,6 @@ const { CarLoan, User } = require("../models");
 // ─────────────────────────────────────────────────────────────
 exports.getAllCarLoans = async (req, res) => {
   try {
-    console.log("Fetching car-loan rates...");
 
     const carLoanRates = await CarLoan.findAll({
       include: [
@@ -18,7 +17,6 @@ exports.getAllCarLoans = async (req, res) => {
       order: [["dateCreation", "DESC"]],
     });
 
-    console.log(`Found ${carLoanRates.length} car-loan rates`);
     res.json(carLoanRates);
   } catch (error) {
     console.error("Error fetching car-loan rates:", error);
@@ -37,7 +35,6 @@ exports.updateCarLoanStatus = async (req, res) => {
     const { id } = req.params;
     const { statut, approuveParGestionnaireId } = req.body;
 
-    console.log(`Updating car-loan rate ${id} → statut: ${statut}`);
 
     const validStatuses = ["en_attente", "approuvé", "rejeté"];
     if (!validStatuses.includes(statut)) {
@@ -65,7 +62,6 @@ exports.updateCarLoanStatus = async (req, res) => {
       ],
     });
 
-    console.log("Car-loan rate updated successfully");
     res.json(updatedCarLoan);
   } catch (error) {
     console.error("Error updating car-loan rate status:", error);

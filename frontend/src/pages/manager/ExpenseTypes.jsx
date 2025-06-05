@@ -17,10 +17,8 @@ export default function ExpenseTypes() {
   const fetchExpenseTypes = async () => {
     try {
       setLoading(true);
-      console.log('Fetching expense types...');
       
       const res = await apiClient.get("/expense-types");
-      console.log('Expense types fetched successfully:', res.data);
       setExpenseTypes(res.data);
     } catch (error) {
       console.error('Fetch expense types error:', error);
@@ -37,7 +35,6 @@ export default function ExpenseTypes() {
   };
 
   useEffect(() => {
-    console.log('ExpenseTypes component mounted');
     fetchExpenseTypes();
   }, []);
 
