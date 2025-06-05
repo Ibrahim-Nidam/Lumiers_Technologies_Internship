@@ -1,4 +1,3 @@
-// controllers/travelTypeController.js
 const { TypeDeDeplacement } = require("../models");
 
 // ─────────────────────────────────────────────────────────────

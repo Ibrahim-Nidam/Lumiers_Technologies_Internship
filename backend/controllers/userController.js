@@ -1,4 +1,3 @@
-// controllers/userController.js
 const { User, Role } = require("../models");
 
 // ─────────────────────────────────────────────────────────────

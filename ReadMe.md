@@ -128,6 +128,7 @@ Lumiers_Technologies_Internship/
 ├── backend/         ← API Node.js, Express, Sequelize
 │   ├── models/      ← Modèles de la base de données
 │   ├── routes/      ← Points d’entrée de l’API
+│   ├── controllers/ ← Logique métier
 │   └── .env         ← Configuration locale
 │
 ├── frontend/        ← Interface utilisateur (React.js)

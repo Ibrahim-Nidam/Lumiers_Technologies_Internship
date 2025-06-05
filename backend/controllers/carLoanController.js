@@ -1,4 +1,3 @@
-// controllers/carLoanController.js
 const { CarLoan, User } = require("../models");
 
 // ─────────────────────────────────────────────────────────────

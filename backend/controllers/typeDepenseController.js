@@ -1,4 +1,3 @@
-// controllers/typeDepenseController.js
 const { TypeDepense } = require("../models");
 
 // ─────────────────────────────────────────────────────────────

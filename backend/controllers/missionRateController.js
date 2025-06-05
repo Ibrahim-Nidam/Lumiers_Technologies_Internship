@@ -1,4 +1,3 @@
-// controllers/missionRateController.js
 const { TauxMissionUtilisateur, User, TypeDeDeplacement } = require("../models");
 
 // ─────────────────────────────────────────────────────────────
