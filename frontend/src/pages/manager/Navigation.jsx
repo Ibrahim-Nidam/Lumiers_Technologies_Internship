@@ -10,7 +10,7 @@ export default function Navigation({ activeTab, setActiveTab }) {
   ]
 
   return (
-    <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-100 p-2">
+    <div className="bg-white/80 backdrop-blur-sm rounded shadow-sm border border-gray-100 p-2">
       <nav className="flex flex-wrap gap-1">
         {tabs.map((tab) => (
           <button

@@ -196,7 +196,7 @@ export default function TravelTypes() {
         {travelTypes.map((type) => (
           <div
             key={type.id}
-            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
+            className="bg-white rounded shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
           >
             <h3 className="text-xl font-semibold text-gray-900 mb-2">{type.nom}</h3>
             <p className="text-gray-600 mb-6 text-sm leading-relaxed">

@@ -39,7 +39,7 @@ export default function CarLoanRates() {
         {carLoanRates.map((rate) => (
           <div
             key={rate.id}
-            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
+            className="bg-white rounded shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
           >
             <div className="flex flex-col lg:flex-row lg:items-center gap-6">
               <div className="flex items-center gap-4 flex-1">
