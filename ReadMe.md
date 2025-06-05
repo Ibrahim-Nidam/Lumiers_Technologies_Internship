@@ -58,7 +58,7 @@ cd Lumiers_Technologies_Internship
    PG_PASSWORD=TON_MOT_DE_PASSE⚠️
    PG_HOST=localhost
    PG_PORT=5432
-   JWT_SECRET=TiriOtfpjMYs2LCapxRkpPmM5E8Gn2CD
+   JWT_SECRET=TiriOtfpjMYs2LCapxRkpPmM5E8Gn2CD⚠️(generer 32bit)
    ```
 ⚠️ Adaptez ces informations selon votre identifiants pour PostgreSQL.
 
