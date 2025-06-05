@@ -219,17 +219,17 @@ export default function AgentEntriesInterface() {
       >
         {/* Day Header */}
         <div
-          className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
+          className={`p-3 sm:p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
             hasTrips ? "" : "opacity-60"
           } ${isToday ? "bg-blue-50" : ""}`}
           onClick={() => hasTrips && toggleDayExpansion(day)}
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-3">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start space-x-3 sm:space-x-4 flex-1 min-w-0">
+              <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
                 <div className="text-center">
                   <div
-                    className={`text-2xl font-bold ${isToday ? "text-blue-600" : ""}`}
+                    className={`text-xl sm:text-2xl font-bold ${isToday ? "text-blue-600" : ""}`}
                     style={{ color: isToday ? "#2563eb" : colors.logo_text }}
                   >
                     {day}
@@ -238,30 +238,158 @@ export default function AgentEntriesInterface() {
                     {dayName.substring(0, 3)}
                   </div>
                 </div>
-                <div className="h-8 w-px" style={{ backgroundColor: colors.secondary }}></div>
+                <div className="h-6 sm:h-8 w-px" style={{ backgroundColor: colors.secondary }}></div>
               </div>
 
               {hasTrips ? (
-                <div className="flex-1">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colors.primary }}></div>
-                      <span className="font-medium" style={{ color: colors.logo_text }}>
-                        {dayTrips.length} déplacement{dayTrips.length > 1 ? "s" : ""}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <MapPin className="w-4 h-4" style={{ color: colors.secondary }} />
-                      <span className="text-sm" style={{ color: colors.logo_text }}>
-                        {dayTrips
-                          .map((trip) => trip.libelleDestination)
-                          .filter(Boolean)
-                          .join(", ") || "Destinations non définies"}
-                      </span>
+                <div className="flex-1 min-w-0">
+                  {/* Mobile Layout */}
+                  <div className="block sm:hidden">
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: colors.primary }}></div>
+                        <span className="text-sm font-medium" style={{ color: colors.logo_text }}>
+                          {dayTrips.length} déplacement{dayTrips.length > 1 ? "s" : ""}
+                        </span>
+                        <span
+                          className="text-xs px-2 py-1 rounded-full"
+                          style={{ backgroundColor: colors.secondary + "20", color: colors.logo_text }}
+                        >
+                          {dayTrips.reduce((total, trip) => total + trip.depenses.length, 0)} dépense
+                          {dayTrips.reduce((total, trip) => total + trip.depenses.length, 0) > 1 ? "s" : ""}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: colors.secondary }} />
+                        <span className="text-xs truncate" style={{ color: colors.logo_text }}>
+                          {dayTrips
+                            .map((trip) => trip.libelleDestination)
+                            .filter(Boolean)
+                            .join(", ") || "Destinations non définies"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <span className="text-xs font-medium" style={{ color: colors.logo_text }}>
+                            {dayTrips
+                              .reduce((total, trip) => total + (Number.parseFloat(trip.distanceKm) || 0), 0)
+                              .toFixed(0)}{" "}
+                            km
+                          </span>
+                          {(() => {
+                            const allExpenses = dayTrips.flatMap((trip) => trip.depenses)
+                            const justifiedExpenses = allExpenses.filter((expense) => expense.justificatif)
+                            const totalExpenses = allExpenses.length
+
+                            if (totalExpenses === 0) return null
+
+                            const isFullyJustified = justifiedExpenses.length === totalExpenses
+                            const hasPartialJustification =
+                              justifiedExpenses.length > 0 && justifiedExpenses.length < totalExpenses
+                            const hasNoJustification = justifiedExpenses.length === 0
+
+                            return (
+                              <span
+                                className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                  isFullyJustified
+                                    ? "bg-green-100 text-green-800"
+                                    : hasPartialJustification
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : "bg-red-100 text-red-800"
+                                }`}
+                              >
+                                {isFullyJustified
+                                  ? "✓"
+                                  : hasNoJustification
+                                    ? "✗"
+                                    : `${justifiedExpenses.length}/${totalExpenses}`}
+                              </span>
+                            )
+                          })()}
+                        </div>
+                        {dayTotal > 0 && (
+                          <div className="text-right">
+                            <div className="text-sm font-bold" style={{ color: colors.primary }}>
+                              {dayTotal.toFixed(0)} MAD
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-xs truncate" style={{ color: colors.secondary }}>
+                        {dayTrips.map((trip) => trip.intitule).join(" • ")}
+                      </div>
                     </div>
                   </div>
-                  <div className="mt-1 text-sm" style={{ color: colors.secondary }}>
-                    {dayTrips.map((trip) => trip.intitule).join(" • ")}
+
+                  {/* Desktop Layout */}
+                  <div className="hidden sm:block">
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colors.primary }}></div>
+                        <span className="font-medium" style={{ color: colors.logo_text }}>
+                          {dayTrips.length} déplacement{dayTrips.length > 1 ? "s" : ""}
+                        </span>
+                        <span
+                          className="text-sm px-2 py-1 rounded-full"
+                          style={{ backgroundColor: colors.secondary + "20", color: colors.logo_text }}
+                        >
+                          {dayTrips.reduce((total, trip) => total + trip.depenses.length, 0)} dépense
+                          {dayTrips.reduce((total, trip) => total + trip.depenses.length, 0) > 1 ? "s" : ""}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <MapPin className="w-4 h-4" style={{ color: colors.secondary }} />
+                        <span className="text-sm" style={{ color: colors.logo_text }}>
+                          {dayTrips
+                            .map((trip) => trip.libelleDestination)
+                            .filter(Boolean)
+                            .join(", ") || "Destinations non définies"}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium" style={{ color: colors.logo_text }}>
+                          {dayTrips
+                            .reduce((total, trip) => total + (Number.parseFloat(trip.distanceKm) || 0), 0)
+                            .toFixed(0)}{" "}
+                          km
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {(() => {
+                          const allExpenses = dayTrips.flatMap((trip) => trip.depenses)
+                          const justifiedExpenses = allExpenses.filter((expense) => expense.justificatif)
+                          const totalExpenses = allExpenses.length
+
+                          if (totalExpenses === 0) return null
+
+                          const isFullyJustified = justifiedExpenses.length === totalExpenses
+                          const hasPartialJustification =
+                            justifiedExpenses.length > 0 && justifiedExpenses.length < totalExpenses
+                          const hasNoJustification = justifiedExpenses.length === 0
+
+                          return (
+                            <span
+                              className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                isFullyJustified
+                                  ? "bg-green-100 text-green-800"
+                                  : hasPartialJustification
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {isFullyJustified
+                                ? "Justifié"
+                                : hasNoJustification
+                                  ? "Non justifié"
+                                  : `${justifiedExpenses.length}/${totalExpenses} justifié${justifiedExpenses.length > 1 ? "s" : ""}`}
+                            </span>
+                          )
+                        })()}
+                      </div>
+                    </div>
+                    <div className="mt-1 text-sm" style={{ color: colors.secondary }}>
+                      {dayTrips.map((trip) => trip.intitule).join(" • ")}
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -273,9 +401,10 @@ export default function AgentEntriesInterface() {
               )}
             </div>
 
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
+              {/* Desktop Total */}
               {dayTotal > 0 && (
-                <div className="text-right">
+                <div className="text-right hidden sm:block">
                   <div className="font-bold text-lg" style={{ color: colors.primary }}>
                     {dayTotal.toFixed(2)} MAD
                   </div>
@@ -313,12 +442,16 @@ export default function AgentEntriesInterface() {
 
         {/* Expanded Day Content */}
         {isExpanded && hasTrips && (
-          <div className="px-4 pb-4" style={{ backgroundColor: colors.secondary + "05" }}>
+          <div className="px-3 sm:px-4 pb-3 sm:pb-4" style={{ backgroundColor: colors.secondary + "05" }}>
             <div className="space-y-4">
               {dayTrips.map((trip) => (
-                <div key={trip.id} className="bg-white rounded-lg border p-4" style={{ borderColor: colors.secondary }}>
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div
+                  key={trip.id}
+                  className="bg-white rounded-lg border p-3 sm:p-4"
+                  style={{ borderColor: colors.secondary }}
+                >
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 space-y-4 sm:space-y-0">
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       <div>
                         <label className="block text-sm font-medium mb-2" style={{ color: colors.logo_text }}>
                           Intitulé
@@ -327,7 +460,7 @@ export default function AgentEntriesInterface() {
                           type="text"
                           value={trip.intitule}
                           onChange={(e) => updateTrip(trip.id, "intitule", e.target.value)}
-                          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 text-sm"
                           style={{
                             borderColor: colors.secondary,
                             "--tw-ring-color": colors.primary,
@@ -342,7 +475,7 @@ export default function AgentEntriesInterface() {
                           type="text"
                           value={trip.libelleDestination}
                           onChange={(e) => updateTrip(trip.id, "libelleDestination", e.target.value)}
-                          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 text-sm"
                           style={{
                             borderColor: colors.secondary,
                             "--tw-ring-color": colors.primary,
@@ -358,7 +491,7 @@ export default function AgentEntriesInterface() {
                           step="0.1"
                           value={trip.distanceKm}
                           onChange={(e) => updateTrip(trip.id, "distanceKm", e.target.value)}
-                          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 text-sm"
                           style={{
                             borderColor: colors.secondary,
                             "--tw-ring-color": colors.primary,
@@ -368,20 +501,20 @@ export default function AgentEntriesInterface() {
                     </div>
                     <button
                       onClick={() => deleteTrip(trip.id)}
-                      className="ml-4 p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                      className="sm:ml-4 p-2 text-red-600 hover:bg-red-50 rounded transition-colors self-start"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
 
                   <div className="border-t pt-4" style={{ borderColor: colors.secondary }}>
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-2 sm:space-y-0">
                       <h4 className="font-medium" style={{ color: colors.logo_text }}>
                         Dépenses ({trip.depenses.length})
                       </h4>
                       <button
                         onClick={() => addExpense(trip.id)}
-                        className="flex items-center space-x-2 px-3 py-1 text-sm rounded-lg font-medium text-white hover:opacity-90 transition-opacity"
+                        className="flex items-center justify-center space-x-2 px-3 py-2 text-sm rounded-lg font-medium text-white hover:opacity-90 transition-opacity w-full sm:w-auto"
                         style={{ backgroundColor: colors.primary }}
                       >
                         <Plus className="w-3 h-3" />
@@ -398,65 +531,99 @@ export default function AgentEntriesInterface() {
                         {trip.depenses.map((expense) => (
                           <div
                             key={expense.id}
-                            className="grid grid-cols-1 md:grid-cols-5 gap-3 items-center p-3 rounded"
+                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 p-3 rounded"
                             style={{ backgroundColor: colors.secondary + "10" }}
                           >
-                            <select
-                              value={expense.type}
-                              onChange={(e) => updateExpense(trip.id, expense.id, "type", e.target.value)}
-                              className="px-3 py-2 border rounded focus:outline-none focus:ring-2"
-                              style={{
-                                borderColor: colors.secondary,
-                                "--tw-ring-color": colors.primary,
-                              }}
-                            >
-                              <option value="Repas">Repas</option>
-                              <option value="Hébergement">Hébergement</option>
-                              <option value="Transport">Transport</option>
-                              <option value="Autre">Autre</option>
-                            </select>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={expense.montant}
-                              onChange={(e) => updateExpense(trip.id, expense.id, "montant", e.target.value)}
-                              className="px-3 py-2 border rounded focus:outline-none focus:ring-2"
-                              style={{
-                                borderColor: colors.secondary,
-                                "--tw-ring-color": colors.primary,
-                              }}
-                              placeholder="Montant"
-                            />
-                            <input
-                              type="date"
-                              value={expense.date}
-                              onChange={(e) => updateExpense(trip.id, expense.id, "date", e.target.value)}
-                              className="px-3 py-2 border rounded focus:outline-none focus:ring-2"
-                              style={{
-                                borderColor: colors.secondary,
-                                "--tw-ring-color": colors.primary,
-                              }}
-                            />
-                            <input
-                              type="file"
-                              accept="image/*,application/pdf"
-                              onChange={(e) => updateExpense(trip.id, expense.id, "justificatif", e.target.files[0])}
-                              className="px-3 py-2 border rounded focus:outline-none focus:ring-2 text-sm"
-                              style={{
-                                borderColor: colors.secondary,
-                                "--tw-ring-color": colors.primary,
-                              }}
-                            />
-                            <button
-                              onClick={() => deleteExpense(trip.id, expense.id)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors justify-self-center"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <div className="sm:col-span-1">
+                              <label
+                                className="block text-xs font-medium mb-1 sm:hidden"
+                                style={{ color: colors.logo_text }}
+                              >
+                                Type
+                              </label>
+                              <select
+                                value={expense.type}
+                                onChange={(e) => updateExpense(trip.id, expense.id, "type", e.target.value)}
+                                className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 text-sm"
+                                style={{
+                                  borderColor: colors.secondary,
+                                  "--tw-ring-color": colors.primary,
+                                }}
+                              >
+                                <option value="Repas">Repas</option>
+                                <option value="Hébergement">Hébergement</option>
+                                <option value="Transport">Transport</option>
+                                <option value="Autre">Autre</option>
+                              </select>
+                            </div>
+                            <div className="sm:col-span-1">
+                              <label
+                                className="block text-xs font-medium mb-1 sm:hidden"
+                                style={{ color: colors.logo_text }}
+                              >
+                                Montant
+                              </label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={expense.montant}
+                                onChange={(e) => updateExpense(trip.id, expense.id, "montant", e.target.value)}
+                                className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 text-sm"
+                                style={{
+                                  borderColor: colors.secondary,
+                                  "--tw-ring-color": colors.primary,
+                                }}
+                                placeholder="Montant"
+                              />
+                            </div>
+                            <div className="sm:col-span-1 lg:col-span-1">
+                              <label
+                                className="block text-xs font-medium mb-1 sm:hidden"
+                                style={{ color: colors.logo_text }}
+                              >
+                                Date
+                              </label>
+                              <input
+                                type="date"
+                                value={expense.date}
+                                onChange={(e) => updateExpense(trip.id, expense.id, "date", e.target.value)}
+                                className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 text-sm"
+                                style={{
+                                  borderColor: colors.secondary,
+                                  "--tw-ring-color": colors.primary,
+                                }}
+                              />
+                            </div>
+                            <div className="sm:col-span-2 lg:col-span-1">
+                              <label
+                                className="block text-xs font-medium mb-1 sm:hidden"
+                                style={{ color: colors.logo_text }}
+                              >
+                                Justificatif
+                              </label>
+                              <input
+                                type="file"
+                                accept="image/*,application/pdf"
+                                onChange={(e) => updateExpense(trip.id, expense.id, "justificatif", e.target.files[0])}
+                                className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 text-xs"
+                                style={{
+                                  borderColor: colors.secondary,
+                                  "--tw-ring-color": colors.primary,
+                                }}
+                              />
+                            </div>
+                            <div className="flex justify-center lg:justify-center">
+                              <button
+                                onClick={() => deleteExpense(trip.id, expense.id)}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
                         ))}
                         <div className="text-right pt-2 border-t" style={{ borderColor: colors.secondary }}>
-                          <span className="font-bold text-lg" style={{ color: colors.primary }}>
+                          <span className="font-bold text-base sm:text-lg" style={{ color: colors.primary }}>
                             Total: {getTotalExpenses(trip.depenses).toFixed(2)} MAD
                           </span>
                         </div>
@@ -476,24 +643,25 @@ export default function AgentEntriesInterface() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex justify-between items-center">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0">
             <div>
-              <h1 className="text-2xl font-bold" style={{ color: colors.logo_text }}>
+              <h1 className="text-xl sm:text-2xl font-bold" style={{ color: colors.logo_text }}>
                 Gestion des Déplacements
               </h1>
-              <p className="text-sm mt-1" style={{ color: colors.secondary }}>
+              <p className="text-xs sm:text-sm mt-1" style={{ color: colors.secondary }}>
                 Vue chronologique mensuelle
               </p>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
               <button
                 onClick={exportMonthlyPDF}
-                className="flex items-center space-x-2 px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex items-center space-x-2 px-3 sm:px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors text-sm"
                 style={{ borderColor: colors.primary, color: colors.primary }}
               >
                 <Download className="w-4 h-4" />
-                <span>Exporter PDF</span>
+                <span className="hidden sm:inline">Exporter PDF</span>
+                <span className="sm:hidden">PDF</span>
               </button>
             </div>
           </div>
@@ -502,9 +670,9 @@ export default function AgentEntriesInterface() {
 
       {/* Month Navigation */}
       <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0">
+            <div className="flex items-center justify-center sm:justify-start space-x-4">
               <button
                 onClick={goToPreviousMonth}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -512,7 +680,7 @@ export default function AgentEntriesInterface() {
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <h2 className="text-xl font-bold" style={{ color: colors.logo_text }}>
+              <h2 className="text-lg sm:text-xl font-bold" style={{ color: colors.logo_text }}>
                 {new Date(currentYear, currentMonth).toLocaleDateString("fr-FR", {
                   month: "long",
                   year: "numeric",
@@ -527,18 +695,19 @@ export default function AgentEntriesInterface() {
               </button>
               <button
                 onClick={goToToday}
-                className="px-3 py-1 text-sm border rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-3 py-1 text-xs sm:text-sm border rounded-lg hover:bg-gray-50 transition-colors"
                 style={{ borderColor: colors.secondary, color: colors.logo_text }}
               >
                 Aujourd'hui
               </button>
             </div>
 
-            <div className="flex items-center space-x-6">
-              <div className="text-sm" style={{ color: colors.logo_text }}>
-                <span className="font-medium">{getMonthlyTrips().length}</span> déplacements ce mois
+            <div className="flex items-center justify-center sm:justify-end space-x-4 sm:space-x-6">
+              <div className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
+                <span className="font-medium">{getMonthlyTrips().length}</span> déplacement
+                {getMonthlyTrips().length > 1 ? "s" : ""}
               </div>
-              <div className="text-lg font-bold" style={{ color: colors.primary }}>
+              <div className="text-base sm:text-lg font-bold" style={{ color: colors.primary }}>
                 {getMonthlyTotal().toFixed(2)} MAD
               </div>
             </div>
@@ -547,7 +716,7 @@ export default function AgentEntriesInterface() {
       </div>
 
       {/* Monthly Timeline */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
         <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
           <div className="divide-y" style={{ borderColor: colors.secondary }}>
             {Array.from({ length: getDaysInMonth() }, (_, i) => i + 1).map((day) => renderDayRow(day))}
@@ -555,30 +724,30 @@ export default function AgentEntriesInterface() {
         </div>
 
         {/* Legend */}
-        <div className="mt-6 bg-white rounded-lg shadow-sm border p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-6">
+        <div className="mt-4 sm:mt-6 bg-white rounded-lg shadow-sm border p-3 sm:p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-6">
               <div className="flex items-center space-x-2">
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colors.primary }} />
-                <span className="text-sm" style={{ color: colors.logo_text }}>
+                <span className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
                   Jour avec déplacements
                 </span>
               </div>
               <div className="flex items-center space-x-2">
                 <div className="w-3 h-3 rounded-full border-2 border-blue-500" />
-                <span className="text-sm" style={{ color: colors.logo_text }}>
+                <span className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
                   Aujourd'hui
                 </span>
               </div>
               <div className="flex items-center space-x-2">
                 <ChevronDown className="w-4 h-4" style={{ color: colors.secondary }} />
-                <span className="text-sm" style={{ color: colors.logo_text }}>
+                <span className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
                   Cliquer pour développer
                 </span>
               </div>
             </div>
-            <div className="text-sm" style={{ color: colors.secondary }}>
-              Utilisez + pour ajouter un déplacement à n'importe quel jour
+            <div className="text-xs sm:text-sm text-center sm:text-right" style={{ color: colors.secondary }}>
+              Utilisez + pour ajouter un déplacement
             </div>
           </div>
         </div>
