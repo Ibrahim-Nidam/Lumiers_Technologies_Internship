@@ -1,67 +1,29 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronLeft, ChevronRight, Plus, Trash2, Download, MapPin, ChevronDown, ChevronUp } from "lucide-react"
+import {colors} from '../../colors'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Trash2,
+  Download,
+  MapPin,
+  ChevronDown,
+  ChevronUp,
+  Calendar,
+} from "lucide-react"
 
-const colors = {
-  primary: "#a52148",
-  secondary: "#b9bfcf",
-  black: "#000000",
-  white: "#ffffff",
-  logo_text: "#585e5c",
-}
 
 export default function AgentEntriesInterface() {
-  const [trips, setTrips] = useState([
-    {
-      id: 1,
-      dateDebut: "2025-01-15",
-      dateFin: "2025-01-17",
-      intitule: "Mission Casablanca",
-      libelleDestination: "Casablanca",
-      typeDeDeplacement: "Intérieur",
-      distanceKm: "340",
-      depenses: [
-        {
-          id: 1,
-          type: "Transport",
-          montant: "450",
-          date: "2025-01-15",
-          justificatif: null,
-        },
-        {
-          id: 2,
-          type: "Hébergement",
-          montant: "800",
-          date: "2025-01-15",
-          justificatif: null,
-        },
-      ],
-    },
-    {
-      id: 2,
-      dateDebut: "2025-01-22",
-      dateFin: "2025-01-24",
-      intitule: "Formation Rabat",
-      libelleDestination: "Rabat",
-      typeDeDeplacement: "Intérieur",
-      distanceKm: "280",
-      depenses: [
-        {
-          id: 3,
-          type: "Repas",
-          montant: "120",
-          date: "2025-01-22",
-          justificatif: null,
-        },
-      ],
-    },
-  ])
+  const [trips, setTrips] = useState([])
 
   const [currentDate, setCurrentDate] = useState(new Date())
   const [expandedDays, setExpandedDays] = useState(new Set())
   const [nextTripId, setNextTripId] = useState(3)
   const [nextExpenseId, setNextExpenseId] = useState(4)
+  const [showCodeChantier, setShowCodeChantier] = useState({})
+  const [showYearPicker, setShowYearPicker] = useState(false)
 
   const currentYear = currentDate.getFullYear()
   const currentMonth = currentDate.getMonth()
@@ -81,6 +43,12 @@ export default function AgentEntriesInterface() {
     setExpandedDays(new Set())
   }
 
+  const goToYearMonth = (year, month) => {
+    setCurrentDate(new Date(year, month, 1))
+    setExpandedDays(new Set())
+    setShowYearPicker(false)
+  }
+
   const toggleDayExpansion = (day) => {
     const newExpanded = new Set(expandedDays)
     if (newExpanded.has(day)) {
@@ -92,6 +60,12 @@ export default function AgentEntriesInterface() {
   }
 
   const addTrip = (date) => {
+    // Check if a trip already exists for this day
+    const existingTrip = trips.find((trip) => trip.dateDebut === date)
+    if (existingTrip) {
+      return // Silently do nothing if trip already exists
+    }
+
     const newTrip = {
       id: nextTripId,
       dateDebut: date,
@@ -100,6 +74,7 @@ export default function AgentEntriesInterface() {
       libelleDestination: "",
       typeDeDeplacement: "Intérieur",
       distanceKm: "",
+      codeChantier: "",
       depenses: [],
     }
     setTrips([...trips, newTrip])
@@ -112,6 +87,17 @@ export default function AgentEntriesInterface() {
 
   const deleteTrip = (tripId) => {
     setTrips(trips.filter((trip) => trip.id !== tripId))
+    // Remove from showCodeChantier state
+    const newShowCodeChantier = { ...showCodeChantier }
+    delete newShowCodeChantier[tripId]
+    setShowCodeChantier(newShowCodeChantier)
+  }
+
+  const toggleCodeChantier = (tripId) => {
+    setShowCodeChantier((prev) => ({
+      ...prev,
+      [tripId]: !prev[tripId],
+    }))
   }
 
   const addExpense = (tripId) => {
@@ -120,7 +106,6 @@ export default function AgentEntriesInterface() {
       id: nextExpenseId,
       type: "Repas",
       montant: "",
-      date: trip.dateDebut,
       justificatif: null,
     }
     setTrips(trips.map((trip) => (trip.id === tripId ? { ...trip, depenses: [...trip.depenses, newExpense] } : trip)))
@@ -198,6 +183,25 @@ export default function AgentEntriesInterface() {
     alert(`Export PDF pour ${monthName} - Fonctionnalité à implémenter`)
   }
 
+  // Generate years for the year picker (current year and 5 years back)
+  const years = Array.from({ length: 3 }, (_, i) => new Date().getFullYear() - i)
+
+  // Month names in French
+  const monthNames = [
+    "Janvier",
+    "Février",
+    "Mars",
+    "Avril",
+    "Mai",
+    "Juin",
+    "Juillet",
+    "Août",
+    "Septembre",
+    "Octobre",
+    "Novembre",
+    "Décembre",
+  ]
+
   const renderDayRow = (day) => {
     const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, "0")}-${day
       .toString()
@@ -211,6 +215,9 @@ export default function AgentEntriesInterface() {
 
     const dayName = new Date(currentYear, currentMonth, day).toLocaleDateString("fr-FR", { weekday: "long" })
 
+    // Check if a trip already exists for this day
+    const tripExists = trips.some((trip) => trip.dateDebut === dateStr)
+
     return (
       <div
         key={day}
@@ -219,17 +226,17 @@ export default function AgentEntriesInterface() {
       >
         {/* Day Header */}
         <div
-          className={`p-3 sm:p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
+          className={`p-2 sm:p-3 md:p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
             hasTrips ? "" : "opacity-60"
           } ${isToday ? "bg-blue-50" : ""}`}
           onClick={() => hasTrips && toggleDayExpansion(day)}
         >
           <div className="flex items-start justify-between">
-            <div className="flex items-start space-x-3 sm:space-x-4 flex-1 min-w-0">
-              <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
+            <div className="flex items-start space-x-2 sm:space-x-3 md:space-x-4 flex-1 min-w-0">
+              <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 flex-shrink-0">
                 <div className="text-center">
                   <div
-                    className={`text-xl sm:text-2xl font-bold ${isToday ? "text-blue-600" : ""}`}
+                    className={`text-lg sm:text-xl md:text-2xl font-bold ${isToday ? "text-blue-600" : ""}`}
                     style={{ color: isToday ? "#2563eb" : colors.logo_text }}
                   >
                     {day}
@@ -238,38 +245,40 @@ export default function AgentEntriesInterface() {
                     {dayName.substring(0, 3)}
                   </div>
                 </div>
-                <div className="h-6 sm:h-8 w-px" style={{ backgroundColor: colors.secondary }}></div>
+                <div className="h-5 sm:h-6 md:h-8 w-px" style={{ backgroundColor: colors.secondary }}></div>
               </div>
 
               {hasTrips ? (
                 <div className="flex-1 min-w-0">
-                  {/* Mobile Layout */}
+                  {/* Mobile Layout (< 640px) */}
                   <div className="block sm:hidden">
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: colors.primary }}></div>
-                        <span className="text-sm font-medium" style={{ color: colors.logo_text }}>
+                        <div
+                          className="w-2 h-2 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: colors.primary }}
+                        ></div>
+                        <span className="text-xs font-medium truncate" style={{ color: colors.logo_text }}>
                           {dayTrips.length} déplacement{dayTrips.length > 1 ? "s" : ""}
                         </span>
                         <span
-                          className="text-xs px-2 py-1 rounded-full"
+                          className="text-xs px-1.5 py-0.5 rounded-full flex-shrink-0"
                           style={{ backgroundColor: colors.secondary + "20", color: colors.logo_text }}
                         >
-                          {dayTrips.reduce((total, trip) => total + trip.depenses.length, 0)} dépense
-                          {dayTrips.reduce((total, trip) => total + trip.depenses.length, 0) > 1 ? "s" : ""}
+                          {dayTrips.reduce((total, trip) => total + trip.depenses.length, 0)} dép.
                         </span>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-1.5">
                         <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: colors.secondary }} />
                         <span className="text-xs truncate" style={{ color: colors.logo_text }}>
                           {dayTrips
                             .map((trip) => trip.libelleDestination)
                             .filter(Boolean)
-                            .join(", ") || "Destinations non définies"}
+                            .join(", ") || "Non définie"}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
+                        <div className="flex items-center space-x-2">
                           <span className="text-xs font-medium" style={{ color: colors.logo_text }}>
                             {dayTrips
                               .reduce((total, trip) => total + (Number.parseFloat(trip.distanceKm) || 0), 0)
@@ -286,11 +295,10 @@ export default function AgentEntriesInterface() {
                             const isFullyJustified = justifiedExpenses.length === totalExpenses
                             const hasPartialJustification =
                               justifiedExpenses.length > 0 && justifiedExpenses.length < totalExpenses
-                            const hasNoJustification = justifiedExpenses.length === 0
 
                             return (
                               <span
-                                className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
                                   isFullyJustified
                                     ? "bg-green-100 text-green-800"
                                     : hasPartialJustification
@@ -300,16 +308,16 @@ export default function AgentEntriesInterface() {
                               >
                                 {isFullyJustified
                                   ? "✓"
-                                  : hasNoJustification
-                                    ? "✗"
-                                    : `${justifiedExpenses.length}/${totalExpenses}`}
+                                  : hasPartialJustification
+                                    ? `${justifiedExpenses.length}/${totalExpenses}`
+                                    : "✗"}
                               </span>
                             )
                           })()}
                         </div>
                         {dayTotal > 0 && (
                           <div className="text-right">
-                            <div className="text-sm font-bold" style={{ color: colors.primary }}>
+                            <div className="text-xs font-bold" style={{ color: colors.primary }}>
                               {dayTotal.toFixed(0)} MAD
                             </div>
                           </div>
@@ -321,8 +329,78 @@ export default function AgentEntriesInterface() {
                     </div>
                   </div>
 
-                  {/* Desktop Layout */}
-                  <div className="hidden sm:block">
+                  {/* Tablet Layout (640px - 1024px) */}
+                  <div className="hidden sm:block lg:hidden">
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colors.primary }}></div>
+                        <span className="text-sm font-medium" style={{ color: colors.logo_text }}>
+                          {dayTrips.length} déplacement{dayTrips.length > 1 ? "s" : ""}
+                        </span>
+                        <span
+                          className="text-xs px-2 py-1 rounded-full"
+                          style={{ backgroundColor: colors.secondary + "20", color: colors.logo_text }}
+                        >
+                          {dayTrips.reduce((total, trip) => total + trip.depenses.length, 0)} dépense
+                          {dayTrips.reduce((total, trip) => total + trip.depenses.length, 0) > 1 ? "s" : ""}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3 flex-1 min-w-0">
+                          <div className="flex items-center space-x-2">
+                            <MapPin className="w-3.5 h-3.5" style={{ color: colors.secondary }} />
+                            <span className="text-sm truncate" style={{ color: colors.logo_text }}>
+                              {dayTrips
+                                .map((trip) => trip.libelleDestination)
+                                .filter(Boolean)
+                                .join(", ") || "Destinations non définies"}
+                            </span>
+                          </div>
+                          <span className="text-sm font-medium flex-shrink-0" style={{ color: colors.logo_text }}>
+                            {dayTrips
+                              .reduce((total, trip) => total + (Number.parseFloat(trip.distanceKm) || 0), 0)
+                              .toFixed(0)}{" "}
+                            km
+                          </span>
+                        </div>
+                        {(() => {
+                          const allExpenses = dayTrips.flatMap((trip) => trip.depenses)
+                          const justifiedExpenses = allExpenses.filter((expense) => expense.justificatif)
+                          const totalExpenses = allExpenses.length
+
+                          if (totalExpenses === 0) return null
+
+                          const isFullyJustified = justifiedExpenses.length === totalExpenses
+                          const hasPartialJustification =
+                            justifiedExpenses.length > 0 && justifiedExpenses.length < totalExpenses
+
+                          return (
+                            <span
+                              className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                isFullyJustified
+                                  ? "bg-green-100 text-green-800"
+                                  : hasPartialJustification
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {isFullyJustified
+                                ? "Justifié"
+                                : hasPartialJustification
+                                  ? `${justifiedExpenses.length}/${totalExpenses}`
+                                  : "Non justifié"}
+                            </span>
+                          )
+                        })()}
+                      </div>
+                      <div className="text-sm" style={{ color: colors.secondary }}>
+                        {dayTrips.map((trip) => trip.intitule).join(" • ")}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Desktop Layout (>= 1024px) */}
+                  <div className="hidden lg:block">
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center space-x-2">
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colors.primary }}></div>
@@ -365,7 +443,6 @@ export default function AgentEntriesInterface() {
                           const isFullyJustified = justifiedExpenses.length === totalExpenses
                           const hasPartialJustification =
                             justifiedExpenses.length > 0 && justifiedExpenses.length < totalExpenses
-                          const hasNoJustification = justifiedExpenses.length === 0
 
                           return (
                             <span
@@ -379,9 +456,9 @@ export default function AgentEntriesInterface() {
                             >
                               {isFullyJustified
                                 ? "Justifié"
-                                : hasNoJustification
-                                  ? "Non justifié"
-                                  : `${justifiedExpenses.length}/${totalExpenses} justifié${justifiedExpenses.length > 1 ? "s" : ""}`}
+                                : hasPartialJustification
+                                  ? `${justifiedExpenses.length}/${totalExpenses} justifié${justifiedExpenses.length > 1 ? "s" : ""}`
+                                  : "Non justifié"}
                             </span>
                           )
                         })()}
@@ -394,17 +471,17 @@ export default function AgentEntriesInterface() {
                 </div>
               ) : (
                 <div className="flex-1">
-                  <span className="text-sm" style={{ color: colors.secondary }}>
+                  <span className="text-xs sm:text-sm" style={{ color: colors.secondary }}>
                     Aucun déplacement
                   </span>
                 </div>
               )}
             </div>
 
-            <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
+            <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-4 flex-shrink-0">
               {/* Desktop Total */}
               {dayTotal > 0 && (
-                <div className="text-right hidden sm:block">
+                <div className="text-right hidden lg:block">
                   <div className="font-bold text-lg" style={{ color: colors.primary }}>
                     {dayTotal.toFixed(2)} MAD
                   </div>
@@ -420,20 +497,27 @@ export default function AgentEntriesInterface() {
                   addTrip(dateStr)
                   setExpandedDays(new Set([...expandedDays, day]))
                 }}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                style={{ color: colors.primary }}
-                title="Ajouter un déplacement"
+                className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
+                  tripExists ? "opacity-30 cursor-not-allowed" : "hover:bg-gray-100"
+                }`}
+                style={{ color: tripExists ? colors.secondary : colors.primary }}
+                title={tripExists ? "Un déplacement existe déjà" : "Ajouter un déplacement"}
+                disabled={tripExists}
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </button>
 
               {hasTrips && (
                 <button
                   onClick={() => toggleDayExpansion(day)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
                   style={{ color: colors.logo_text }}
                 >
-                  {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  {isExpanded ? (
+                    <ChevronUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  )}
                 </button>
               )}
             </div>
@@ -442,25 +526,31 @@ export default function AgentEntriesInterface() {
 
         {/* Expanded Day Content */}
         {isExpanded && hasTrips && (
-          <div className="px-3 sm:px-4 pb-3 sm:pb-4" style={{ backgroundColor: colors.secondary + "05" }}>
-            <div className="space-y-4">
+          <div
+            className="px-2 sm:px-3 md:px-4 pb-2 sm:pb-3 md:pb-4"
+            style={{ backgroundColor: colors.secondary + "05" }}
+          >
+            <div className="space-y-3 sm:space-y-4">
               {dayTrips.map((trip) => (
                 <div
                   key={trip.id}
-                  className="bg-white rounded-lg border p-3 sm:p-4"
+                  className="bg-white rounded-lg border p-2 sm:p-3 md:p-4"
                   style={{ borderColor: colors.secondary }}
                 >
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 space-y-4 sm:space-y-0">
-                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: colors.logo_text }}>
+                  <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start mb-3 sm:mb-4 space-y-3 lg:space-y-0">
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                      <div className="sm:col-span-2 lg:col-span-1">
+                        <label
+                          className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
+                          style={{ color: colors.logo_text }}
+                        >
                           Intitulé
                         </label>
                         <input
                           type="text"
                           value={trip.intitule}
                           onChange={(e) => updateTrip(trip.id, "intitule", e.target.value)}
-                          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 text-sm"
+                          className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
                           style={{
                             borderColor: colors.secondary,
                             "--tw-ring-color": colors.primary,
@@ -468,14 +558,17 @@ export default function AgentEntriesInterface() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: colors.logo_text }}>
+                        <label
+                          className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
+                          style={{ color: colors.logo_text }}
+                        >
                           Destination
                         </label>
                         <input
                           type="text"
                           value={trip.libelleDestination}
                           onChange={(e) => updateTrip(trip.id, "libelleDestination", e.target.value)}
-                          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 text-sm"
+                          className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
                           style={{
                             borderColor: colors.secondary,
                             "--tw-ring-color": colors.primary,
@@ -483,7 +576,31 @@ export default function AgentEntriesInterface() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-2" style={{ color: colors.logo_text }}>
+                        <label
+                          className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
+                          style={{ color: colors.logo_text }}
+                        >
+                          Type de déplacement
+                        </label>
+                        <select
+                          value={trip.typeDeDeplacement}
+                          onChange={(e) => updateTrip(trip.id, "typeDeDeplacement", e.target.value)}
+                          className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
+                          style={{
+                            borderColor: colors.secondary,
+                            "--tw-ring-color": colors.primary,
+                          }}
+                        >
+                          <option value="Intérieur">Intérieur</option>
+                          <option value="Extérieur">Extérieur</option>
+                          <option value="International">International</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label
+                          className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
+                          style={{ color: colors.logo_text }}
+                        >
                           Distance (km)
                         </label>
                         <input
@@ -491,7 +608,7 @@ export default function AgentEntriesInterface() {
                           step="0.1"
                           value={trip.distanceKm}
                           onChange={(e) => updateTrip(trip.id, "distanceKm", e.target.value)}
-                          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 text-sm"
+                          className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
                           style={{
                             borderColor: colors.secondary,
                             "--tw-ring-color": colors.primary,
@@ -499,22 +616,53 @@ export default function AgentEntriesInterface() {
                         />
                       </div>
                     </div>
-                    <button
-                      onClick={() => deleteTrip(trip.id)}
-                      className="sm:ml-4 p-2 text-red-600 hover:bg-red-50 rounded transition-colors self-start"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center space-x-2 lg:ml-4">
+                      <button
+                        onClick={() => toggleCodeChantier(trip.id)}
+                        className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm bg-red-50 text-red-700 hover:bg-red-100 rounded-lg transition-colors border border-red-200"
+                      >
+                        {showCodeChantier[trip.id] || trip.codeChantier ? "- MC" : "+ CC"}
+                      </button>
+                      <button
+                        onClick={() => deleteTrip(trip.id)}
+                        className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="border-t pt-4" style={{ borderColor: colors.secondary }}>
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-2 sm:space-y-0">
-                      <h4 className="font-medium" style={{ color: colors.logo_text }}>
+                  {/* Code Chantier Field */}
+                  {(showCodeChantier[trip.id] || trip.codeChantier) && (
+                    <div className="mb-3 sm:mb-4">
+                      <label
+                        className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
+                        style={{ color: colors.logo_text }}
+                      >
+                        Code Chantier (optionnel)
+                      </label>
+                      <input
+                        type="text"
+                        value={trip.codeChantier}
+                        onChange={(e) => updateTrip(trip.id, "codeChantier", e.target.value)}
+                        className="w-full sm:w-1/2 lg:w-1/3 px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
+                        style={{
+                          borderColor: colors.secondary,
+                          "--tw-ring-color": colors.primary,
+                        }}
+                        placeholder="Ex: CH-2025-001"
+                      />
+                    </div>
+                  )}
+
+                  <div className="border-t pt-3 sm:pt-4" style={{ borderColor: colors.secondary }}>
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 sm:mb-4 space-y-2 sm:space-y-0">
+                      <h4 className="text-sm sm:text-base font-medium" style={{ color: colors.logo_text }}>
                         Dépenses ({trip.depenses.length})
                       </h4>
                       <button
                         onClick={() => addExpense(trip.id)}
-                        className="flex items-center justify-center space-x-2 px-3 py-2 text-sm rounded-lg font-medium text-white hover:opacity-90 transition-opacity w-full sm:w-auto"
+                        className="flex items-center justify-center space-x-2 px-3 py-1.5 sm:py-2 text-xs sm:text-sm rounded-lg font-medium text-white hover:opacity-90 transition-opacity w-full sm:w-auto"
                         style={{ backgroundColor: colors.primary }}
                       >
                         <Plus className="w-3 h-3" />
@@ -523,18 +671,18 @@ export default function AgentEntriesInterface() {
                     </div>
 
                     {trip.depenses.length === 0 ? (
-                      <p className="text-sm text-center py-4" style={{ color: colors.secondary }}>
+                      <p className="text-xs sm:text-sm text-center py-3 sm:py-4" style={{ color: colors.secondary }}>
                         Aucune dépense
                       </p>
                     ) : (
-                      <div className="space-y-3">
+                      <div className="space-y-2 sm:space-y-3">
                         {trip.depenses.map((expense) => (
                           <div
                             key={expense.id}
-                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 p-3 rounded"
+                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 p-2 sm:p-3 rounded"
                             style={{ backgroundColor: colors.secondary + "10" }}
                           >
-                            <div className="sm:col-span-1">
+                            <div>
                               <label
                                 className="block text-xs font-medium mb-1 sm:hidden"
                                 style={{ color: colors.logo_text }}
@@ -544,7 +692,7 @@ export default function AgentEntriesInterface() {
                               <select
                                 value={expense.type}
                                 onChange={(e) => updateExpense(trip.id, expense.id, "type", e.target.value)}
-                                className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 text-sm"
+                                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded focus:outline-none focus:ring-2 text-xs sm:text-sm"
                                 style={{
                                   borderColor: colors.secondary,
                                   "--tw-ring-color": colors.primary,
@@ -556,7 +704,7 @@ export default function AgentEntriesInterface() {
                                 <option value="Autre">Autre</option>
                               </select>
                             </div>
-                            <div className="sm:col-span-1">
+                            <div>
                               <label
                                 className="block text-xs font-medium mb-1 sm:hidden"
                                 style={{ color: colors.logo_text }}
@@ -568,7 +716,7 @@ export default function AgentEntriesInterface() {
                                 step="0.01"
                                 value={expense.montant}
                                 onChange={(e) => updateExpense(trip.id, expense.id, "montant", e.target.value)}
-                                className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 text-sm"
+                                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded focus:outline-none focus:ring-2 text-xs sm:text-sm"
                                 style={{
                                   borderColor: colors.secondary,
                                   "--tw-ring-color": colors.primary,
@@ -576,25 +724,7 @@ export default function AgentEntriesInterface() {
                                 placeholder="Montant"
                               />
                             </div>
-                            <div className="sm:col-span-1 lg:col-span-1">
-                              <label
-                                className="block text-xs font-medium mb-1 sm:hidden"
-                                style={{ color: colors.logo_text }}
-                              >
-                                Date
-                              </label>
-                              <input
-                                type="date"
-                                value={expense.date}
-                                onChange={(e) => updateExpense(trip.id, expense.id, "date", e.target.value)}
-                                className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 text-sm"
-                                style={{
-                                  borderColor: colors.secondary,
-                                  "--tw-ring-color": colors.primary,
-                                }}
-                              />
-                            </div>
-                            <div className="sm:col-span-2 lg:col-span-1">
+                            <div>
                               <label
                                 className="block text-xs font-medium mb-1 sm:hidden"
                                 style={{ color: colors.logo_text }}
@@ -605,25 +735,25 @@ export default function AgentEntriesInterface() {
                                 type="file"
                                 accept="image/*,application/pdf"
                                 onChange={(e) => updateExpense(trip.id, expense.id, "justificatif", e.target.files[0])}
-                                className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 text-xs"
+                                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded focus:outline-none focus:ring-2 text-xs"
                                 style={{
                                   borderColor: colors.secondary,
                                   "--tw-ring-color": colors.primary,
                                 }}
                               />
                             </div>
-                            <div className="flex justify-center lg:justify-center">
+                            <div className="flex justify-center">
                               <button
                                 onClick={() => deleteExpense(trip.id, expense.id)}
-                                className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                               </button>
                             </div>
                           </div>
                         ))}
                         <div className="text-right pt-2 border-t" style={{ borderColor: colors.secondary }}>
-                          <span className="font-bold text-base sm:text-lg" style={{ color: colors.primary }}>
+                          <span className="font-bold text-sm sm:text-base lg:text-lg" style={{ color: colors.primary }}>
                             Total: {getTotalExpenses(trip.depenses).toFixed(2)} MAD
                           </span>
                         </div>
@@ -643,23 +773,23 @@ export default function AgentEntriesInterface() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-4">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0">
+        <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold" style={{ color: colors.logo_text }}>
+              <h1 className="text-lg sm:text-xl md:text-2xl font-bold" style={{ color: colors.logo_text }}>
                 Gestion des Déplacements
               </h1>
               <p className="text-xs sm:text-sm mt-1" style={{ color: colors.secondary }}>
                 Vue chronologique mensuelle
               </p>
             </div>
-            <div className="flex items-center space-x-2 sm:space-x-4">
+            <div className="flex items-center space-x-2">
               <button
                 onClick={exportMonthlyPDF}
-                className="flex items-center space-x-2 px-3 sm:px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
                 style={{ borderColor: colors.primary, color: colors.primary }}
               >
-                <Download className="w-4 h-4" />
+                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Exporter PDF</span>
                 <span className="sm:hidden">PDF</span>
               </button>
@@ -670,44 +800,83 @@ export default function AgentEntriesInterface() {
 
       {/* Month Navigation */}
       <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-4">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0">
-            <div className="flex items-center justify-center sm:justify-start space-x-4">
+        <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
+            <div className="flex items-center justify-center sm:justify-start space-x-3 sm:space-x-4">
               <button
                 onClick={goToPreviousMonth}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 style={{ color: colors.logo_text }}
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
-              <h2 className="text-lg sm:text-xl font-bold" style={{ color: colors.logo_text }}>
-                {new Date(currentYear, currentMonth).toLocaleDateString("fr-FR", {
-                  month: "long",
-                  year: "numeric",
-                })}
-              </h2>
+              <div className="relative">
+                <button
+                  onClick={() => setShowYearPicker(!showYearPicker)}
+                  className="flex items-center space-x-1 text-base sm:text-lg md:text-xl font-bold hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors"
+                  style={{ color: colors.logo_text }}
+                >
+                  <span>
+                    {new Date(currentYear, currentMonth).toLocaleDateString("fr-FR", {
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </span>
+                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5 opacity-70" />
+                </button>
+
+                {/* Year-Month Picker */}
+                {showYearPicker && (
+                  <div className="absolute z-10 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 p-3 w-64 sm:w-72">
+                    <div className="grid grid-cols-1 gap-2">
+                      {years.map((year) => (
+                        <div key={year} className="mb-2">
+                          <h3 className="text-sm font-semibold mb-1 px-2" style={{ color: colors.logo_text }}>
+                            {year}
+                          </h3>
+                          <div className="grid grid-cols-3 sm:grid-cols-4 gap-1">
+                            {monthNames.map((month, index) => (
+                              <button
+                                key={`${year}-${index}`}
+                                onClick={() => goToYearMonth(year, index)}
+                                className={`text-xs p-1.5 rounded-md hover:bg-gray-100 transition-colors ${
+                                  year === currentYear && index === currentMonth
+                                    ? "bg-blue-100 text-blue-800 font-medium"
+                                    : "text-gray-700"
+                                }`}
+                              >
+                                {month.substring(0, 3)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
               <button
                 onClick={goToNextMonth}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 style={{ color: colors.logo_text }}
               >
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
               <button
                 onClick={goToToday}
-                className="px-3 py-1 text-xs sm:text-sm border rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-2 sm:px-3 py-1 text-xs sm:text-sm border rounded-lg hover:bg-gray-50 transition-colors"
                 style={{ borderColor: colors.secondary, color: colors.logo_text }}
               >
                 Aujourd'hui
               </button>
             </div>
 
-            <div className="flex items-center justify-center sm:justify-end space-x-4 sm:space-x-6">
+            <div className="flex items-center justify-center sm:justify-end space-x-3 sm:space-x-4 md:space-x-6">
               <div className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
                 <span className="font-medium">{getMonthlyTrips().length}</span> déplacement
                 {getMonthlyTrips().length > 1 ? "s" : ""}
               </div>
-              <div className="text-base sm:text-lg font-bold" style={{ color: colors.primary }}>
+              <div className="text-sm sm:text-base md:text-lg font-bold" style={{ color: colors.primary }}>
                 {getMonthlyTotal().toFixed(2)} MAD
               </div>
             </div>
@@ -716,7 +885,7 @@ export default function AgentEntriesInterface() {
       </div>
 
       {/* Monthly Timeline */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
+      <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-6 py-3 sm:py-4 md:py-8">
         <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
           <div className="divide-y" style={{ borderColor: colors.secondary }}>
             {Array.from({ length: getDaysInMonth() }, (_, i) => i + 1).map((day) => renderDayRow(day))}
@@ -724,23 +893,23 @@ export default function AgentEntriesInterface() {
         </div>
 
         {/* Legend */}
-        <div className="mt-4 sm:mt-6 bg-white rounded-lg shadow-sm border p-3 sm:p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-            <div className="flex flex-wrap items-center gap-3 sm:gap-6">
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colors.primary }} />
+        <div className="mt-3 sm:mt-4 md:mt-6 bg-white rounded-lg shadow-sm border p-2 sm:p-3 md:p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-6">
+              <div className="flex items-center space-x-1.5 sm:space-x-2">
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full" style={{ backgroundColor: colors.primary }} />
                 <span className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
                   Jour avec déplacements
                 </span>
               </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 rounded-full border-2 border-blue-500" />
+              <div className="flex items-center space-x-1.5 sm:space-x-2">
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full border-2 border-blue-500" />
                 <span className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
                   Aujourd'hui
                 </span>
               </div>
-              <div className="flex items-center space-x-2">
-                <ChevronDown className="w-4 h-4" style={{ color: colors.secondary }} />
+              <div className="flex items-center space-x-1.5 sm:space-x-2">
+                <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" style={{ color: colors.secondary }} />
                 <span className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
                   Cliquer pour développer
                 </span>

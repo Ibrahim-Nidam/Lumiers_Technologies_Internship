@@ -11,7 +11,7 @@ import Contact from "../pages/Contact";
 // Dashboards
 import AgentDashboard from "../components/dash/AgentDashboard";
 import ManagerDashboard from "../components/dash/ManagerDashboard";
-import AdminDashboard from "../components/dash/AdminDashboard";
+// import AdminDashboard from "../components/dash/AdminDashboard";
 import ProfileSettings from "../components/dash/ProfileSettings";
 
 
@@ -47,7 +47,7 @@ export default function AppRoutes() {
             <Route path="car-loan-rates" element={<CarLoanRates />} />
           </Route>
 
-          <Route path="/adminDashboard" element={<AdminDashboard />} />
+          {/* <Route path="/adminDashboard" element={<AdminDashboard />} /> */}
           <Route path="/profile-settings" element={<ProfileSettings />} />
         </Route>
 
