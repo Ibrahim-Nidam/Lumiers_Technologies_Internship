@@ -4,11 +4,11 @@ const { sequelize, Role, TypeDeDeplacement, TypeDepense } = require("./models");
 
 // 1) Static arrays for “roles”, “types_de_deplacement” and “types_depenses”
 const rolesToSeed = [
-  { nom: "agent", label: "Agent", description: "Niveau d'accès de base" },
-  { nom: "manager", label: "Gestionnaire", description: "Accès à la gestion d'équipe" },
-  { nom: "SuperManager", label: "Gestionnaire", description: "Accès à la gestion d'équipe" },
-  { nom: "admin",   label: "Administrateur", description: "Accès complet au système" },
-  { nom: "SuperAdmin",   label: "Above Administrateur", description: "Accès complet au système" },
+  { nom: "agent", description: "Niveau d'accès de base" },
+  { nom: "manager", description: "Accès à la gestion d'équipe" },
+  { nom: "SuperManager", description: "Accès à la gestion d'équipe" },
+  { nom: "admin", description: "Accès complet au système" },
+  { nom: "SuperAdmin", description: "Accès complet au système" },
 ];
 
 const typesDeDeplacementToSeed = [
