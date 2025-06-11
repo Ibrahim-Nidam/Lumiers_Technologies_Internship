@@ -51,8 +51,7 @@ app.use(express.json())
     app.use("/api/users", usersRoutes)
     app.use("/api/mission-rates", missionRatesRouter)
 
-    // Fix the car loan routes - mount at /api/car-loans instead of /api/car-loan-rates
-    app.use("/api/car-loans", carLoanRatesRouter)
+    app.use("/api/car-loan-rates", carLoanRatesRouter)
 
     app.use("/api/deplacements", deplacementRouter)
 
