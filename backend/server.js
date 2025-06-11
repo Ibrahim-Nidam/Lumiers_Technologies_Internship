@@ -25,6 +25,7 @@ const usersRoutes        = require("./routes/users");
 const missionRatesRouter = require("./routes/missionRates");
 const carLoanRatesRouter = require("./routes/carLoanRates");
 const deplacementRouter = require("./routes/deplacements");
+const dailyReturnRoutes = require("./routes/dailyReturnRoutes");
 
 const app = express();
 const corsOptions = {
@@ -52,6 +53,7 @@ app.use(express.json());
     app.use("/api/mission-rates", missionRatesRouter);
     app.use("/api/car-loan-rates", carLoanRatesRouter);
     app.use("/api/deplacements", deplacementRouter);
+    app.use("/api/users/me/daily-returns", dailyReturnRoutes);
 
     app.get("/api/dashboard-data", authMiddleware, async (req, res) => {
       const userId = req.user.userId;

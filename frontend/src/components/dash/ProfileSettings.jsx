@@ -660,11 +660,31 @@ export default function ProfileSettings() {
                     d="M12 4v16m8-8H4"
                   />
                 </svg>
-                Ajouter un itinéraire
+                Ajouter un Taux
               </button>
             </div>
           </div>
         )}
+
+        {/* Daily Returns Section */}
+        <div className="bg-gray-50 p-4 sm:p-6 rounded">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">
+            Indemnités journalières
+          </h2>
+          <p className="text-sm text-gray-600 mb-3 sm:mb-4">
+            Gérez vos demandes d'indemnités journalières pour les déplacements professionnels.
+          </p>
+          <button
+            onClick={() => navigate('/daily-returns')}
+            className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            style={{
+              backgroundColor: colors?.primary,
+              "--tw-ring-color": `${colors?.primary}40`,
+            }}
+          >
+            Accéder aux indemnités journalières
+          </button>
+        </div>
 
         {/* Bouton Enregistrer */}
         <div className="flex justify-end">

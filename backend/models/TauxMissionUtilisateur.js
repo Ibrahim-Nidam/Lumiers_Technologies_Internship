@@ -14,5 +14,15 @@ module.exports = (sequelize, DataTypes) => {
     hooks: {
       beforeUpdate: (entry) => { entry.dateModification = new Date(); },
     },
+    indexes: [
+      {
+        unique: true,
+        name: 'unique_user_type_active',
+        fields: ['utilisateur_id', 'type_de_deplacement_id'],
+        where: {
+          statut: ['en_attente', 'approuve']
+        }
+      }
+    ]
   });
 };
