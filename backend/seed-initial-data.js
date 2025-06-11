@@ -1,4 +1,3 @@
-// seed-initial-data.js
 require("dotenv").config();
 const { sequelize, Role, TypeDeDeplacement, TypeDepense } = require("./models");
 

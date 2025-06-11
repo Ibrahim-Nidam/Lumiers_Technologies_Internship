@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const authMiddleware = require("../middleware/authMiddleware"); // Ensure this path is correct for your project
+const authMiddleware = require("../middleware/authMiddleware"); 
 const {
   getAllUserDailyReturns,
   createDailyReturn,
