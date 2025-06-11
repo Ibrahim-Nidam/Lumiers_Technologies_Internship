@@ -1,20 +1,25 @@
-const express = require("express");
-const router = express.Router();
-const authMiddleware = require("../middleware/authMiddleware"); 
+const express = require("express")
+const router = express.Router()
+const authMiddleware = require("../middleware/authMiddleware")
 const {
   getAllUserDailyReturns,
   createDailyReturn,
   updateDailyReturn,
   deleteDailyReturn,
-} = require("../controllers/dailyReturnController");
+  getUserApprovedDailyReturns,
+} = require("../controllers/dailyReturnController")
 
 // Apply authentication middleware to all daily return routes
-router.use(authMiddleware);
+router.use(authMiddleware)
 
-// Define API routes for daily returns
-router.get("/", getAllUserDailyReturns);
-router.post("/", createDailyReturn);
-router.put("/:id", updateDailyReturn);
-router.delete("/:id", deleteDailyReturn);
+// IMPORTANT: Put the /approved route BEFORE the generic / route
+// This prevents the /approved from being caught by the / route
+router.get("/approved", getUserApprovedDailyReturns)
 
-module.exports = router;
+// Define other API routes for daily returns
+router.get("/", getAllUserDailyReturns)
+router.post("/", createDailyReturn)
+router.put("/:id", updateDailyReturn)
+router.delete("/:id", deleteDailyReturn)
+
+module.exports = router

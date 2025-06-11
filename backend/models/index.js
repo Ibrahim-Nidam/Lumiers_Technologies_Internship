@@ -122,6 +122,17 @@ Deplacement.belongsTo(TypeDeDeplacement, {
   as: "typeDeDeplacement"         
 });
 
+// TauxMissionUtilisateur ↔ Deplacement (si Deplacement contient une FK)
+TauxMissionUtilisateur.hasMany(Deplacement, {
+  foreignKey: "tauxMissionUtilisateurId",
+  as: "deplacementsWithRate"
+});
+Deplacement.belongsTo(TauxMissionUtilisateur, {
+  foreignKey: "tauxMissionUtilisateurId",
+  as: "missionRate"
+});
+
+
 // 4) Export everything
 module.exports = {
   sequelize,

@@ -17,5 +17,14 @@ module.exports = (sequelize, DataTypes) => {
     hooks: {
       beforeUpdate: (d) => { d.dateModification = new Date(); },
     },
+    tauxMissionUtilisateurId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "TauxMissionUtilisateurs",
+        key: "id"
+      }
+    }
+
   });
 };
