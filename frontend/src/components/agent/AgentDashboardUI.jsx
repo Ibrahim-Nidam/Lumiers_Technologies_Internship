@@ -411,8 +411,6 @@ const AgentDashboardUI = ({
                           const value = e.target.value ? Number.parseInt(e.target.value) : null
                           updateTripLocal(trip.id, "typeDeDeplacementId", value)
                           updateTripField(trip.id, "typeDeDeplacementId", value)
-                          console.log("Selected trip:", trip)
-                          console.log("Selected typeDeDeplacementId:", value)
                         }}
                         className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
                         style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
@@ -439,8 +437,6 @@ const AgentDashboardUI = ({
                           const value = e.target.value ? Number.parseInt(e.target.value) : null
                           updateTripLocal(trip.id, "carLoanId", value)
                           updateTripField(trip.id, "carLoanId", value)
-                          console.log("Selected trip:", trip)
-                          console.log("Selected carLoanId:", value)
                         }}
                         className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
                         style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}

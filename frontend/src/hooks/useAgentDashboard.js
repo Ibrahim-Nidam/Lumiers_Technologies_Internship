@@ -67,8 +67,6 @@ export const useAgentDashboard = (currentUserId) => {
 
       setTravelTypes(travelTypesData)
       setExpenseTypes(expenseTypesData)
-      console.log("Fetched travel types:", travelTypesData)
-      console.log("Fetched expense types:", expenseTypesData)
 
       // hide the types loader
       setLoadingStates((prev) => ({ ...prev, types: false }))
@@ -86,21 +84,17 @@ export const useAgentDashboard = (currentUserId) => {
         }
         const approvedRates = (missionRes.data || []).filter(r => r.statut === "approuvé")
         setUserMissionRates(approvedRates)
-        console.log("Fetched approved user mission rates:", approvedRates)
 
         // car loans
         let carLoansRes
         try {
           carLoansRes = await axios.get(`${API_BASE_URL}/api/car-loan-rates/user`, { headers })
-          console.log("headers", headers)
-          console.log("Raw car loans response:", carLoansRes.data) // Add this debug line
         } catch (loanErr) {
           console.warn("Car loans endpoint failed:", loanErr.response?.status)
           carLoansRes = { data: [] }
         }
         const approvedLoans = carLoansRes.data || []
         setUserCarLoans(approvedLoans)
-        console.log("Fetched approved car loans:", approvedLoans)
       } catch {
         console.warn("Mission rates / car loans fetch failed altogether")
         setUserMissionRates([])
@@ -135,7 +129,6 @@ export const useAgentDashboard = (currentUserId) => {
     const fetchTrips = async () => {
       try {
         setLoadingStates((prev) => ({ ...prev, trips: true }))
-        console.log("🚀 Fetching trips for:", `${currentYear}-${(currentMonth + 1).toString().padStart(2, "0")}`)
 
         const token = localStorage.getItem("token") || sessionStorage.getItem("token")
 
@@ -156,7 +149,6 @@ export const useAgentDashboard = (currentUserId) => {
         })
 
         setTrips(response.data || [])
-        console.log("✅ Fetched trips:", response.data?.length || 0, "trips")
       } catch (error) {
         console.error("❌ Failed to fetch trips:", error)
         if (error.response) {
@@ -238,13 +230,11 @@ export const useAgentDashboard = (currentUserId) => {
         depenses: [],
       }
 
-      console.log("Creating trip with data:", newTrip)
 
       const headers = getAuthHeaders()
       const response = await axios.post(`${API_BASE_URL}/api/deplacements`, newTrip, { headers })
       setTrips((prevTrips) => [...prevTrips, response.data])
       setExpandedDays(new Set([...expandedDays, Number.parseInt(date.split("-")[2])]))
-      console.log("✅ Trip added successfully")
     } catch (error) {
       console.error("❌ Failed to add trip:", error)
 
