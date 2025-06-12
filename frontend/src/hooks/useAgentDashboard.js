@@ -79,7 +79,7 @@ export const useAgentDashboard = (currentUserId) => {
           try {
             missionRatesResponse = await axios.get(`${API_BASE_URL}/api/user-daily-returns`, { headers })
           } catch (newEndpointError) {
-            console.warn("New user-daily-returns endpoint failed, trying fallback")
+            console.warn("New user-daily-returns endpoint failed, trying fallback",newEndpointError.response?.status)
             // Fallback to any existing endpoint that might work
             missionRatesResponse = { data: [] }
           }
@@ -94,7 +94,7 @@ export const useAgentDashboard = (currentUserId) => {
             try {
               carLoansResponse = await axios.get(`${API_BASE_URL}/api/car-loans`, { headers })
             } catch (carLoanError) {
-              console.warn("Car loans endpoint failed")
+              console.warn("Car loans endpoint failed, trying fallback", carLoanError.response?.status)
               carLoansResponse = { data: [] }
             }
 
@@ -131,7 +131,7 @@ export const useAgentDashboard = (currentUserId) => {
     }
 
     fetchTypes()
-  }, [currentUserId])
+  },  [currentUserId, travelTypes.length, expenseTypes.length])
 
   // Fetch trips for the current month
   useEffect(() => {
@@ -215,6 +215,12 @@ export const useAgentDashboard = (currentUserId) => {
     try {
       setIsUpdating(true)
       const defaultTravelType = travelTypes[0]
+    // Check if a trip already exists for this date
+      const tripExists = trips.some((trip) => trip.date === date)
+      if (tripExists) {
+        alert("Un déplacement a déjà été enregistré pour cette date.")
+        return
+      }
 
       // Make sure we have a valid travel type
       if (!defaultTravelType || !defaultTravelType.id) {

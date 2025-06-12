@@ -341,10 +341,10 @@ const AgentDashboardUI = ({
                     addTrip(dateStr)
                   }
                 }}
-                disabled={isUpdating}
+                disabled={hasTrips || isUpdating}
                 className="p-1.5 sm:p-2 rounded-lg transition-colors hover:bg-gray-100 disabled:opacity-50"
                 style={{ color: colors.primary }}
-                title={hasTrips ? "Ajouter un autre déplacement" : "Ajouter un déplacement"}
+                title={hasTrips ? "Un déplacement existe déjà pour cette date" : "Ajouter un déplacement"}
               >
                 <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </button>
