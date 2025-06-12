@@ -35,103 +35,99 @@ export const useAgentDashboard = (currentUserId) => {
 
   // Fetch travel types, expense types, and user mission rates on mount
   useEffect(() => {
-    const fetchTypes = async () => {
+  const fetchTypes = async () => {
+    try {
+      const headers = getAuthHeaders()
+      // show both loaders
+      setLoadingStates((prev) => ({ ...prev, types: true, missionRates: true }))
+
+      // 1) Fetch travel + expense types in parallel
+      const [travelResponse, expenseResponse] = await Promise.all([
+        axios.get(`${API_BASE_URL}/api/travel-types`, { headers }).catch((err) => {
+          console.warn("Travel types endpoint failed:", err.response?.status)
+          return { data: [] }
+        }),
+        axios.get(`${API_BASE_URL}/api/expense-types`, { headers }).catch((err) => {
+          console.warn("Expense types endpoint failed:", err.response?.status)
+          return { data: [] }
+        }),
+      ])
+
+      // ensure arrays
+      const travelTypesData = travelResponse.data || []
+      const expenseTypesData = expenseResponse.data || []
+
+      // inject defaults if empty
+      if (travelTypesData.length === 0) {
+        travelTypesData.push({ id: 1, nom: "Déplacement standard" })
+      }
+      if (expenseTypesData.length === 0) {
+        expenseTypesData.push({ id: 1, nom: "Frais de transport" })
+      }
+
+      setTravelTypes(travelTypesData)
+      setExpenseTypes(expenseTypesData)
+      console.log("Fetched travel types:", travelTypesData)
+      console.log("Fetched expense types:", expenseTypesData)
+
+      // hide the types loader
+      setLoadingStates((prev) => ({ ...prev, types: false }))
+
+      // 2) Fetch mission-rates + car-loans
+      //    wrap in its own try so we can isolate failures
       try {
-        const headers = getAuthHeaders()
-        setLoadingStates((prev) => ({ ...prev, types: true, missionRates: true }))
-
-        // Fetch travel and expense types with better error handling
-        const [travelResponse, expenseResponse] = await Promise.all([
-          axios.get(`${API_BASE_URL}/api/travel-types`, { headers }).catch((err) => {
-            console.warn("Travel types endpoint failed:", err.response?.status)
-            return { data: [] }
-          }),
-          axios.get(`${API_BASE_URL}/api/expense-types`, { headers }).catch((err) => {
-            console.warn("Expense types endpoint failed:", err.response?.status)
-            return { data: [] }
-          }),
-        ])
-
-        // Ensure we have at least some default data
-        const travelTypesData = travelResponse.data || []
-        const expenseTypesData = expenseResponse.data || []
-
-        // Add default types if none exist
-        if (travelTypesData.length === 0) {
-          travelTypesData.push({ id: 1, nom: "Déplacement standard" })
-        }
-        if (expenseTypesData.length === 0) {
-          expenseTypesData.push({ id: 1, nom: "Frais de transport" })
-        }
-
-        setTravelTypes(travelTypesData)
-        setExpenseTypes(expenseTypesData)
-
-        console.log("Fetched travel types:", travelTypesData)
-        console.log("Fetched expense types:", expenseTypesData)
-
-        setLoadingStates((prev) => ({ ...prev, types: false }))
-
-        // Try to fetch mission rates - handle if endpoint doesn't exist
+        // mission rates
+        let missionRes
         try {
-          // Try the new endpoint first, fallback to old one
-          let missionRatesResponse
-          try {
-            missionRatesResponse = await axios.get(`${API_BASE_URL}/api/user-daily-returns`, { headers })
-          } catch (newEndpointError) {
-            console.warn("New user-daily-returns endpoint failed, trying fallback",newEndpointError.response?.status)
-            // Fallback to any existing endpoint that might work
-            missionRatesResponse = { data: [] }
-          }
-
-          const approvedRates = (missionRatesResponse.data || []).filter((rate) => rate.statut === "approuvé")
-          setUserMissionRates(approvedRates)
-          console.log("Fetched approved user mission rates:", approvedRates)
-
-          // Try to fetch car loans
-          try {
-            let carLoansResponse
-            try {
-              carLoansResponse = await axios.get(`${API_BASE_URL}/api/car-loans`, { headers })
-            } catch (carLoanError) {
-              console.warn("Car loans endpoint failed, trying fallback", carLoanError.response?.status)
-              carLoansResponse = { data: [] }
-            }
-
-            const approvedCarLoans = (carLoansResponse.data || []).filter(
-              (loan) => loan.statut === "approuvé" && loan.userId === currentUserId,
-            )
-            setUserCarLoans(approvedCarLoans)
-            console.log("Fetched approved car loans:", approvedCarLoans)
-          } catch (carLoanError) {
-            console.warn("Car loan rates endpoint not available:", carLoanError.response?.status)
-            setUserCarLoans([])
-          }
-        } catch (missionError) {
-          console.warn("Mission rates endpoint not available:", missionError.response?.status)
-          setUserMissionRates([])
-          setUserCarLoans([])
+          missionRes = await axios.get(`${API_BASE_URL}/api/user-daily-returns`, { headers })
+        } catch (newErr) {
+          console.warn("New user-daily-returns failed:", newErr.response?.status)
+          missionRes = { data: [] }
         }
+        const approvedRates = (missionRes.data || []).filter(r => r.statut === "approuvé")
+        setUserMissionRates(approvedRates)
+        console.log("Fetched approved user mission rates:", approvedRates)
 
-        setLoadingStates((prev) => ({ ...prev, missionRates: false }))
-      } catch (error) {
-        console.error("Failed to fetch types:", error.response?.status, error.response?.data || error.message)
-        setLoadingStates((prev) => ({ ...prev, types: false, missionRates: false }))
-
-        // Set fallback data to prevent blocking
-        if (travelTypes.length === 0) {
-          setTravelTypes([{ id: 1, nom: "Déplacement standard" }])
+        // car loans
+        let carLoansRes
+        try {
+          carLoansRes = await axios.get(`${API_BASE_URL}/api/car-loans`, { headers })
+        } catch (loanErr) {
+          console.warn("Car loans endpoint failed:", loanErr.response?.status)
+          carLoansRes = { data: [] }
         }
-        if (expenseTypes.length === 0) {
-          setExpenseTypes([{ id: 1, nom: "Frais de transport" }])
-        }
+        const approvedLoans = (carLoansRes.data || [])
+          .filter(loan => loan.statut === "approuvé" && loan.userId === currentUserId)
+        setUserCarLoans(approvedLoans)
+        console.log("Fetched approved car loans:", approvedLoans)
+      } catch {
+        console.warn("Mission rates / car loans fetch failed altogether")
         setUserMissionRates([])
         setUserCarLoans([])
       }
-    }
 
-    fetchTypes()
-  },  [currentUserId, travelTypes.length, expenseTypes.length])
+      // finally hide mission rates loader
+      setLoadingStates((prev) => ({ ...prev, missionRates: false }))
+    } catch (error) {
+      console.error(
+        "Failed to fetch types:",
+        error.response?.status,
+        error.response?.data || error.message
+      )
+      // turn off loaders
+      setLoadingStates((prev) => ({ ...prev, types: false, missionRates: false }))
+
+      // fallback data
+      setTravelTypes([{ id: 1, nom: "Déplacement standard" }])
+      setExpenseTypes([{ id: 1, nom: "Frais de transport" }])
+      setUserMissionRates([])
+      setUserCarLoans([])
+    }
+  }
+
+  fetchTypes()
+}, [currentUserId])
+
 
   // Fetch trips for the current month
   useEffect(() => {

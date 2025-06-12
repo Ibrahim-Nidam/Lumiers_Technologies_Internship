@@ -58,7 +58,7 @@ const AgentDashboardUI = ({
   deleteExpense,
 
   // Utility functions
-  getTotalExpenses,
+  // getTotalExpenses,
   getTripTotal,
   getTripsForDay,
   getMonthlyTrips,
