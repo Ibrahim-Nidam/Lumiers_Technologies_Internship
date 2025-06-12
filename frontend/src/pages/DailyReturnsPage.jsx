@@ -31,7 +31,7 @@ axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 const fetchData = async () => {
     try {
     const [dailyReturnsRes, travelTypesRes] = await Promise.all([
-        axios.get("http://localhost:3001/api/users/me/daily-returns"),
+        axios.get("http://localhost:3001/api/user-daily-returns"),
         axios.get("http://localhost:3001/api/travel-types")
     ]);
     setDailyReturns(dailyReturnsRes.data);
@@ -109,18 +109,18 @@ const payload = { typeDeDeplacementId: formTypeDeDeplacementId, tarifParJour: ta
 try {
     if (editingReturn) {
     await axios.put(
-        `http://localhost:3001/api/users/me/daily-returns/${editingReturn.id}`,
+        `http://localhost:3001/api/user-daily-returns/${editingReturn.id}`,
         payload
     );
     setMessage("Indemnité journalière mise à jour avec succès ! Son statut est revenu à 'en attente'.");
     } else {
-    await axios.post("http://localhost:3001/api/users/me/daily-returns", payload);
+    await axios.post("http://localhost:3001/api/user-daily-returns", payload);
     setMessage("Demande d'indemnité journalière soumise avec succès !");
     }
     setMessageType("success");
 
     // Refresh list
-    const updatedRes = await axios.get("http://localhost:3001/api/users/me/daily-returns");
+    const updatedRes = await axios.get("http://localhost:3001/api/user-daily-returns");
     setDailyReturns(updatedRes.data);
     resetForm();
 } catch (error) {
@@ -140,7 +140,7 @@ const handleDeleteConfirmed = async () => {
 setConfirmOpen(false);
 setSaving(true);
 try {
-await axios.delete(`http://localhost:3001/api/users/me/daily-returns/${toDeleteId}`);
+await axios.delete(`http://localhost:3001/api/user-daily-returns/${toDeleteId}`);
 setDailyReturns(dr => dr.filter(item => item.id !== toDeleteId));
 setMessage("Indemnité journalière supprimée avec succès !");
 setMessageType("success");
