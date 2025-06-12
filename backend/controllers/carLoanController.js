@@ -34,7 +34,7 @@ exports.getUserCarLoans = async (req, res) => {
     const userId = req.user.userId
 
     console.log(`🔍 Fetching approved car loans for user ${userId}`)
-
+    console.log("User ID from request:", userId)
     const userCarLoans = await CarLoan.findAll({
       where: {
         userId: userId,

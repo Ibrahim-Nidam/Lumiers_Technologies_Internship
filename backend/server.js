@@ -55,7 +55,6 @@ app.use(express.json())
 
     app.use("/api/deplacements", deplacementRouter)
 
-    // Fix the daily returns routes - mount at /api/user-daily-returns instead of nested under users
     app.use("/api/user-daily-returns", dailyReturnRoutes)
 
     app.get("/api/dashboard-data", authMiddleware, async (req, res) => {

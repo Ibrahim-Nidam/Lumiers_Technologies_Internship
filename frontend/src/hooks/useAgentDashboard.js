@@ -91,13 +91,14 @@ export const useAgentDashboard = (currentUserId) => {
         // car loans
         let carLoansRes
         try {
-          carLoansRes = await axios.get(`${API_BASE_URL}/api/car-loans`, { headers })
+          carLoansRes = await axios.get(`${API_BASE_URL}/api/car-loan-rates/user`, { headers })
+          console.log("headers", headers)
+          console.log("Raw car loans response:", carLoansRes.data) // Add this debug line
         } catch (loanErr) {
           console.warn("Car loans endpoint failed:", loanErr.response?.status)
           carLoansRes = { data: [] }
         }
-        const approvedLoans = (carLoansRes.data || [])
-          .filter(loan => loan.statut === "approuvé" && loan.userId === currentUserId)
+        const approvedLoans = carLoansRes.data || []
         setUserCarLoans(approvedLoans)
         console.log("Fetched approved car loans:", approvedLoans)
       } catch {
@@ -226,10 +227,11 @@ export const useAgentDashboard = (currentUserId) => {
       }
 
       const newTrip = {
-        userId: currentUserId,
+        // userId: currentUserId,
         typeDeDeplacementId: defaultTravelType.id,
+        intitule: "Nouveau déplacement",
         date: date,
-        libelleDestination: "",
+        libelleDestination: "Destination à définir",
         distanceKm: "0", // Make sure this is a string "0" not a number 0
         codeChantier: "",
         carLoanId: null,
@@ -260,23 +262,48 @@ export const useAgentDashboard = (currentUserId) => {
 
   // Update trip field (called on blur, not on change)
   const updateTripField = async (tripId, field, value) => {
-    if (isUpdating) return
-
+    if (isUpdating) return;
+  
     try {
-      setIsUpdating(true)
-      const trip = trips.find((t) => t.id === tripId)
-      if (!trip) return
-
-      const updatedTrip = { ...trip, [field]: value }
-      const headers = getAuthHeaders()
-      const response = await axios.put(`${API_BASE_URL}/api/deplacements/${tripId}`, updatedTrip, { headers })
-      setTrips((prevTrips) => prevTrips.map((t) => (t.id === tripId ? response.data : t)))
+      setIsUpdating(true);
+      const trip = trips.find((t) => t.id === tripId);
+      if (!trip) return;
+  
+      const allowedFields = [
+        "intitule",
+        "libelleDestination",
+        "typeDeDeplacementId",
+        "date",
+        "distanceKm",
+        "codeChantier",
+        "carLoanId",
+        "depenses",
+      ];
+  
+      const updatedTrip = {};
+      allowedFields.forEach((key) => {
+        if (key in trip) updatedTrip[key] = trip[key];
+      });
+  
+      updatedTrip[field] = value; // apply the new value
+  
+      const headers = getAuthHeaders();
+      const response = await axios.put(
+        `${API_BASE_URL}/api/deplacements/${tripId}`,
+        updatedTrip,
+        { headers }
+      );
+  
+      setTrips((prevTrips) =>
+        prevTrips.map((t) => (t.id === tripId ? response.data : t))
+      );
     } catch (error) {
-      console.error("Failed to update trip:", error)
+      console.error("Failed to update trip:", error);
     } finally {
-      setIsUpdating(false)
+      setIsUpdating(false);
     }
-  }
+  };
+  
 
   // Update trip locally (for immediate UI feedback)
   const updateTripLocal = (tripId, field, value) => {

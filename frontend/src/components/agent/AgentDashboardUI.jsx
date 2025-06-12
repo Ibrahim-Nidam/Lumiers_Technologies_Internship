@@ -19,7 +19,6 @@ import {
 
 const AgentDashboardUI = ({
   // State
-  travelTypes,
   expenseTypes,
   userMissionRates,
   expandedDays,
@@ -29,6 +28,7 @@ const AgentDashboardUI = ({
   currentYear,
   currentMonth,
   isUpdating,
+  userCarLoans,
 
   // State setters
   setShowYearPicker,
@@ -398,55 +398,60 @@ const AgentDashboardUI = ({
                         />
                       </div>
                       <div>
-                        <label
-                          className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
-                          style={{ color: colors.logo_text }}
-                        >
-                          Type de déplacement
-                        </label>
-                        <select
-                          value={trip.typeDeDeplacementId}
-                          onChange={(e) => {
-                            const value = Number.parseInt(e.target.value)
-                            updateTripLocal(trip.id, "typeDeDeplacementId", value)
-                            updateTripField(trip.id, "typeDeDeplacementId", value)
-                          }}
-                          className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
-                          style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
-                        >
-                          {travelTypes.map((type) => (
-                            <option key={type.id} value={type.id}>
-                              {type.nom}
-                            </option>
-                          ))}
-                        </select>
+                      <label
+                        className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
+                        style={{ color: colors.logo_text }}
+                      >
+                        Type de déplacement
+                      </label>
+
+                      <select
+                        value={trip.typeDeDeplacementId || ""}
+                        onChange={(e) => {
+                          const value = e.target.value ? Number.parseInt(e.target.value) : null
+                          updateTripLocal(trip.id, "typeDeDeplacementId", value)
+                          updateTripField(trip.id, "typeDeDeplacementId", value)
+                          console.log("Selected trip:", trip)
+                          console.log("Selected typeDeDeplacementId:", value)
+                        }}
+                        className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
+                        style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
+                      >
+                        <option value="">Sélectionner un type</option>
+                        {userMissionRates.map((rate) => (
+                          <option key={rate.id} value={rate.typeDeDeplacementId}>
+                            {rate.typeDeDeplacement?.nom} - {rate.tarifParJour} MAD
+                          </option>
+                        ))}
+                      </select>
                       </div>
-                      {userMissionRates.length > 0 && (
                         <>
                           <div>
-                            <label
-                              className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
-                              style={{ color: colors.logo_text }}
-                            >
-                              Type de taux (optionnel)
-                            </label>
-                            <select
-                              value={trip.tauxMissionId || ""}
-                              onChange={(e) => {
-                                const value = e.target.value ? Number.parseInt(e.target.value) : null
-                                updateTripLocal(trip.id, "tauxMissionId", value)
-                                updateTripField(trip.id, "tauxMissionId", value)
-                              }}
-                              className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
-                              style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
-                            >
-                              <option value="">Aucun</option>
-                              {userMissionRates.map((rate) => (
-                                <option key={rate.id} value={rate.id}>
-                                  {rate.typeDeDeplacement?.nom} - {rate.tarifParJour} MAD/km
-                                </option>
-                              ))}
-                            </select>
+                          <label
+                        className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
+                        style={{ color: colors.logo_text }}
+                      >
+                        Taux kilométrique (optionnel)
+                      </label>
+                      <select
+                        value={trip.carLoanId || ""}
+                        onChange={(e) => {
+                          const value = e.target.value ? Number.parseInt(e.target.value) : null
+                          updateTripLocal(trip.id, "carLoanId", value)
+                          updateTripField(trip.id, "carLoanId", value)
+                          console.log("Selected trip:", trip)
+                          console.log("Selected carLoanId:", value)
+                        }}
+                        className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
+                        style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
+                      >
+                        <option value="">Aucun</option>
+                        {userCarLoans.map((carLoan) => (
+                          <option key={carLoan.id} value={carLoan.id}>
+                            {carLoan.libelle} - {carLoan.tarifParKm} MAD
+                          </option>
+                        ))}
+                      </select>
                           </div>
                           <div>
                             <label
@@ -466,7 +471,6 @@ const AgentDashboardUI = ({
                             />
                           </div>
                         </>
-                      )}
                     </div>
                     <div className="flex items-center space-x-2 lg:ml-4">
                       <button

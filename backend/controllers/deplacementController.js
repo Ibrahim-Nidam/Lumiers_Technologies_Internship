@@ -97,9 +97,9 @@ exports.createDeplacement = async (req, res) => {
     const { typeDeDeplacementId, date, intitule, libelleDestination, codeChantier, distanceKm, carLoanId, depenses } =
       req.body
 
-    if (!typeDeDeplacementId || !date) {
+    if (!typeDeDeplacementId || !date || !intitule || !libelleDestination || !distanceKm) {
       return res.status(400).json({
-        error: "Missing required fields: typeDeDeplacementId, date",
+        error: "Missing required fields: typeDeDeplacementId, date, intitule, libelleDestination, distanceKm",
       })
     }
 
@@ -107,18 +107,34 @@ exports.createDeplacement = async (req, res) => {
       userId: req.user.userId,
       typeDeDeplacementId,
       date,
-      intitule: intitule || "Nouveau déplacement",
-      libelleDestination: libelleDestination || "",
-      codeChantier: codeChantier || "",
-      distanceKm: distanceKm || "0",
+      intitule,
+      libelleDestination,
+      codeChantier: codeChantier || null,
+      distanceKm,
       carLoanId: carLoanId || null,
     })
 
-    if (Array.isArray(depenses)) {
-      await Promise.all(depenses.map((d) => Depense.create({ ...d, deplacementId: deplacement.id })))
+    // Create associated expenses if provided
+    if (Array.isArray(depenses) && depenses.length > 0) {
+      const expensePromises = depenses.map((expense) => {
+        // Validate expense data
+        if (!expense.montant) {
+          throw new Error("montant is required for expense")
+        }
+        
+        return Depense.create({
+          deplacementId: deplacement.id,
+          typeDepenseId: expense.typeDepenseId || null,
+          montant: expense.montant,
+          cheminJustificatif: expense.cheminJustificatif || null,
+        })
+      })
+      
+      await Promise.all(expensePromises)
     }
 
-    const full = await Deplacement.findByPk(deplacement.id, {
+    // Fetch the complete deplacement with all associations
+    const fullDeplacement = await Deplacement.findByPk(deplacement.id, {
       include: [
         {
           model: Depense,
@@ -149,7 +165,7 @@ exports.createDeplacement = async (req, res) => {
     })
 
     console.log("✅ Deplacement created successfully")
-    res.status(201).json(full)
+    res.status(201).json(fullDeplacement)
   } catch (error) {
     console.error("❌ Error creating deplacement:", error)
     res.status(400).json({
@@ -174,19 +190,22 @@ exports.updateDeplacement = async (req, res) => {
     const { intitule, libelleDestination, typeDeDeplacementId, date, distanceKm, codeChantier, carLoanId, depenses } =
       req.body
 
-    const dpl = await Deplacement.findOne({ where: { id, userId: req.user.userId } })
-    if (!dpl) return res.status(404).json({ error: "Deplacement not found or not authorized" })
+    const deplacement = await Deplacement.findOne({ where: { id, userId: req.user.userId } })
+    if (!deplacement) {
+      return res.status(404).json({ error: "Deplacement not found or not authorized" })
+    }
 
-    // Update the main deplacement fields
-    await dpl.update({
-      intitule,
-      libelleDestination,
-      typeDeDeplacementId,
-      date,
-      distanceKm,
-      codeChantier,
-      carLoanId,
-    })
+    // Update the main deplacement fields (only update provided fields)
+    const updateData = {}
+    if (intitule !== undefined) updateData.intitule = intitule
+    if (libelleDestination !== undefined) updateData.libelleDestination = libelleDestination
+    if (typeDeDeplacementId !== undefined) updateData.typeDeDeplacementId = typeDeDeplacementId
+    if (date !== undefined) updateData.date = date
+    if (distanceKm !== undefined) updateData.distanceKm = distanceKm
+    if (codeChantier !== undefined) updateData.codeChantier = codeChantier
+    if (carLoanId !== undefined) updateData.carLoanId = carLoanId
+
+    await deplacement.update(updateData)
 
     // Handle expenses if provided
     if (depenses !== undefined) {
@@ -197,19 +216,16 @@ exports.updateDeplacement = async (req, res) => {
       if (Array.isArray(depenses) && depenses.length > 0) {
         const expensePromises = depenses.map((expense) => {
           // Validate expense data
-          const expenseData = {
+          if (expense.montant === undefined || expense.montant === null) {
+            throw new Error("montant is required for expense")
+          }          
+
+          return Depense.create({
             deplacementId: id,
-            typeDepenseId: expense.typeDepenseId,
-            montant: expense.montant || 0,
+            typeDepenseId: expense.typeDepenseId || null,
+            montant: expense.montant,
             cheminJustificatif: expense.cheminJustificatif || null,
-          }
-
-          // Validate required fields
-          if (!expenseData.typeDepenseId) {
-            throw new Error("typeDepenseId is required for expense")
-          }
-
-          return Depense.create(expenseData)
+          })
         })
 
         await Promise.all(expensePromises)
@@ -217,7 +233,7 @@ exports.updateDeplacement = async (req, res) => {
     }
 
     // Fetch the updated deplacement with all associations
-    const updated = await Deplacement.findByPk(id, {
+    const updatedDeplacement = await Deplacement.findByPk(id, {
       include: [
         {
           model: Depense,
@@ -248,7 +264,7 @@ exports.updateDeplacement = async (req, res) => {
     })
 
     console.log("✅ Deplacement updated successfully")
-    res.json(updated)
+    res.json(updatedDeplacement)
   } catch (error) {
     console.error("❌ Error updating deplacement:", error)
     res.status(400).json({
@@ -270,11 +286,16 @@ exports.deleteDeplacement = async (req, res) => {
       return res.status(401).json({ error: "User not authenticated" })
     }
 
-    const dpl = await Deplacement.findOne({ where: { id, userId: req.user.userId } })
-    if (!dpl) return res.status(404).json({ error: "Deplacement not found or not authorized" })
+    const deplacement = await Deplacement.findOne({ where: { id, userId: req.user.userId } })
+    if (!deplacement) {
+      return res.status(404).json({ error: "Deplacement not found or not authorized" })
+    }
 
+    // Delete associated expenses first (due to foreign key constraints)
     await Depense.destroy({ where: { deplacementId: id } })
-    await dpl.destroy()
+    
+    // Then delete the deplacement
+    await deplacement.destroy()
 
     console.log("✅ Deplacement deleted successfully")
     res.json({ message: "Deplacement deleted successfully" })
