@@ -58,11 +58,12 @@ const AgentDashboardUI = ({
   deleteExpense,
 
   // Utility functions
-  // getTotalExpenses,
   getTripTotal,
   getTripsForDay,
   getMonthlyTrips,
   getMonthlyTotal,
+  getMonthlyDistanceTotal,
+  getMonthlyExpensesCount,
   getDaysInMonth,
   exportMonthlyPDF,
   exportMonthlyExcel,
@@ -466,6 +467,25 @@ const AgentDashboardUI = ({
                               style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
                             />
                           </div>
+                              {(showCodeChantier[trip.id] || trip.codeChantier) && (
+                              <div className="mb-3 sm:mb-4">
+                                <label
+                                  className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
+                                  style={{ color: colors.logo_text }}
+                                >
+                                  Code Chantier (optionnel)
+                                </label>
+                                <input
+                                  type="text"
+                                  value={trip.codeChantier}
+                                  onChange={(e) => updateTripLocal(trip.id, "codeChantier", e.target.value)}
+                                  onBlur={(e) => updateTripField(trip.id, "codeChantier", e.target.value)}
+                                  className="w-full sm:w-1/2 lg:w-1/3 px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
+                                  style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
+                                  placeholder="Ex: CH-2025-001"
+                                />
+                              </div>
+                            )}
                         </>
                     </div>
                     <div className="flex items-center space-x-2 lg:ml-4">
@@ -476,7 +496,7 @@ const AgentDashboardUI = ({
                         }}
                         className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm bg-red-50 text-red-700 hover:bg-red-100 rounded-lg transition-colors border border-red-200"
                       >
-                        {showCodeChantier[trip.id] || trip.codeChantier ? "- MC" : "+ CC"}
+                        {showCodeChantier[trip.id] || trip.codeChantier ? "- Masquer Code Chantier" : "+ Code Chantier"}
                       </button>
                       <button
                         onClick={(e) => {
@@ -492,25 +512,6 @@ const AgentDashboardUI = ({
                       </button>
                     </div>
                   </div>
-                  {(showCodeChantier[trip.id] || trip.codeChantier) && (
-                    <div className="mb-3 sm:mb-4">
-                      <label
-                        className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
-                        style={{ color: colors.logo_text }}
-                      >
-                        Code Chantier (optionnel)
-                      </label>
-                      <input
-                        type="text"
-                        value={trip.codeChantier}
-                        onChange={(e) => updateTripLocal(trip.id, "codeChantier", e.target.value)}
-                        onBlur={(e) => updateTripField(trip.id, "codeChantier", e.target.value)}
-                        className="w-full sm:w-1/2 lg:w-1/3 px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
-                        style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
-                        placeholder="Ex: CH-2025-001"
-                      />
-                    </div>
-                  )}
                   <div className="border-t pt-3 sm:pt-4" style={{ borderColor: colors.secondary }}>
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 sm:mb-4 space-y-2 sm:space-y-0">
                       <h4 className="text-sm sm:text-base font-medium" style={{ color: colors.logo_text }}>
@@ -580,6 +581,16 @@ const AgentDashboardUI = ({
                       </p>
                     ) : (
                       <div className="space-y-2 sm:space-y-3">
+                        {/* Header Row for Larger Screens */}
+                        <div
+                          className="hidden lg:grid lg:grid-cols-2 underline lg:grid-cols-4 gap-2 sm:gap-3 p-2 sm:p-3 font-medium text-xs sm:text-sm"
+                          style={{ color: colors.logo_text }}
+                        >
+                          <div>Type</div>
+                          <div>Montant</div>
+                          <div>Justificatif</div>
+                        </div>
+                        {/* Expense Rows */}
                         {trip.depenses.map((expense) => (
                           <div
                             key={expense.id}
@@ -732,82 +743,89 @@ const AgentDashboardUI = ({
         </div>
       </div>
       <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
-            <div className="flex items-center justify-center sm:justify-start space-x-3 sm:space-x-4">
-              <button
-                onClick={goToPreviousMonth}
-                className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                style={{ color: colors.logo_text }}
-              >
-                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
-              <div className="relative">
-                <button
-                  onClick={() => setShowYearPicker(!showYearPicker)}
-                  className="flex items-center space-x-1 text-base sm:text-lg md:text-xl font-bold hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors"
-                  style={{ color: colors.logo_text }}
-                >
-                  <span>
-                    {new Date(currentYear, currentMonth).toLocaleDateString("fr-FR", {
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </span>
-                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5 opacity-70" />
-                </button>
-                {showYearPicker && (
-                  <div className="absolute z-10 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 p-3 w-64 sm:w-72">
-                    <div className="grid grid-cols-1 gap-2">
-                      {years.map((year) => (
-                        <div key={year} className="mb-2">
-                          <h3 className="text-sm font-semibold mb-1 px-2" style={{ color: colors.logo_text }}>
-                            {year}
-                          </h3>
-                          <div className="grid grid-cols-3 sm:grid-cols-4 gap-1">
-                            {monthNames.map((month, index) => (
-                              <button
-                                key={`${year}-${index}`}
-                                onClick={() => goToYearMonth(year, index)}
-                                className={`text-xs p-1.5 rounded-md hover:bg-gray-100 transition-colors ${year === currentYear && index === currentMonth ? "bg-blue-100 text-blue-800 font-medium" : "text-gray-700"}`}
-                              >
-                                {month.substring(0, 3)}
-                              </button>
-                            ))}
-                          </div>
+            <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
+                    <div className="flex items-center justify-center sm:justify-start space-x-3 sm:space-x-4">
+                        <button
+                            onClick={goToPreviousMonth}
+                            className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            style={{ color: colors.logo_text }}
+                        >
+                            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+                        </button>
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowYearPicker(!showYearPicker)}
+                                className="flex items-center space-x-1 text-base sm:text-lg md:text-xl font-bold hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors"
+                                style={{ color: colors.logo_text }}
+                            >
+                                <span>
+                                    {new Date(currentYear, currentMonth).toLocaleDateString("fr-FR", {
+                                        month: "long",
+                                        year: "numeric",
+                                    })}
+                                </span>
+                                <Calendar className="w-4 h-4 sm:w-5 sm:h-5 opacity-70" />
+                            </button>
+                            {showYearPicker && (
+                                <div className="absolute z-10 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 p-3 w-64 sm:w-72">
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {years.map((year) => (
+                                            <div key={year} className="mb-2">
+                                                <h3 className="text-sm font-semibold mb-1 px-2" style={{ color: colors.logo_text }}>
+                                                    {year}
+                                                </h3>
+                                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-1">
+                                                    {monthNames.map((month, index) => (
+                                                        <button
+                                                            key={`${year}-${index}`}
+                                                            onClick={() => goToYearMonth(year, index)}
+                                                            className={`text-xs p-1.5 rounded-md hover:bg-gray-100 transition-colors ${year === currentYear && index === currentMonth ? "bg-blue-100 text-blue-800 font-medium" : "text-gray-700"}`}
+                                                        >
+                                                            {month.substring(0, 3)}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                      ))}
+                        <button
+                            onClick={goToNextMonth}
+                            className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            style={{ color: colors.logo_text }}
+                        >
+                            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                        </button>
+                        <button
+                            onClick={goToToday}
+                            className="px-2 sm:px-3 py-1 text-xs sm:text-sm border rounded-lg hover:bg-gray-50 transition-colors"
+                            style={{ borderColor: colors.secondary, color: colors.logo_text }}
+                        >
+                            Aujourd'hui
+                        </button>
                     </div>
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={goToNextMonth}
-                className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                style={{ color: colors.logo_text }}
-              >
-                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
-              <button
-                onClick={goToToday}
-                className="px-2 sm:px-3 py-1 text-xs sm:text-sm border rounded-lg hover:bg-gray-50 transition-colors"
-                style={{ borderColor: colors.secondary, color: colors.logo_text }}
-              >
-                Aujourd'hui
-              </button>
+                    <div className="flex items-center justify-center sm:justify-end space-x-3 sm:space-x-4 md:space-x-6">
+                        <div className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
+                            <span className="font-medium">{getMonthlyTrips().length}</span> déplacement
+                            {getMonthlyTrips().length > 1 ? "s" : ""}
+                        </div>
+                        <div className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
+                            <span className="font-medium">{getMonthlyExpensesCount()}</span> dépense
+                            {getMonthlyExpensesCount() > 1 ? "s" : ""}
+                        </div>
+                        <div className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
+                            <span className="font-medium">{getMonthlyDistanceTotal().toFixed(1)}</span> km
+                        </div>
+                        <div className="text-sm sm:text-base md:text-lg font-bold" style={{ color: colors.primary }}>
+                            {getMonthlyTotal().toFixed(2)} MAD
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div className="flex items-center justify-center sm:justify-end space-x-3 sm:space-x-4 md:space-x-6">
-              <div className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
-                <span className="font-medium">{getMonthlyTrips().length}</span> déplacement
-                {getMonthlyTrips().length > 1 ? "s" : ""}
-              </div>
-              <div className="text-sm sm:text-base md:text-lg font-bold" style={{ color: colors.primary }}>
-                {getMonthlyTotal().toFixed(2)} MAD
-              </div>
-            </div>
-          </div>
         </div>
-      </div>
       <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-6 py-3 sm:py-4 md:py-8">
         <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
           <div className="divide-y" style={{ borderColor: colors.secondary }}>

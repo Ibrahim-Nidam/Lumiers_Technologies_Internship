@@ -528,6 +528,14 @@ export const useAgentDashboard = (currentUserId) => {
     return getMonthlyTrips().reduce((total, trip) => total + getTripTotal(trip), 0)
   }
 
+  const getMonthlyDistanceTotal = () => {
+      return getMonthlyTrips().reduce((total, trip) => total + (parseFloat(trip.distanceKm) || 0), 0)
+  }
+
+  const getMonthlyExpensesCount = () => {
+      return getMonthlyTrips().reduce((count, trip) => count + trip.depenses.length, 0)
+  }
+
   const getDaysInMonth = () => {
     return new Date(currentYear, currentMonth + 1, 0).getDate()
   }
@@ -603,6 +611,8 @@ export const useAgentDashboard = (currentUserId) => {
     getTripsForDay,
     getMonthlyTrips,
     getMonthlyTotal,
+    getMonthlyDistanceTotal,
+    getMonthlyExpensesCount,
     getDaysInMonth,
     exportMonthlyPDF,
     exportMonthlyExcel,
