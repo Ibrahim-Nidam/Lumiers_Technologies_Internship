@@ -133,7 +133,7 @@ export default function Consult() {
             <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
           <button onClick={goToToday}
-                  className="px-2 sm:px-3 py-1 text-xs sm:text-sm border rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-2 sm:px-3 py-1 cursor-pointer text-xs sm:text-sm border rounded-lg hover:bg-gray-50 transition-colors"
                   style={{ borderColor: colors.secondary, color: colors.logo_text }}>
             Aujourd'hui
           </button>
@@ -145,41 +145,42 @@ export default function Consult() {
   {users.map(user => (
   <div 
     key={user.id}
-    className="bg-white rounded border border-gray-300 shadow-sm hover:shadow-lg transition-shadow duration-300"
+    className="bg-white rounded border border-gray-200 shadow-md hover:shadow-lg transition-shadow duration-300"
   >
-    <div className="p-5 border-b border-gray-100">
-      <h2 className="font-semibold text-gray-900 truncate">
+    <div className="px-6 py-4 border-b border-gray-100">
+      <h2 className="font-semibold text-gray-800 truncate">
         {user.name}
       </h2>
     </div>
 
-    <div className="p-4 bg-gray-50 flex justify-center gap-4">
+    <div className="px-6 py-4 bg-gray-50 flex flex-wrap justify-center gap-3">
       <button 
-                onClick={() => handleExport(user.id, "excel")}
-                className="flex cursor-pointer items-center gap-2 text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-100 bg-emerald-50 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200"
-              >
-                <FaFileExcel className="w-4 h-4" />
-                Excel
-              </button>
+        onClick={() => handleExport(user.id, "excel")}
+        className="flex cursor-pointer items-center gap-2 text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-200 bg-emerald-50 px-4 py-2 rounded-lg text-sm font-medium transition"
+      >
+        <FaFileExcel className="w-4 h-4" />
+        Excel
+      </button>
 
-              <button 
-                onClick={() => handleExport(user.id, "pdf")}
-                className="flex cursor-pointer items-center gap-2 text-rose-700 hover:text-white hover:bg-rose-600 border border-rose-100 bg-rose-50 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200"
-              >
-                <FaFilePdf className="w-4 h-4" />
-                PDF
-              </button>
-                <button 
-    onClick={() => handleExport(user.id, "both")}
-    className="flex cursor-pointer items-center gap-2 text-blue-700 hover:text-white hover:bg-blue-600 border border-blue-100 bg-blue-50 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200"
-  >
-    <FaFileArchive className="w-4 h-4" />
-    Complet
-  </button>
+      <button 
+        onClick={() => handleExport(user.id, "pdf")}
+        className="flex cursor-pointer items-center gap-2 text-rose-700 hover:text-white hover:bg-rose-600 border border-rose-200 bg-rose-50 px-4 py-2 rounded-lg text-sm font-medium transition"
+      >
+        <FaFilePdf className="w-4 h-4" />
+        PDF
+      </button>
 
+      <button 
+        onClick={() => handleExport(user.id, "both")}
+        className="flex cursor-pointer items-center gap-2 text-blue-700 hover:text-white hover:bg-blue-600 border border-blue-200 bg-blue-50 px-4 py-2 rounded-lg text-sm font-medium transition"
+      >
+        <FaFileArchive className="w-4 h-4" />
+        Complet
+      </button>
     </div>
   </div>
 ))}
+
 
 </div>
     </div>
