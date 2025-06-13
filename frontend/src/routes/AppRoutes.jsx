@@ -22,6 +22,7 @@ import ExpenseTypes from "../pages/manager/ExpenseTypes";
 import DisplacementTypes from "../pages/manager/DisplacementTypes";
 import MissionRates from "../pages/manager/MissionRates";
 import CarLoanRates from "../pages/manager/CarLoanRates";
+import Consult from "../pages/manager/Consult";
 
 export default function AppRoutes() {
   return (
@@ -46,6 +47,7 @@ export default function AppRoutes() {
             <Route path="displacement-types" element={<DisplacementTypes />} />
             <Route path="mission-rates" element={<MissionRates />} />
             <Route path="car-loan-rates" element={<CarLoanRates />} />
+            <Route path="consult" element={<Consult />} />
           </Route>
 
           {/* <Route path="/adminDashboard" element={<AdminDashboard />} /> */}

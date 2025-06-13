@@ -7,6 +7,7 @@ export default function Navigation({ activeTab, setActiveTab }) {
     { id: "travel", label: "Déplacements", icon: "✈️" },
     { id: "mission", label: "Missions", icon: "🎯" },
     { id: "carloan", label: "Véhicules", icon: "🚗" },
+    { id: "manager", label: "Consulter", icon: "🗂️" },
   ]
 
   return (

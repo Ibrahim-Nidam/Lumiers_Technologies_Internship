@@ -6,6 +6,7 @@ import ExpenseTypes from "../../pages/manager/ExpenseTypes"
 import TravelTypes from "../../pages/manager/DisplacementTypes"
 import MissionRates from "../../pages/manager/MissionRates"
 import CarLoanRates from "../../pages/manager/CarLoanRates"
+import Consult from "../../pages/manager/Consult"
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("accounts")
@@ -22,6 +23,8 @@ export default function AdminDashboard() {
         return <MissionRates key="mission" />
       case "carloan":
         return <CarLoanRates key="carloan" />
+      case "manager":
+        return <Consult key="manager" />
       default:
         return <AccountApproval key="accounts-default" />
     }
