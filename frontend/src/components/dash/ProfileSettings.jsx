@@ -66,6 +66,7 @@ export default function ProfileSettings() {
         // 1) GET /api/users/me
         const userRes = await axios.get("http://localhost:3001/api/users/me");
         const userData = userRes.data;
+        console.log("User data loaded:", userData);
 
         // Populate formData
         setFormData({
@@ -259,7 +260,7 @@ export default function ProfileSettings() {
             // Note: we don't send status back; it's read-only
           }));
 
-        await axios.put(
+          await axios.put(
           "http://localhost:3001/api/users/me/carloans",
           payloadLoans
         );

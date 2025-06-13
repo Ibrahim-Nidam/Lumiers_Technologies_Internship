@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import axios from "axios"
+import { handleExcelExport, handlePDFExport } from "../utils/exportUtils";
 
 // Set the base URL for all axios requests
 const API_BASE_URL = "http://localhost:3001"
@@ -26,6 +27,37 @@ export const useAgentDashboard = (currentUserId) => {
 
   const currentYear = currentDate.getFullYear()
   const currentMonth = currentDate.getMonth()
+
+  // Updated section from your useAgentDashboard hook
+
+const exportMonthlyExcel = () => handleExcelExport(currentYear, currentMonth);
+
+const exportMonthlyPDF = () => {
+  // Get user data - handle both parsed and string formats
+  let userInfo = {};
+  try {
+    const userData = localStorage.getItem("user") || sessionStorage.getItem("user");
+    if (userData) {
+      userInfo = typeof userData === 'string' ? JSON.parse(userData) : userData;
+    }
+  } catch (error) {
+    console.error('Error parsing user data:', error);
+  }
+
+  // Prepare dashboard data for PDF export
+  const dashboardData = {
+    trips: getMonthlyTrips(), // Only get trips for current month
+    userInfo: {
+      fullName: userInfo?.nom_complete || userInfo?.name || 'N/A',
+    },
+    userMissionRates,
+    userCarLoans,
+    expenseTypes,
+    travelTypes
+  };
+  
+  return handlePDFExport(currentYear, currentMonth, dashboardData);
+};
 
   // Helper function to get auth headers
   const getAuthHeaders = () => {
@@ -540,21 +572,7 @@ export const useAgentDashboard = (currentUserId) => {
     return new Date(currentYear, currentMonth + 1, 0).getDate()
   }
 
-  const exportMonthlyPDF = () => {
-    const monthName = new Date(currentYear, currentMonth).toLocaleDateString("fr-FR", {
-      month: "long",
-      year: "numeric",
-    })
-    alert(`Export PDF pour ${monthName} - Fonctionnalité à implémenter`)
-  }
 
-  const exportMonthlyExcel = () => {
-    const monthName = new Date(currentYear, currentMonth).toLocaleDateString("fr-FR", {
-      month: "long",
-      year: "numeric",
-    })
-    alert(`Export Excel pour ${monthName} - Fonctionnalité à implémenter`)
-  }
 
   // Check if data is ready for operations
   const isDataReady = () => {

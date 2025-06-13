@@ -722,7 +722,7 @@ const AgentDashboardUI = ({
             <div className="flex items-center space-x-2">
               <button
                 onClick={exportMonthlyExcel}
-                className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
+                className="flex items-center cursor-pointer space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
                 style={{ borderColor: colors.primary, color: colors.primary }}
               >
                 <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -731,7 +731,7 @@ const AgentDashboardUI = ({
               </button>
               <button
                 onClick={exportMonthlyPDF}
-                className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
+                className="flex items-center cursor-pointer space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
                 style={{ borderColor: colors.primary, color: colors.primary }}
               >
                 <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
