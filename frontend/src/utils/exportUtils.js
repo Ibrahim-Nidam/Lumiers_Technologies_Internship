@@ -1,6 +1,8 @@
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import logo from './base64Logo';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 export const getMonthLabel = (year, month) => {
   return new Date(year, month).toLocaleDateString("fr-FR", {
@@ -9,9 +11,145 @@ export const getMonthLabel = (year, month) => {
   });
 };
 
-export const handleExcelExport = (year, month) => {
+export const handleExcelExport = async (year, month, dashboardData) => {
   const label = getMonthLabel(year, month);
-  alert(`Export Excel pour ${label} - Fonctionnalité à implémenter`);
+
+  // --- 1. Reuse your totals calculation from PDF export ---
+  const calculateTotals = () => {
+    const { trips, userMissionRates, userCarLoans, travelTypes } = dashboardData;
+    const dailyAllowances = new Map();
+    const mileageCosts   = new Map();
+    let totalMisc = 0, miscCount = 0;
+
+    trips.forEach(trip => {
+      // misc expenses
+      if (Array.isArray(trip.depenses)) {
+        miscCount += trip.depenses.length;
+        trip.depenses.forEach(e => totalMisc += parseFloat(e.montant)||0);
+      }
+      // mileage
+      const dist = parseFloat(trip.distanceKm)||0;
+      if (trip.carLoanId && dist>0) {
+        const loan = userCarLoans.find(l=>l.id===trip.carLoanId);
+        if (loan) {
+          const rate = parseFloat(loan.tarifParKm)||0;
+          const cost = dist*rate;
+          const key  = loan.libelle||'(Véhicule non spécifié)';
+          if (!mileageCosts.has(key)) mileageCosts.set(key, { distance:0, total:0, rate });
+          const cur = mileageCosts.get(key);
+          cur.distance += dist;
+          cur.total    += cost;
+        }
+      }
+      // daily allowances
+      const mr = userMissionRates.find(r=>r.typeDeDeplacementId===trip.typeDeDeplacementId);
+      if (mr) {
+        const rate = parseFloat(mr.tarifParJour)||0;
+        const name = travelTypes.find(t=>t.id===trip.typeDeDeplacementId)?.nom || 'Inconnu';
+        if (!dailyAllowances.has(rate)) dailyAllowances.set(rate, { count:0, total:0, name });
+        const cur = dailyAllowances.get(rate);
+        cur.count++;
+        cur.total += rate;
+      }
+    });
+
+    let grand = totalMisc;
+    mileageCosts.forEach(v=>grand+=v.total);
+    dailyAllowances.forEach(v=>grand+=v.total);
+
+    return { totalMisc, miscCount, mileageCosts, dailyAllowances, grand };
+  };
+
+  const totals = calculateTotals();
+  const { fullName = '' } = dashboardData.userInfo || {};
+
+  // --- 2. Build workbook & worksheet ---
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet(label);
+
+  // (a) header image
+  const imgId = wb.addImage({
+    base64: logo,
+    extension: 'png',
+  });
+  ws.addImage(imgId, { tl: { col: 0, row: 0 }, ext: { width: 120, height: 60 } });
+  ws.mergeCells('D1:E2');
+  ws.getCell('D1').value = `Nom et Prénom : ${fullName}`;
+  ws.getCell('D1').alignment = { horizontal: 'right', vertical: 'middle' };
+  ws.getCell('D1').font = { size: 12 };
+
+  // (b) title
+  ws.mergeCells('A4:E4');
+  ws.getCell('A4').value = `Note de frais – ${label}`;
+  ws.getCell('A4').font = { size: 16, bold: true };
+  ws.getCell('A4').alignment = { horizontal: 'center' };
+
+  // (c) table header
+  const headerRow = ws.addRow(['Désignation','Chantier','Quantité','Taux / J','Montant']);
+  headerRow.eachCell(cell => {
+    cell.font = { bold: true };
+    cell.fill = {
+      type: 'pattern', pattern:'solid', fgColor:{ argb:'FFF0F0F0' }
+    };
+    cell.border = {
+      top: {style:'thin'}, left:{style:'thin'},
+      bottom:{style:'thin'}, right:{style:'thin'}
+    };
+    cell.alignment = { vertical:'middle', horizontal:'center' };
+  });
+
+  // (d) misc expenses row
+  ws.addRow([
+    'Feuille de depens','',
+    totals.miscCount,
+    '-',
+    totals.totalMisc.toFixed(2)
+  ]).alignment = { horizontal:'right' };
+
+  // (e) daily allowances
+  totals.dailyAllowances.forEach(({ count, total, name }, rate) => {
+    ws.addRow([
+      `Frais journaliers (${name})`,
+      '',
+      count,
+      rate.toFixed(2),
+      total.toFixed(2)
+    ]).alignment = { horizontal:'right' };
+  });
+
+  // (f) mileage
+  totals.mileageCosts.forEach(({ distance, total, rate }, libelle) => {
+    ws.addRow([
+      `Frais kilométrique (${libelle})`,
+      '',
+      `${distance.toFixed(2)} Km`,
+      rate.toFixed(2),
+      total.toFixed(2)
+    ]).alignment = { horizontal:'right' };
+  });
+
+  // (g) grand total
+  const totalRow = ws.addRow(['Total Dépense','','','','',]);
+  ws.mergeCells(`A${totalRow.number}:D${totalRow.number}`);
+  const lastCell = ws.getCell(`E${totalRow.number}`);
+  lastCell.value = totals.grand.toFixed(2);
+  lastCell.font = { bold: true };
+  lastCell.fill = { type:'pattern',pattern:'solid',fgColor:{argb:'FFF0F0F0'} };
+  lastCell.alignment = { horizontal:'right' };
+
+  // auto‑width
+  ws.columns.forEach(c=>{
+    let max = 10;
+    c.eachCell(cell => {
+      const len = (cell.value||'').toString().length;
+      if (len>max) max = len;
+    });
+    c.width = max + 2;
+  });
+
+  // --- 3. Write & download ---
+  const buf = await wb.xlsx.writeBuffer();
+  saveAs(new Blob([buf]), `Note_de_frais_${fullName}_${year}_${month+1}.xlsx`);
 };
 
 export const handlePDFExport = async (year, month, dashboardData) => {
@@ -217,7 +355,7 @@ export const handlePDFExport = async (year, month, dashboardData) => {
   };
 
   try {
-    pdfMake.createPdf(docDefinition).download(`note_de_frais_${year}_${month + 1}.pdf`);
+    pdfMake.createPdf(docDefinition).download(`Note_de_frais_${userInfo.fullName}_${year}_${month + 1}.pdf`);
   } catch (error) {
     console.error('Error generating PDF:', error);
     alert('Une erreur est survenue lors de la génération du PDF');

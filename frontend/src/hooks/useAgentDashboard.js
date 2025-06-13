@@ -28,9 +28,33 @@ export const useAgentDashboard = (currentUserId) => {
   const currentYear = currentDate.getFullYear()
   const currentMonth = currentDate.getMonth()
 
-  // Updated section from your useAgentDashboard hook
 
-const exportMonthlyExcel = () => handleExcelExport(currentYear, currentMonth);
+const exportMonthlyExcel = () => {
+  // Get user data - handle both parsed and string formats
+  let userInfo = {};
+  try {
+    const userData = localStorage.getItem("user") || sessionStorage.getItem("user");
+    if (userData) {
+      userInfo = typeof userData === 'string' ? JSON.parse(userData) : userData;
+    }
+  } catch (error) {
+    console.error('Error parsing user data:', error);
+  }
+
+  // Prepare dashboard data for PDF export
+  const dashboardData = {
+    trips: getMonthlyTrips(), // Only get trips for current month
+    userInfo: {
+      fullName: userInfo?.nom_complete || userInfo?.name || 'N/A',
+    },
+    userMissionRates,
+    userCarLoans,
+    expenseTypes,
+    travelTypes
+  };
+  
+  return handleExcelExport(currentYear, currentMonth, dashboardData);
+};
 
 const exportMonthlyPDF = () => {
   // Get user data - handle both parsed and string formats
