@@ -1,6 +1,7 @@
 require("dotenv").config()
 const express = require("express")
 const cors = require("cors")
+const path = require("path");
 
 const {
   sequelize,
@@ -56,6 +57,7 @@ app.use(express.json())
     app.use("/api/deplacements", deplacementRouter)
 
     app.use("/api/user-daily-returns", dailyReturnRoutes)
+    app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
     app.get("/api/dashboard-data", authMiddleware, async (req, res) => {
       const userId = req.user.userId

@@ -17,6 +17,7 @@
     "express": "^5.1.0",
     "express-async-handler": "^1.2.0",
     "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.1",
     "pg": "^8.16.0",
     "pg-hstore": "^2.3.4",
     "react-router-dom": "^6.30.1",

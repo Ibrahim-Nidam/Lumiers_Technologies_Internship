@@ -8,6 +8,10 @@ const {
   Sequelize,
 } = require("../models")
 const { Op } = Sequelize
+const path = require("path");
+const fs = require("fs")
+
+
 
 exports.getDeplacements = async (req, res) => {
   try {
@@ -307,3 +311,79 @@ exports.deleteDeplacement = async (req, res) => {
     })
   }
 }
+
+exports.addExpenseJustificatif = async (req, res) => {
+  const { tripId, expenseId } = req.params;
+  console.log("→ Incoming file upload:", { tripId, expenseId, file: req.file });
+
+  if (!req.file) {
+    console.error("No file on req.file");
+    return res.status(400).json({ error: "No file uploaded." });
+  }
+
+  try {
+    // verify file actually landed on disk
+    const uploadPath = path.join(__dirname, "../uploads", req.file.filename);
+    if (!fs.existsSync(uploadPath)) {
+      console.error("Uploaded file not found at:", uploadPath);
+      return res.status(500).json({ error: "File saved but not found." });
+    }
+
+    // find the expense
+    const expense = await Depense.findOne({
+      where: { id: expenseId, deplacementId: tripId },
+    });
+    if (!expense) {
+      console.error("Expense not found for trip", tripId, "and expense", expenseId);
+      return res.status(404).json({ error: "Expense not found." });
+    }
+
+    // update the DB record
+    expense.cheminJustificatif = `/uploads/${req.file.filename}`;
+    await expense.save();
+
+    console.log("→ Expense updated successfully:", expense.toJSON());
+    res.json(expense);
+  } catch (err) {
+    console.error("🔥 Error in addExpenseJustificatif:", err);
+    res.status(500).json({ error: "Server error.", details: err.message });
+  }
+};
+
+exports.removeExpenseJustificatif = async (req, res) => {
+  const { tripId, expenseId } = req.params;
+
+  try {
+    // 1) find the expense
+    const expense = await Depense.findOne({
+      where: { id: expenseId, deplacementId: tripId },
+    });
+    if (!expense) {
+      return res.status(404).json({ error: "Expense not found." });
+    }
+
+    // 2) if there is a file, delete it from disk
+    if (expense.cheminJustificatif) {
+      // cheminJustificatif is something like "/uploads/justificatif-123456789.pdf"
+      const filePath = path.join(
+        __dirname,
+        "..",
+        expense.cheminJustificatif.replace(/^\//, "")
+      );
+      fs.unlink(filePath, (err) => {
+        if (err && err.code !== "ENOENT") {
+          console.error("Failed to delete file:", err);
+        }
+      });
+    }
+
+    // 3) null out the DB field
+    expense.cheminJustificatif = null;
+    await expense.save();
+
+    return res.json({ message: "Justificatif removed." });
+  } catch (err) {
+    console.error("Error in removeExpenseJustificatif:", err);
+    return res.status(500).json({ error: "Server error." });
+  }
+};

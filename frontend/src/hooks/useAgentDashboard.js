@@ -493,31 +493,83 @@ const exportMonthlyPDF = () => {
   }
 
   // Handle file upload for expense
-  const handleExpenseFileUpload = async (tripId, expenseId, file) => {
-    if (isUpdating) return
+const handleExpenseFileUpload = async (tripId, expenseId, file) => {
+  if (isUpdating) return;
+  try {
+    setIsUpdating(true);
 
-    try {
-      setIsUpdating(true)
-      const fileName = file ? file.name : null
-      await updateExpenseField(tripId, expenseId, "cheminJustificatif", fileName)
-    } catch (error) {
-      console.error("Failed to upload file:", error)
-    } finally {
-      setIsUpdating(false)
-    }
+    // Build FormData
+    const form = new FormData();
+    form.append("justificatif", file);
+
+    // POST to your new upload endpoint
+    const headers = {
+      ...getAuthHeaders(),
+      "Content-Type": "multipart/form-data",
+    };
+    const response = await axios.post(
+      `${API_BASE_URL}/api/deplacements/${tripId}/depenses/${expenseId}/justificatif`,
+      form,
+      { headers }
+    );
+
+    // The server returns the updated expense (with cheminJustificatif)
+    const updatedExpense = response.data;
+    // Merge it into your trip state
+    setTrips((prev) =>
+      prev.map((t) =>
+        t.id === tripId
+          ? { 
+              ...t, 
+              depenses: t.depenses.map((e) =>
+                e.id === expenseId ? updatedExpense : e
+              )
+            }
+          : t
+      )
+    );
+  } catch (error) {
+    console.error("Failed to upload file:", error);
+  } finally {
+    setIsUpdating(false);
   }
+};
 
-  // Clear file upload
-  const clearExpenseFile = async (tripId, expenseId) => {
-    if (isUpdating) return
 
-    try {
-      setIsUpdating(true)
-      await updateExpenseField(tripId, expenseId, "cheminJustificatif", null)
-    } finally {
-      setIsUpdating(false)
-    }
+ // in your React component
+
+const clearExpenseFile = async (tripId, expenseId) => {
+  if (isUpdating) return;
+  try {
+    setIsUpdating(true);
+    const headers = getAuthHeaders();
+    await axios.delete(
+      `${API_BASE_URL}/api/deplacements/${tripId}/depenses/${expenseId}/justificatif`,
+      { headers }
+    );
+
+    // locally clear it too
+    setTrips(prev =>
+      prev.map(t =>
+        t.id === tripId
+          ? {
+              ...t,
+              depenses: t.depenses.map(e =>
+                e.id === expenseId
+                  ? { ...e, cheminJustificatif: null }
+                  : e
+              ),
+            }
+          : t
+      )
+    );
+  } catch (err) {
+    console.error("Failed to clear file:", err);
+  } finally {
+    setIsUpdating(false);
   }
+};
+
 
   const deleteExpense = async (tripId, expenseId) => {
     if (isUpdating) return
