@@ -208,10 +208,32 @@ const Header = () => {
 
       <div
         className={`md:hidden transition-all duration-300 ease-in-out ${
-          mobileMenuOpen ? "max-h-80 opacity-100" : "max-h-0 opacity-0 overflow-hidden"
+          mobileMenuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0 overflow-hidden"
         }`}
       >
         <div className="px-4 pt-2 pb-4 space-y-1 bg-white border-t border-slate-200 shadow-lg">
+          {/* User greeting section for mobile - only show when logged in */}
+          {isLoggedIn && (
+            <div
+              onClick={() => {
+                navigate("/profile-settings");
+                setMobileMenuOpen(false);
+              }}
+              className="block px-4 underline py-3 text-center cursor-pointer hover:bg-slate-50 rounded-md transition-colors duration-200 border-b border-slate-100 mb-2"
+            >
+              <span className="text-sm text-slate-700 font-medium">
+                {new Date().getHours() < 12
+                  ? "Bonjour, "
+                  : new Date().getHours() < 18
+                  ? "Bon après-midi, "
+                  : "Bonsoir, "}
+                <span className="text-primary font-bold">
+                  {userData?.nom_complete || "Utilisateur"}
+                </span>
+              </span>
+            </div>
+          )}
+
           <Link
             to="/about"
             className={`block px-4 py-3 text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-md font-medium text-sm transition-colors duration-200 ${
