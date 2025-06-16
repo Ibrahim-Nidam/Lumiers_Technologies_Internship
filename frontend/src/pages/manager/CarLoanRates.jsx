@@ -2,6 +2,17 @@ import { useEffect, useState } from "react";
 import apiClient from "../../utils/axiosConfig";
 import { toast } from "sonner";
 
+/**
+ * Page to manage car-loan rates
+ *
+ * 1. Fetch all car-loan rates on mount
+ * 2. Allow updating status for a single rate
+ * 3. Show a loading spinner or message while fetching
+ * 4. If no rates exist, show a placeholder
+ * 5. Compute global counts of each status
+ * 6. Group by user
+ */
+
 export default function CarLoanRates() {
   const [carLoanRates, setCarLoanRates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,13 +43,18 @@ export default function CarLoanRates() {
     fetchRates();
   }, []);
 
-  // 2) Handler to update status for a single rate
+/**
+ * Updates the status of a car-loan rate with the given ID
+ * 
+ * @param {number} id The ID of the car-loan rate to update
+ * @param {"en_attente"|"approuvé"|"rejeté"} newStatus The new status to set
+ */
+
   const handleStatusChange = async (id, newStatus) => {
     try {
 
       const res = await apiClient.patch(`/car-loan-rates/${id}/status`, {
         statut: newStatus,
-        // approuveParGestionnaireId: 1, // TODO: replace with actual logged-in user ID
       });
 
 

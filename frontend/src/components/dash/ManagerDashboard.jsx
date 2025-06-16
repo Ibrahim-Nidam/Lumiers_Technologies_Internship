@@ -8,9 +8,25 @@ import MissionRates from "../../pages/manager/MissionRates"
 import CarLoanRates from "../../pages/manager/CarLoanRates"
 import Consult from "../../pages/manager/Consult"
 
+/**
+ * The AdminDashboard component renders the entire manager dashboard interface.
+ *
+ * It contains a state variable `activeTab` to keep track of the currently
+ * active tab, and a `renderContent` function to conditionally render the
+ * correct component based on the value of `activeTab`. The rendered component
+ * is then rendered inside a container div with a gradient background.
+ *
+ * @returns {JSX.Element} The rendered AdminDashboard component.
+ */
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("accounts")
   
+  /**
+   * Renders the correct component based on the value of the `activeTab` state
+   * variable.
+   *
+   * @returns {JSX.Element} The rendered component.
+   */
   const renderContent = () => {
     switch (activeTab) {
       case "accounts":

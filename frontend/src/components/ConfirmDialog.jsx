@@ -1,5 +1,14 @@
 "use client";
 
+/**
+ * A confirmation dialog component.
+ *
+ * @param {boolean} open - Whether the dialog should be rendered or not.
+ * @param {string} title - The title of the dialog.
+ * @param {string} message - The message to display in the dialog.
+ * @param {function} onConfirm - The function to call when the user clicks the confirm button.
+ * @param {function} onCancel - The function to call when the user clicks the cancel button.
+ */
 export default function ConfirmDialog({ open, title, message, onConfirm, onCancel }) {
   if (!open) return null;
 

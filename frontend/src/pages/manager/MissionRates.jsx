@@ -2,6 +2,16 @@ import { useEffect, useState } from "react";
 import apiClient from "../../utils/axiosConfig";
 import { toast } from "sonner";
 
+/**
+ * Page to manage mission rates
+ *
+ * 1. Fetch all mission rates on mount
+ * 2. Allow updating status for a single rate
+ * 3. Show a loading spinner or message while fetching
+ * 4. If no rates exist, show a placeholder
+ * 5. Compute global counts of each status
+ * 6. Group by user
+ */
 export default function MissionRates() {
   const [groupedRates, setGroupedRates] = useState({});
   const [loading, setLoading] = useState(true);
@@ -36,6 +46,14 @@ export default function MissionRates() {
     fetchRates();
   }, []);
 
+/**
+ * Updates the status of a mission rate with the given ID
+ *
+ * @param {number} id - The ID of the mission rate to update
+ * @param {"en_attente"|"approuvé "|\ "rejeté "} newStatus - The new status to set
+ *
+ * @throws {Error} If the API request fails
+ */
   const handleStatusChange = async (id, newStatus) => {
     try {
 

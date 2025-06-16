@@ -1,6 +1,11 @@
 import React from 'react';
 import { colors } from '../colors';
 
+/**
+ * Page "À propos" de l'application, qui présente les valeurs et la mission de Lumières et Technologie.
+ * Elle comprend une section de présentation de l'entreprise, une section "Notre mission" et une section "Nos valeurs".
+ * Les éléments de la section "Nos valeurs" sont des icônes avec des titres et des descriptions.
+ */
 const About = () => {
   return (
     <main className="max-w-4xl mx-auto px-4 py-12">

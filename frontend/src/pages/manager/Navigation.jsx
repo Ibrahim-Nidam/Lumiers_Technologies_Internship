@@ -1,5 +1,16 @@
 "use client"
 
+/**
+ * Navigation component for managing and displaying different tabs in the manager dashboard.
+ * Each tab represents a specific section such as accounts, expenses, travel, missions, vehicles, and consult.
+ * The component highlights the active tab and allows switching between tabs by updating the activeTab state.
+ *
+ * @param {Object} props - The component props.
+ * @param {string} props.activeTab - The currently active tab identifier.
+ * @param {Function} props.setActiveTab - Function to update the active tab state.
+ * @returns {JSX.Element} The rendered navigation component.
+ */
+
 export default function Navigation({ activeTab, setActiveTab }) {
   const tabs = [
     { id: "accounts", label: "Comptes", icon: "👥" },

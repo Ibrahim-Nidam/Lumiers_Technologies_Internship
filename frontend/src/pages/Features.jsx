@@ -1,6 +1,11 @@
 import React from 'react';
 import FeatureCard from '../components/FeatureCard';
 
+/**
+ * Page qui liste les services principaux de Lumières Et Technologie Sarl
+ *
+ * @returns {JSX.Element} La page des services
+ */
 const Features = () => (
   <div className="max-w-5xl mx-auto px-4 py-12 md:py-16">
     <h2 className="text-3xl md:text-4xl font-bold text-slate-900">

@@ -4,6 +4,13 @@ import logo from './base64Logo';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
+/**
+ * Returns a human-readable label for the given year and month as a string.
+ *
+ * @param {number} year - The year to get the label for.
+ * @param {number} month - The month to get the label for (0-11).
+ * @returns {string} The month label in the format "MonthName Year" (e.g. "F vrier 2022").
+ */
 export const getMonthLabel = (year, month) => {
   return new Date(year, month).toLocaleDateString("fr-FR", {
     month: "long",
@@ -11,6 +18,15 @@ export const getMonthLabel = (year, month) => {
   });
 };
 
+/**
+ * Export the specified user's data for the current month as an Excel file.
+ *
+ * @param {number} year - The year to export (e.g. 2022).
+ * @param {number} month - The month to export (0-11, where 0 = January).
+ * @param {Object} dashboardData - The dashboard data to export.
+ *
+ * @returns {Promise<void>}
+ */
 export const handleExcelExport = async (year, month, dashboardData) => {
   const label = getMonthLabel(year, month);
 
@@ -151,6 +167,16 @@ export const handleExcelExport = async (year, month, dashboardData) => {
   const buf = await wb.xlsx.writeBuffer();
   saveAs(new Blob([buf]), `Note_de_frais_${fullName}_${year}_${month+1}.xlsx`);
 };
+
+/**
+ * Generates a PDF file for the specified month and dashboard data.
+ *
+ * @param {number} year - The year of the month to generate a PDF for.
+ * @param {number} month - The month to generate a PDF for (0-11).
+ * @param {Object} dashboardData - The dashboard data to include in the PDF.
+ *
+ * @returns {Promise<void>} A Promise that resolves when the PDF has been generated and downloaded.
+ */
 
 export const handlePDFExport = async (year, month, dashboardData) => {
   const label = getMonthLabel(year, month);

@@ -4,6 +4,13 @@ import Message from "../../components/Message";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import { toast } from "sonner";
 
+/**
+ * ExpenseTypes
+ *
+ * Gère les types de dépenses.
+ *
+ * @return {JSX.Element} Le composant React
+ */
 export default function ExpenseTypes() {
   const [expenseTypes, setExpenseTypes] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -14,6 +21,18 @@ export default function ExpenseTypes() {
   const [deleteId, setDeleteId] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  /**
+   * Fetches the list of expense types from the API.
+   *
+   * Updates the component state with the received list of expense types.
+   *
+   * If the request fails with a 401 status code, shows a toast and lets the
+   * interceptor handle the redirect.
+   *
+   * If the request fails with any other status code, shows an error message.
+   *
+   * @returns {Promise<void>}
+   */
   const fetchExpenseTypes = async () => {
     try {
       setLoading(true);
@@ -38,6 +57,24 @@ export default function ExpenseTypes() {
     fetchExpenseTypes();
   }, []);
 
+  /**
+   * Handles the submission of the expense type form.
+   *
+   * If the expense type already exists, shows an error message.
+   *
+   * If the expense type is being edited, sends a PUT request to the API.
+   * If the expense type is being created, sends a POST request to the API.
+   *
+   * Shows a success message on successful submission.
+   *
+   * If the request fails with a 401 status code, shows a toast and lets the
+   * interceptor handle the redirect.
+   *
+   * If the request fails with any other status code, shows an error message.
+   *
+   * @param {Event} e The form submission event
+   * @returns {Promise<void>}
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -73,11 +110,28 @@ export default function ExpenseTypes() {
     }
   };
 
+
+  /**
+   * Sets the delete ID and shows the confirmation dialog for deleting an expense type.
+   *
+   * @param {number} id The ID of the expense type to delete
+   */
   const handleDeleteClick = (id) => {
     setDeleteId(id);
     setShowConfirm(true);
   };
 
+  /**
+   * Deletes the expense type with the given ID and shows a success message if the
+   * request is successful.
+   *
+   * If the request fails with a 401 status code, shows a toast and lets the
+   * interceptor handle the redirect.
+   *
+   * If the request fails with any other status code, shows an error message.
+   *
+   * @returns {Promise<void>}
+   */
   const confirmDelete = async () => {
     try {
       await apiClient.delete(`/expense-types/${deleteId}`);
@@ -97,12 +151,22 @@ export default function ExpenseTypes() {
     }
   };
 
+  /**
+   * Opens the form in edit mode for the given expense type.
+   *
+   * @param {Object} type The expense type to edit
+   */
   const handleEdit = (type) => {
     setNewType({ nom: type.nom, description: type.description });
     setEditId(type.id);
     setShowForm(true);
   };
 
+  /**
+   * Cancels the editing process for an expense type.
+   *
+   * Resets the form fields and hides the form. Also resets the current edit ID.
+   */
   const cancelEdit = () => {
     setNewType({ nom: "", description: "" });
     setEditId(null);

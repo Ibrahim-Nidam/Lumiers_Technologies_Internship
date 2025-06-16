@@ -2,6 +2,17 @@
 
 import { useEffect } from "react";
 
+/**
+ * Displays a message with a specified type (success or error)
+ * and optionally clears itself after a specified time.
+ *
+ * @param {string} message The message to display
+ * @param {"success"|"error"} messageType The type of message to display
+ * @param {function} onClear The function to call when the message should be cleared
+ * @param {boolean} [persistent=false] Whether the message should be persistent
+ * and not auto-clear itself
+ * @return {JSX.Element} The message component
+ */
 export default function Message({ message, messageType, onClear, persistent = false }) {
   // Only auto-clear success messages, not error messages when persistent is true
   useEffect(() => {

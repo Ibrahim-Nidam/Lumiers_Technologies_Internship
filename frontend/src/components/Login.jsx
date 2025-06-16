@@ -4,6 +4,11 @@ import { useNavigate } from "react-router-dom";
 import apiClient from "../utils/axiosConfig"; // Use the configured axios instance
 import { colors } from "../colors";
 
+/**
+ * Returns the redirect path based on the role of the user
+ * @param {string} role - The user's role
+ * @returns {string} The redirect path
+ */
 const getRedirectPath = (role) => {
   switch (role) {
     case "admin":
@@ -16,11 +21,27 @@ const getRedirectPath = (role) => {
   }
 };
 
+/**
+ * Retrieves stored user credentials from local or session storage.
+ * 
+ * @returns {Object} An object containing the user information and token.
+ * - user: The user object parsed from stored JSON string, or null if not found.
+ * - token: The authentication token string, or null if not found.
+ */
+
 const getStoredCredentials = () => {
   const user = JSON.parse(localStorage.getItem("user") || sessionStorage.getItem("user") || "null");
   const token = localStorage.getItem("token") || sessionStorage.getItem("token");
   return { user, token };
 };
+
+/**
+ * Stores user credentials in either localStorage or sessionStorage based on the remember flag.
+ *
+ * @param {Object} user - The user object to be stored.
+ * @param {string} token - The authentication token to be stored.
+ * @param {boolean} remember - If true, credentials are stored in localStorage; otherwise, in sessionStorage.
+ */
 
 const storeCredentials = (user, token, remember) => {
   const storage = remember ? localStorage : sessionStorage;
@@ -28,6 +49,15 @@ const storeCredentials = (user, token, remember) => {
   storage.setItem("token", token);
 };
 
+/**
+ * A login form component to authenticate users using the `/auth/login` endpoint.
+ *
+ * This component stores user credentials in local or session storage based on
+ * the `rememberMe` state. It also handles errors and success messages displayed
+ * under the form.
+ *
+ * @returns {React.ReactElement} - The Login component.
+ */
 export default function Login() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: "", password: "" });
@@ -45,6 +75,14 @@ export default function Login() {
     }
   }, [navigate]);
 
+  /**
+   * Handles input changes in the login form.
+   *
+   * Updates the state with the new value of the input field and clears any
+   * existing message if present.
+   *
+   * @param {React.ChangeEvent<HTMLInputElement>} e - The input event.
+   */
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     if (message) {
@@ -53,6 +91,18 @@ export default function Login() {
     }
   };
 
+  /**
+   * Handles the form submission for logging in a user.
+   *
+   * On successful login, stores user credentials in either localStorage or
+   * sessionStorage based on the `rememberMe` state. It also shows a success
+   * message and redirects the user after a short delay.
+   *
+   * If the request fails, shows an error message.
+   *
+   * @param {Event} e The form submission event
+   * @returns {Promise<void>}
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);

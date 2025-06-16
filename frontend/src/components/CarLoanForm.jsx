@@ -3,6 +3,18 @@
 import { colors } from "../colors";
 import Message from "./Message";
 
+/**
+ * A reusable form component for creating car-loan entries.
+ *
+ * @param {Array} carLoanEntries An array of car-loan entries, each with a destination and a taux.
+ * @param {Function} onChangeEntry The function to call when the user makes a change to a car-loan entry.
+ * @param {Function} onAddEntry The function to call when the user wants to add a new car-loan entry.
+ * @param {Function} onFinalSubmit The function to call when the user submits the car-loan form.
+ * @param {boolean} isLoading Whether the form is being submitted or not.
+ * @param {string} message The message to display to the user, if any.
+ * @param {string} messageType The type of message to display, either "success" or "error".
+ * @param {Function} clearMessage The function to call when the user wants to clear the message.
+ */
 export default function CarLoanForm({
   carLoanEntries,
   onChangeEntry,

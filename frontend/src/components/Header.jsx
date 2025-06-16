@@ -2,6 +2,17 @@ import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { colors } from "../colors";
 
+/**
+ * The Header component renders a sticky header with the logo, navigation links, and a login/logout button.
+ * The component is responsive and displays a mobile menu on smaller screens.
+ * The component also checks if the user is logged in and displays the dashboard path accordingly.
+ * The component also handles logout by removing the token and user data from localStorage and sessionStorage.
+ * The component also handles the mobile menu state and toggles it on click.
+ *
+ * @returns {JSX.Element} The rendered Header component.
+ * @example
+ * <Header />
+ */
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
@@ -12,6 +23,12 @@ const Header = () => {
     localStorage.getItem("token") || sessionStorage.getItem("token");
   const isLoggedIn = Boolean(token);
 
+  /**
+   * Retrieves the user data from either local or session storage.
+   * If the data is a string, it is parsed as JSON, otherwise it is returned as null.
+   * If an error occurs while parsing, it is logged to the console and the function returns null.
+   * @returns {object | null} The user data if found and valid, otherwise null.
+   */
   const getUserData = () => {
     try {
       const userData =
@@ -23,6 +40,10 @@ const Header = () => {
     }
   };
 
+  /**
+   * Logs the user out by removing the token and user data from localStorage and
+   * sessionStorage. Redirects to the root path.
+   */
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -30,6 +51,14 @@ const Header = () => {
     sessionStorage.removeItem("user");
     navigate("/");
   };
+
+/**
+ * Determines the dashboard path based on the user's role.
+ * 
+ * @param {object} user - The user object containing role information.
+ * @returns {string} The path to the appropriate dashboard based on the user's role.
+ *                    Returns "/profile-settings" if user or user role is not provided.
+ */
 
   const getDashboardPath = (user) => {
     if (!user || !user.role) return "/profile-settings";

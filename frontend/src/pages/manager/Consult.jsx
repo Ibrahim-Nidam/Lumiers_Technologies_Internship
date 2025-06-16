@@ -7,6 +7,12 @@ import { FaFileExcel, FaFilePdf , FaFileArchive } from 'react-icons/fa';
 
 
 
+/**
+ * Page de consultation des utilisateurs, permettant de télécharger 
+ * des exports Excel et PDF des données de chaque utilisateur.
+ *
+ * @returns {React.ReactElement} Le composant React
+ */
 export default function Consult() {
   const today = new Date();
   const [currentYear, setCurrentYear]   = useState(today.getFullYear());
@@ -29,6 +35,11 @@ export default function Consult() {
       .catch(err => console.error(err));
   }, []);
 
+/**
+ * Navigates to the previous month by updating the current month and year state.
+ * If the current month is January, it wraps around to December of the previous year.
+ */
+
   const goToPreviousMonth = () => {
     let m = currentMonth - 1, y = currentYear;
     if (m < 0) { m = 11; y -= 1; }
@@ -41,12 +52,24 @@ export default function Consult() {
     setCurrentMonth(m); setCurrentYear(y);
   };
 
+/**
+ * Updates the current year and month states to the specified values
+ * and hides the year picker.
+ *
+ * @param {number} year - The year to navigate to.
+ * @param {number} month - The month to navigate to (0 for January, 11 for December).
+ */
+
   const goToYearMonth = (year, month) => {
     setCurrentYear(year);
     setCurrentMonth(month);
     setShowYearPicker(false);
   };
 
+/**
+ * Resets the current year and month states to the current date's year and month,
+ * which has the effect of navigating to the current month.
+ */
   const goToToday = () => {
     setCurrentYear(today.getFullYear());
     setCurrentMonth(today.getMonth());
@@ -60,7 +83,14 @@ export default function Consult() {
   // Formatte « YYYY-MM » avec deux chiffres pour le mois
   const formattedMonth = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`;
 
-  // Nouvelle fonction pour exporter
+  /**
+   * Export the specified user's data for the current month as a ZIP file.
+   *
+   * @param {number} userId - The ID of the user to export.
+   * @param {string} type - The type of data to export (allowed values: "rapports", "notes", "km").
+   *
+   * @throws {Error} If the export fails for any reason.
+   */
   const handleExport = async (userId, type) => {
     try {
       const response = await apiClient.get(
@@ -180,9 +210,7 @@ export default function Consult() {
     </div>
   </div>
 ))}
-
-
 </div>
-    </div>
-  );
+</div>
+);
 }

@@ -3,6 +3,16 @@ import Login from "../components/Login";
 import Register from "../components/Register";
 import { colors } from "../colors";
 
+/**
+ * The Home component renders a page with a tabbed interface for signing in or
+ * registering a user. It provides a simple interface for users to switch between
+ * signing in and registering by clicking the corresponding tab. The component
+ * itself does not contain any authentication logic; it simply renders the
+ * appropriate form (Login or Register) based on the state of the
+ * `showRegister` state variable.
+ *
+ * @returns {JSX.Element} The rendered Home component.
+ */
 export default function Home() {
   const [showRegister, setShowRegister] = useState(false);
 

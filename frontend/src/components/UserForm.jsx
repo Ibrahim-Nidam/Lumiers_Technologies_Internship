@@ -3,6 +3,27 @@
 import { colors } from "../colors";
 import Message from "./Message";
 
+/**
+ * A reusable form component for creating a user account.
+ *
+ * @param {Object} form The user's input data.
+ * @param {Function} onChange The function to call when the form data changes.
+ * @param {Function} onSubmit The function to call when the user submits the form.
+ * @param {boolean} showPassword Whether to show the password input or not.
+ * @param {Function} setShowPassword The function to call when the user wants to show/hide the password input.
+ * @param {Object} passwordValidation An object containing the password requirements and strength.
+ * @param {number} passwordStrength The strength of the password, from 0 to 3.
+ * @param {Array} strengthLabels The labels for the password strength, from "Trop faible" to "Fort".
+ * @param {Array} roles An array of role objects, each with a label, value and description.
+ * @param {boolean} carLoanChecked Whether the user has a car loan or not.
+ * @param {Function} onToggleCarLoan The function to call when the user toggles the car loan checkbox.
+ * @param {boolean} termsAccepted Whether the user has accepted the terms and conditions or not.
+ * @param {Function} onToggleTerms The function to call when the user toggles the terms and conditions checkbox.
+ * @param {boolean} isLoading Whether the form is being submitted or not.
+ * @param {string} message The message to display to the user, if any.
+ * @param {string} messageType The type of message to display, either "success" or "error".
+ * @param {Function} clearMessage The function to call when the user wants to clear the message.
+ */
 export default function UserForm({
 form,
 onChange,

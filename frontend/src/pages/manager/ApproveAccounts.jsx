@@ -2,6 +2,11 @@ import { useEffect, useState, useCallback } from "react";
 import apiClient from "../../utils/axiosConfig"; // Import the configured axios instance
 import { toast } from "sonner";
 
+/**
+ * Component for managing user account approvals. It fetches all user accounts on mount and displays a table with the users' names, car status, account status and role.
+ * The component also allows to toggle the car status and account status for each user.
+ * @returns {JSX.Element} The component's JSX element.
+ */
 export default function AccountApproval() {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +34,16 @@ export default function AccountApproval() {
   useEffect(() => {
     fetchAccounts();
   }, [fetchAccounts]);
+
+/**
+ * Toggles a specified field for a user account and updates the account state.
+ * Sends a PATCH request to the server to change the value of the given field.
+ * Updates the local account state and displays a success or error message.
+ *
+ * @param {number} id - The unique identifier of the user account.
+ * @param {string} field - The name of the field to be toggled ('estActif' or 'possedeVoiturePersonnelle').
+ * @param {boolean} currentValue - The current value of the field being toggled.
+ */
 
   const toggleField = async (id, field, currentValue) => {
     const newValue = !currentValue;

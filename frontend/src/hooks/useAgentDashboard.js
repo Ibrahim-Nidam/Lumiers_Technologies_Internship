@@ -7,6 +7,11 @@ import { handleExcelExport, handlePDFExport } from "../utils/exportUtils";
 // Set the base URL for all axios requests
 const API_BASE_URL = "http://localhost:3001"
 
+/**
+ * Hook to manage the agent dashboard state and operations
+ * @param {number} currentUserId The current user ID from the authentication token
+ * @returns {object} An object containing the state and functions to manage the agent dashboard
+ */
 export const useAgentDashboard = (currentUserId) => {
   const [trips, setTrips] = useState([])
   const [travelTypes, setTravelTypes] = useState([])
@@ -29,6 +34,10 @@ export const useAgentDashboard = (currentUserId) => {
   const currentMonth = currentDate.getMonth()
 
 
+/**
+ * Export the current month's data as an Excel file
+ * @returns {Promise<void>} A Promise that resolves when the export is complete
+ */
 const exportMonthlyExcel = () => {
   // Get user data - handle both parsed and string formats
   let userInfo = {};
@@ -56,6 +65,10 @@ const exportMonthlyExcel = () => {
   return handleExcelExport(currentYear, currentMonth, dashboardData);
 };
 
+/**
+ * Export the current month's data as a PDF file
+ * @returns {Promise<void>} A Promise that resolves when the export is complete
+ */
 const exportMonthlyPDF = () => {
   // Get user data - handle both parsed and string formats
   let userInfo = {};
@@ -83,7 +96,16 @@ const exportMonthlyPDF = () => {
   return handlePDFExport(currentYear, currentMonth, dashboardData);
 };
 
-  // Helper function to get auth headers
+/**
+ * Retrieves authorization headers for API requests.
+ * 
+ * Checks for a token in localStorage or sessionStorage and returns
+ * an object containing the Authorization header if a token is found.
+ * If no token is found, returns an empty object.
+ * 
+ * @returns {Object} An object containing the Authorization header or an empty object.
+ */
+
   const getAuthHeaders = () => {
     const token = localStorage.getItem("token") || sessionStorage.getItem("token")
     return token ? { Authorization: `Bearer ${token}` } : {}
@@ -91,6 +113,19 @@ const exportMonthlyPDF = () => {
 
   // Fetch travel types, expense types, and user mission rates on mount
   useEffect(() => {
+/**
+ * Fetches travel types, expense types, mission rates, and car loans from the API.
+ *
+ * Initiates parallel API calls to fetch travel and expense types, ensuring
+ * default values are set if the responses are empty. Updates the state with
+ * the fetched data. Also fetches mission rates and car loans in a separate
+ * block, handling failures independently to allow partial data updates.
+ * Manages loading states throughout the process and sets fallback data
+ * in case of errors.
+ *
+ * Utilizes authorization headers for API requests.
+ */
+
   const fetchTypes = async () => {
     try {
       const headers = getAuthHeaders()
@@ -182,6 +217,20 @@ const exportMonthlyPDF = () => {
 
   // Fetch trips for the current month
   useEffect(() => {
+/**
+ * Fetches the list of trips for the current month from the API.
+ *
+ * Shows the loading indicator before the request and hides it after
+ * the request is finished (regardless of success or failure). If the
+ * request succeeds, updates the component state with the received list
+ * of trips. If the request fails, logs an error message and sets the
+ * trips state to an empty array.
+ *
+ * If no authentication token is found, logs a warning message and
+ * sets the trips state to an empty array.
+ *
+ * @returns {Promise<void>}
+ */
     const fetchTrips = async () => {
       try {
         setLoadingStates((prev) => ({ ...prev, trips: true }))
@@ -221,21 +270,41 @@ const exportMonthlyPDF = () => {
     fetchTrips()
   }, [currentYear, currentMonth])
 
-  // Navigation functions
+/**
+ * Updates the current date state to the first day of the previous month,
+ * and resets the expanded days set to an empty state.
+ */
+
   const goToPreviousMonth = () => {
     setCurrentDate(new Date(currentYear, currentMonth - 1, 1))
     setExpandedDays(new Set())
   }
 
+  /**
+   * Updates the current date state to the first day of the next month,
+   * and resets the expanded days set to an empty state.
+   */
   const goToNextMonth = () => {
     setCurrentDate(new Date(currentYear, currentMonth + 1, 1))
     setExpandedDays(new Set())
   }
 
+/**
+ * Resets the current date state to the current date and resets the expanded days set to an empty state.
+ * This function is used when the user clicks on the "Today" button in the calendar header.
+ */
   const goToToday = () => {
     setCurrentDate(new Date())
     setExpandedDays(new Set())
   }
+
+/**
+ * Updates the current date state to the first day of the specified year and month,
+ * resets the expanded days set to an empty state, and hides the year picker.
+ *
+ * @param {number} year - The year to navigate to.
+ * @param {number} month - The month to navigate to (0 for January, 11 for December).
+ */
 
   const goToYearMonth = (year, month) => {
     setCurrentDate(new Date(year, month, 1))
@@ -243,6 +312,14 @@ const exportMonthlyPDF = () => {
     setShowYearPicker(false)
   }
 
+/**
+ * Toggles the expanded state of a day in the expanded days set.
+ *
+ * If the day is already expanded, it will be removed from the set.
+ * If the day is not expanded, it will be added to the set.
+ *
+ * @param {number} day The day of the month to toggle expansion for
+ */
   const toggleDayExpansion = (day) => {
     const newExpanded = new Set(expandedDays)
     if (newExpanded.has(day)) {
@@ -253,7 +330,17 @@ const exportMonthlyPDF = () => {
     setExpandedDays(newExpanded)
   }
 
-  // CRUD operations for trips
+/**
+ * Adds a new trip to the database.
+ *
+ * This function is called when the user clicks on an empty day in the calendar.
+ * It checks if a trip already exists for this date and if not, creates a new trip
+ * with default values and adds it to the list of trips.
+ *
+ * @param {string} date - The date of the trip to add in the format "YYYY-MM-DD"
+ *
+ * @returns {Promise<void>}
+ */
   const addTrip = async (date) => {
     if (isUpdating) return
 
@@ -275,12 +362,11 @@ const exportMonthlyPDF = () => {
       }
 
       const newTrip = {
-        // userId: currentUserId,
         typeDeDeplacementId: defaultTravelType.id,
         intitule: "Nouveau déplacement",
         date: date,
         libelleDestination: "Destination à définir",
-        distanceKm: "0", // Make sure this is a string "0" not a number 0
+        distanceKm: "0", 
         codeChantier: "",
         carLoanId: null,
         depenses: [],
@@ -306,7 +392,21 @@ const exportMonthlyPDF = () => {
     }
   }
 
-  // Update trip field (called on blur, not on change)
+  /**
+   * Update a field of a trip
+   * @param {number} tripId - The ID of the trip to update
+   * @param {string} field - The field to update. Can be one of:
+   *   - `intitule`
+   *   - `libelleDestination`
+   *   - `typeDeDeplacementId`
+   *   - `date`
+   *   - `distanceKm`
+   *   - `codeChantier`
+   *   - `carLoanId`
+   *   - `depenses`
+   * @param {*} value - The new value for the field
+   * @returns {Promise<void>}
+   */
   const updateTripField = async (tripId, field, value) => {
     if (isUpdating) return;
   
@@ -331,7 +431,7 @@ const exportMonthlyPDF = () => {
         if (key in trip) updatedTrip[key] = trip[key];
       });
   
-      updatedTrip[field] = value; // apply the new value
+      updatedTrip[field] = value;
   
       const headers = getAuthHeaders();
       const response = await axios.put(
@@ -351,11 +451,27 @@ const exportMonthlyPDF = () => {
   };
   
 
-  // Update trip locally (for immediate UI feedback)
+/**
+ * Updates a specified field of a trip locally in the state.
+ *
+ * This function provides immediate UI feedback by updating the local state
+ * without making a server request. It finds the trip with the given tripId
+ * and updates the specified field with the provided value.
+ *
+ * @param {number} tripId - The ID of the trip to update
+ * @param {string} field - The field to update in the trip
+ * @param {*} value - The new value to set for the specified field
+ */
+
   const updateTripLocal = (tripId, field, value) => {
     setTrips((prevTrips) => prevTrips.map((trip) => (trip.id === tripId ? { ...trip, [field]: value } : trip)))
   }
 
+  /**
+   * Deletes the trip with the given ID and removes it from the local state.
+   * @param {number} tripId - The ID of the trip to delete
+   * @returns {Promise<void>}
+   */
   const deleteTrip = async (tripId) => {
     if (isUpdating) return
 
@@ -374,11 +490,25 @@ const exportMonthlyPDF = () => {
     }
   }
 
+  /**
+   * Toggles the display of the code chantier input field for the trip with the given ID.
+   * @param {number} tripId - The ID of the trip to toggle the code chantier input for
+   */
   const toggleCodeChantier = (tripId) => {
     setShowCodeChantier((prev) => ({ ...prev, [tripId]: !prev[tripId] }))
   }
 
-  // CRUD operations for expenses
+  /**
+   * Adds a new expense to the trip with the given ID.
+   * 
+   * Checks if the expense types are available before attempting to add the expense.
+   * If they are not, shows an error message and returns.
+   * 
+   * If an error occurs while adding the expense, logs the error and shows an error message.
+   * 
+   * @param {number} tripId - The ID of the trip to add the expense to
+   * @returns {Promise<void>}
+   */
   const addExpense = async (tripId) => {
     if (isUpdating) return
 
@@ -418,7 +548,14 @@ const exportMonthlyPDF = () => {
     }
   }
 
-  // Add new expense type
+  /**
+   * Adds a new expense type to the database and updates the local state.
+   *
+   * @param {number} tripId The ID of the trip for which the expense type is being added
+   * @param {string} typeName The name of the expense type to add
+   *
+   * @returns {Promise<void>}
+   */
   const addExpenseType = async (tripId, typeName) => {
     if (isUpdating) return
 
@@ -448,7 +585,20 @@ const exportMonthlyPDF = () => {
     }
   }
 
-  // Update expense field (called on blur)
+  /**
+   * Updates a field of an expense and updates the local state.
+   *
+   * @param {number} tripId The ID of the trip that the expense belongs to
+   * @param {number} expenseId The ID of the expense to update
+   * @param {string} field The field to update. Can be one of:
+   *   - `montant`
+   *   - `justificatif`
+   *   - `libelle`
+   *   - `typeDepenseId`
+   * @param {*} value The new value for the field
+   *
+   * @returns {Promise<void>}
+   */
   const updateExpenseField = async (tripId, expenseId, field, value) => {
     if (isUpdating) return
 
@@ -476,7 +626,18 @@ const exportMonthlyPDF = () => {
     }
   }
 
-  // Update expense locally (for immediate UI feedback)
+  /**
+   * Updates a field of an expense in the local state without making a request to the API.
+   *
+   * @param {number} tripId The ID of the trip that the expense belongs to
+   * @param {number} expenseId The ID of the expense to update
+   * @param {string} field The field to update. Can be one of:
+   *   - `montant`
+   *   - `justificatif`
+   *   - `libelle`
+   *   - `typeDepenseId`
+   * @param {*} value The new value for the field
+   */
   const updateExpenseLocal = (tripId, expenseId, field, value) => {
     setTrips((prevTrips) =>
       prevTrips.map((trip) =>
@@ -492,7 +653,25 @@ const exportMonthlyPDF = () => {
     )
   }
 
-  // Handle file upload for expense
+  /**
+   * Uploads a file to the server for a given expense.
+   *
+   * The file is sent to the server as a FormData object, which is a special
+   * type of object that can be sent over the wire and contains both key-value
+   * pairs and files.
+   *
+   * The server will return the updated expense (with cheminJustificatif) and
+   * merge it into your trip state.
+   *
+   * If the request fails with a 401 status code, shows a toast and lets the
+   * interceptor handle the redirect.
+   *
+   * If the request fails with any other status code, shows an error message.
+   *
+   * @param {number} tripId The ID of the trip that the expense belongs to
+   * @param {number} expenseId The ID of the expense to update
+   * @param {File} file The file to upload
+   */
 const handleExpenseFileUpload = async (tripId, expenseId, file) => {
   if (isUpdating) return;
   try {
@@ -536,8 +715,18 @@ const handleExpenseFileUpload = async (tripId, expenseId, file) => {
 };
 
 
- // in your React component
 
+  /**
+   * Clears the justificatif for a given expense.
+   *
+   * Posts to the server to remove the file from the server, and then locally
+   * removes it from the trip state.
+   *
+   * If the request fails, shows an error message.
+   *
+   * @param {number} tripId The ID of the trip that the expense belongs to
+   * @param {number} expenseId The ID of the expense to clear
+   */
 const clearExpenseFile = async (tripId, expenseId) => {
   if (isUpdating) return;
   try {
@@ -571,6 +760,15 @@ const clearExpenseFile = async (tripId, expenseId) => {
 };
 
 
+/**
+ * Deletes the expense with the given ID from the trip with the given ID and
+ * removes it from the trip state.
+ *
+ * If the request fails, shows an error message.
+ *
+ * @param {number} tripId The ID of the trip that the expense belongs to
+ * @param {number} expenseId The ID of the expense to delete
+ */
   const deleteExpense = async (tripId, expenseId) => {
     if (isUpdating) return
 
@@ -592,13 +790,32 @@ const clearExpenseFile = async (tripId, expenseId) => {
     }
   }
 
-  // Utility functions
+/**
+ * Returns the total of all expense amounts in the given array of expenses.
+ * If the given argument is not an array, returns 0.
+ *
+ * @param {Array<Object>} depenses An array of expense objects with a 'montant' property.
+ * @returns {number} The total of all expense amounts in the given array.
+ */
   const getTotalExpenses = (depenses) => {
     if (!Array.isArray(depenses)) return 0
     return depenses.reduce((total, expense) => total + (Number.parseFloat(expense.montant) || 0), 0)
   }
 
-  // Calculate trip total with new formula
+/**
+ * Calculates the total cost of a trip.
+ *
+ * The total cost is the sum of all expenses, travel type amount, and 
+ * distance cost (if applicable).
+ *
+ * @param {Object} trip - The trip object containing details of the trip.
+ * @param {Array<Object>} trip.depenses - An array of expense objects with a 'montant' property.
+ * @param {number} trip.typeDeDeplacementId - The ID representing the type of travel.
+ * @param {number} [trip.carLoanId] - (Optional) The ID of the car loan associated with the trip.
+ * @param {string|number} [trip.distanceKm] - (Optional) The distance in kilometers for the trip.
+ * @returns {number} The total cost of the trip.
+ */
+
   const getTripTotal = (trip) => {
     const expensesTotal = getTotalExpenses(trip.depenses)
 
@@ -618,11 +835,26 @@ const clearExpenseFile = async (tripId, expenseId) => {
     return expensesTotal + travelTypeAmount + distanceCost
   }
 
+  /**
+   * Returns an array of trips that occur on the given day in the current month.
+   *
+   * @param {number} day - The day of the month (1-indexed) to filter trips by.
+   * @returns {Array<Object>} An array of trip objects that occur on the given day.
+   */
   const getTripsForDay = (day) => {
     const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`
     return trips.filter((trip) => trip.date === dateStr)
   }
 
+  /**
+   * Returns an array of trips that occur within the current month.
+   *
+   * Trips are filtered by their date property, which should be a string in the ISO 8601 format
+   * (YYYY-MM-DD). Only trips that fall within the current month are included in the returned
+   * array.
+   *
+   * @returns {Array<Object>} An array of trip objects that occur within the current month.
+   */
   const getMonthlyTrips = () => {
     const monthStart = new Date(currentYear, currentMonth, 1)
     const monthEnd = new Date(currentYear, currentMonth + 1, 0)
@@ -632,17 +864,50 @@ const clearExpenseFile = async (tripId, expenseId) => {
     })
   }
 
+  /**
+   * Calculates the total cost of all trips in the current month.
+   *
+   * @returns {number} The total cost of all trips in the current month.
+   */
   const getMonthlyTotal = () => {
     return getMonthlyTrips().reduce((total, trip) => total + getTripTotal(trip), 0)
   }
+
+/**
+ * Calculates the total distance of all trips in the current month.
+ *
+ * Iterates through all trips within the current month and sums
+ * the distance of each trip. If a trip does not have a valid
+ * distance, it defaults to 0.
+ *
+ * @returns {number} The total distance of all trips in kilometers.
+ */
 
   const getMonthlyDistanceTotal = () => {
       return getMonthlyTrips().reduce((total, trip) => total + (parseFloat(trip.distanceKm) || 0), 0)
   }
 
+  /**
+   * Calculates the total number of expenses of all trips in the current month.
+   *
+   * Iterates through all trips within the current month and sums
+   * the number of expenses associated with each trip.
+   *
+   * @returns {number} The total number of expenses in the current month.
+   */
   const getMonthlyExpensesCount = () => {
       return getMonthlyTrips().reduce((count, trip) => count + trip.depenses.length, 0)
   }
+
+/**
+ * Returns the number of days in the current month.
+ *
+ * Utilizes the JavaScript Date object to calculate the number of 
+ * days by setting the date to the 0th day of the next month, 
+ * which effectively gives the last day of the current month.
+ *
+ * @returns {number} The number of days in the current month.
+ */
 
   const getDaysInMonth = () => {
     return new Date(currentYear, currentMonth + 1, 0).getDate()

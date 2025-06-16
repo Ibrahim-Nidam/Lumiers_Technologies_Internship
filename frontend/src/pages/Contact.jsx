@@ -1,5 +1,12 @@
 import React from 'react';
 
+/**
+ * Contact component renders the contact information for the company.
+ * It includes the company's headquarters address, phone numbers,
+ * and email for inquiries. The address is linked to an external
+ * map for location reference.
+ */
+
 const Contact = () => (
   <div className="max-w-5xl mx-auto px-4 py-12 md:py-16">
     <h2 className="text-3xl md:text-4xl font-bold text-slate-900">

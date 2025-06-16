@@ -3,6 +3,15 @@ require('dotenv').config();
 const { Pool } = require('pg');
 
 class Database {
+  /**
+   * Constructor for the Database class.
+   *
+   * Creates a Postgres client pool using environment variables.
+   *
+   * @param {Object} [options] - An object with options to pass to the Pool constructor.
+   * @see https://node-postgres.com/api/pool
+   * @throws TypeError If any of the required environment variables are not set.
+   */
   constructor() {
     this.pool = new Pool({
       user: process.env.PG_USERNAME,

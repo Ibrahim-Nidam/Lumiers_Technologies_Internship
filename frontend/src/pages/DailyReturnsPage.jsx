@@ -4,6 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import ConfirmDialog from "../components/ConfirmDialog";
 import { colors } from '../colors'; 
 
+/**
+ * Page for managing daily returns
+ * 
+ * This page displays a list of all daily returns, allows adding new ones, editing existing ones, and deleting them.
+ * It also handles the logic for submitting new daily returns and updating existing ones.
+ */
+
 export default function DailyReturnsPage() {
 const navigate = useNavigate();
 const [dailyReturns, setDailyReturns] = useState([]);
@@ -28,6 +35,16 @@ if (!token) {
 }
 axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
+/**
+ * Fetches data for the daily returns page.
+ * 
+ * Makes two API calls to fetch the list of daily returns and travel types.
+ * Updates the component state with the received data.
+ * If the request fails, shows an error message.
+ * Finally, sets the loading state to false.
+ * 
+ * @returns {Promise<void>}
+ */
 const fetchData = async () => {
     try {
     const [dailyReturnsRes, travelTypesRes] = await Promise.all([
@@ -57,11 +74,24 @@ setMessage('');
 setMessageType('');
 };
 
+/**
+ * Resets the form and shows it.
+ * 
+ * Called when the user clicks the "Ajouter" button.
+ */
 const handleAddClick = () => {
 resetForm();
 setShowForm(true);
 };
 
+/**
+ * Shows the form in edit mode for the given daily return.
+ * 
+ * Copies the typeDeDeplacementId and tarifParJour from the given daily return
+ * into the form state, and shows the form.
+ * 
+ * @param {Object} dailyReturn The daily return to edit
+ */
 const handleEditClick = (dailyReturn) => {
 setEditingReturn(dailyReturn);
 setFormTypeDeDeplacementId(dailyReturn.typeDeDeplacementId);
@@ -71,7 +101,18 @@ setMessage('');
 setMessageType('');
 };
 
-// Submit (add or update)
+/**
+ * Handles the form submission for creating or updating a daily return.
+ * 
+ * Resets the form and hides it on success.
+ * 
+ * If the request fails with a 401 status code, shows a toast and lets the
+ * interceptor handle the redirect.
+ * If the request fails with any other status code, shows an error message.
+ * 
+ * @param {Event} e The form submission event
+ * @returns {Promise<void>}
+ */
 const handleSubmit = async (e) => {
 e.preventDefault();
 setSaving(true);
@@ -136,24 +177,45 @@ try {
 const [confirmOpen, setConfirmOpen] = useState(false);
 const [toDeleteId, setToDeleteId] = useState(null);
 
+/**
+ * Deletes the daily return with the given ID and shows a success message if the
+ * request is successful.
+ *
+ * If the request fails with a 401 status code, shows a toast and lets the
+ * interceptor handle the redirect.
+ *
+ * If the request fails with any other status code, shows an error message.
+ *
+ * @returns {Promise<void>}
+ */
 const handleDeleteConfirmed = async () => {
-setConfirmOpen(false);
-setSaving(true);
-try {
-await axios.delete(`http://localhost:3001/api/user-daily-returns/${toDeleteId}`);
-setDailyReturns(dr => dr.filter(item => item.id !== toDeleteId));
-setMessage("Indemnité journalière supprimée avec succès !");
-setMessageType("success");
-} catch (error) {
-setMessage(error.response?.data?.error || "Erreur lors de la suppression.");
-setMessageType("error");
-} finally {
-setSaving(false);
-setToDeleteId(null);
-}
+    setConfirmOpen(false);
+    setSaving(true);
+    try {
+    await axios.delete(`http://localhost:3001/api/user-daily-returns/${toDeleteId}`);
+    setDailyReturns(dr => dr.filter(item => item.id !== toDeleteId));
+    setMessage("Indemnité journalière supprimée avec succès !");
+    setMessageType("success");
+    } catch (error) {
+    setMessage(error.response?.data?.error || "Erreur lors de la suppression.");
+    setMessageType("error");
+    } finally {
+    setSaving(false);
+    setToDeleteId(null);
+    }
 };
 
-// Status badge classes
+/**
+ * Returns the appropriate CSS classes for a given status.
+ *
+ * @param {string} status - The status for which to get the CSS classes.
+ * @returns {string} The CSS classes corresponding to the status.
+ *                   - "approuve": Green background and text.
+ *                   - "en_attente": Yellow background and text.
+ *                   - "rejete": Red background and text.
+ *                   - Default: Gray background and text.
+ */
+
 const getStatusClasses = (status) => {
 switch (status) {
     case 'approuve': return 'bg-green-100 text-green-800';
@@ -163,7 +225,17 @@ switch (status) {
 }
 };
 
-// Filter dropdown: hide any type already used, except when editing that same record
+/**
+ * Filters and returns the list of available travel types that are not currently
+ * associated with any daily return, except the one being edited.
+ *
+ * Constructs a set of used travel type IDs from the `dailyReturns` array, excluding
+ * the ID of the return currently being edited (if any). Then filters the `travelTypes`
+ * array to include only travel types whose IDs are not present in the set of used IDs.
+ *
+ * @returns {Array} An array of available travel types.
+ */
+
 const getAvailableTravelTypes = () => {
 const usedTypeIds = new Set(
     dailyReturns

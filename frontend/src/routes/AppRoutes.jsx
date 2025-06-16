@@ -11,9 +11,8 @@ import Contact from "../pages/Contact";
 // Dashboards
 import AgentDashboard from "../components/dash/AgentDashboard";
 import ManagerDashboard from "../components/dash/ManagerDashboard";
-// import AdminDashboard from "../components/dash/AdminDashboard";
 import ProfileSettings from "../components/dash/ProfileSettings";
-import DailyReturnsPage from "../pages/DailyReturnsPage"; // Import the new page
+import DailyReturnsPage from "../pages/DailyReturnsPage";
 
 
 // Manager Dashboard Sub-Pages
@@ -24,6 +23,28 @@ import MissionRates from "../pages/manager/MissionRates";
 import CarLoanRates from "../pages/manager/CarLoanRates";
 import Consult from "../pages/manager/Consult";
 
+/**
+ * Defines the routes for the application.
+ * 
+ * The routes are divided into two main categories: public and protected routes.
+ * Public routes are accessible to all users, while protected routes require a
+ * valid login.
+ * 
+ * The protected routes are further divided into two sub-categories: agent and
+ * manager routes. The agent routes are accessible to users with the "agent"
+ * role, while the manager routes are accessible to users with the "manager"
+ * role.
+ * 
+ * The manager routes are organized into a nested route structure, with the
+ * manager dashboard as the parent route. The manager dashboard contains
+ * several sub-routes, including the approve accounts, expense types, displacement
+ * types, mission rates, car loan rates, and consult pages.
+ * 
+ * The daily returns route is a new route that allows users to view their daily
+ * returns. This route is protected and requires a valid login.
+ * 
+ * The fallback route redirects any unknown routes to the homepage.
+ */
 export default function AppRoutes() {
   return (
     <Routes>
@@ -50,9 +71,8 @@ export default function AppRoutes() {
             <Route path="consult" element={<Consult />} />
           </Route>
 
-          {/* <Route path="/adminDashboard" element={<AdminDashboard />} /> */}
           <Route path="/profile-settings" element={<ProfileSettings />} />
-          <Route path="/daily-returns" element={<DailyReturnsPage />} /> {/* New route for daily returns */}
+          <Route path="/daily-returns" element={<DailyReturnsPage />} />
         </Route>
 
         {/* Fallback */}

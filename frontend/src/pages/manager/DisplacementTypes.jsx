@@ -4,6 +4,13 @@ import Message from "../../components/Message";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import { toast } from "sonner";
 
+/**
+ * TravelTypes
+ *
+ * Gère les types de déplacements.
+ *
+ * @return {JSX.Element} Le composant React
+ */
 export default function TravelTypes() {
   const [travelTypes, setTravelTypes] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -14,6 +21,18 @@ export default function TravelTypes() {
   const [deleteId, setDeleteId] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  /**
+   * Fetches the list of travel types from the API.
+   *
+   * Updates the component state with the received list of travel types.
+   *
+   * If the request fails with a 401 status code, shows a toast and lets the
+   * interceptor handle the redirect.
+   *
+   * If the request fails with any other status code, shows an error message.
+   *
+   * @returns {Promise<void>}
+   */
   const fetchTravelTypes = async () => {
     try {
       setLoading(true);
@@ -38,6 +57,24 @@ export default function TravelTypes() {
     fetchTravelTypes();
   }, []);
 
+  /**
+   * Handles the submission of the travel type form.
+   *
+   * If the travel type already exists, shows an error message.
+   *
+   * If the travel type is being edited, sends a PUT request to the API.
+   * If the travel type is being created, sends a POST request to the API.
+   *
+   * Shows a success message on successful submission.
+   *
+   * If the request fails with a 401 status code, shows a toast and lets the
+   * interceptor handle the redirect.
+   *
+   * If the request fails with any other status code, shows an error message.
+   *
+   * @param {Event} e The form submission event
+   * @returns {Promise<void>}
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -73,11 +110,27 @@ export default function TravelTypes() {
     }
   };
 
+  /**
+   * Sets the delete ID and shows the confirmation dialog for deleting a travel type.
+   *
+   * @param {number} id The ID of the travel type to delete
+   */
   const handleDeleteClick = (id) => {
     setDeleteId(id);
     setShowConfirm(true);
   };
 
+  /**
+   * Deletes the travel type with the given ID and shows a success message if the
+   * request is successful.
+   *
+   * If the request fails with a 401 status code, shows a toast and lets the
+   * interceptor handle the redirect.
+   *
+   * If the request fails with any other status code, shows an error message.
+   *
+   * @returns {Promise<void>}
+   */
   const confirmDelete = async () => {
     try {
       await apiClient.delete(`/travel-types/${deleteId}`);
@@ -97,12 +150,30 @@ export default function TravelTypes() {
     }
   };
 
+/**
+ * Initiates the editing process for a travel type.
+ *
+ * Sets the form fields to the values of the specified travel type and 
+ * opens the form for editing. Also sets the current edit ID to track 
+ * which travel type is being edited.
+ *
+ * @param {Object} type - The travel type to be edited.
+ * @param {string} type.nom - The name of the travel type.
+ * @param {string} type.description - The description of the travel type.
+ * @param {number} type.id - The ID of the travel type.
+ */
+
   const handleEdit = (type) => {
     setNewType({ nom: type.nom, description: type.description });
     setEditId(type.id);
     setShowForm(true);
   };
 
+  /**
+   * Cancels the editing process for a travel type.
+   *
+   * Resets the form fields and hides the form. Also resets the current edit ID.
+   */
   const cancelEdit = () => {
     setNewType({ nom: "", description: "" });
     setEditId(null);

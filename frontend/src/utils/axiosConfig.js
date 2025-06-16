@@ -8,7 +8,10 @@ const apiClient = axios.create({
   },
 });
 
-// Function to get token from storage
+/**
+ * Retrieves the authentication token from either local or session storage.
+ * @returns {string | null} The token if found, otherwise null.
+ */
 const getToken = () => {
   return localStorage.getItem('token') || sessionStorage.getItem('token');
 };
