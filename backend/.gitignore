@@ -9,7 +9,7 @@ lerna-debug.log*
 
 .env
 uploads/
-
+tmp/
 node_modules
 dist
 dist-ssr

@@ -3,6 +3,6 @@ const { exportExcel, exportPDF, getUserAggregates } = require('../controllers/re
 
 router.get('/excel', exportExcel);
 router.get('/pdf', exportPDF);
-// router.get("/user-aggregates", getUserAggregates);
+router.get("/summary", getUserAggregates);
 
 module.exports = router;

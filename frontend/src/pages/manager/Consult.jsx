@@ -16,20 +16,48 @@ export default function Consult() {
   const [showYearPicker, setShowYearPicker] = useState(false);
   const [years, setYears]               = useState([]);
   const [users, setUsers]               = useState([]);
+
+  const [summaries, setSummaries] = useState([]);
+
+const getSummaryForUser = (userId) => {
+  return summaries.find(s => s.userId === userId) || {
+    totalDistance: 0,
+    totalTripCost: 0,
+    justified: 0,
+    unjustified: 0
+  };
+};
+
   
   const monthNames = [
     "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
     "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
   ];
 
-  useEffect(() => {
-    const cy = today.getFullYear();
-    setYears([cy, cy - 1, cy - 2]);
+ useEffect(() => {
+  const cy = today.getFullYear();
+  setYears([cy, cy - 1, cy - 2]);
 
-    apiClient.get("/users/")
-      .then(res =>  { console.log("USERS:", res.data); setUsers(res.data)})
-      .catch(err => console.error(err));
-  }, []);
+  apiClient.get("/users/")
+    .then(res => setUsers(res.data))
+    .catch(err => console.error(err));
+}, []);
+
+useEffect(() => {
+  const fetchSummary = async () => {
+    try {
+      const res = await apiClient.get("/report/summary", {
+        params: { year: currentYear, month: currentMonth }
+      });
+      setSummaries(res.data);
+    } catch (err) {
+      console.error("Failed to fetch summary:", err);
+    }
+  };
+
+  fetchSummary();
+}, [currentYear, currentMonth]);
+
 
   const goToPreviousMonth = () => {
     let m = currentMonth - 1, y = currentYear;
@@ -197,47 +225,90 @@ export default function Consult() {
         </div>
       </div>
 
-      {/* User Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 text-center">
-        {users.map(user => (
-          <div 
-            key={user.id}
-            className="bg-white rounded border border-gray-200 shadow-md hover:shadow-lg transition-shadow duration-300"
-          >
-            <div className="px-6 py-4 border-b border-gray-100">
-              <h2 className="font-semibold text-gray-800 truncate">
-                {user.name}
-              </h2>
-            </div>
-
-            <div className="px-6 py-4 bg-gray-50 flex flex-wrap justify-center gap-3">
-              <button 
-                onClick={() => handleExport(user.id, "excel")}
-                className="flex items-center gap-2 text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-200 bg-emerald-50 px-4 py-2 rounded-lg text-sm font-medium transition"
-              >
-                <FaFileExcel className="w-4 h-4" />
-                Excel
-              </button>
-
-              <button 
-                onClick={() => handleExport(user.id, "pdf")}
-                className="flex items-center gap-2 text-rose-700 hover:text-white hover:bg-rose-600 border border-rose-200 bg-rose-50 px-4 py-2 rounded-lg text-sm font-medium transition"
-              >
-                <FaFilePdf className="w-4 h-4" />
-                PDF
-              </button>
-
-              <button 
-                onClick={() => handleExport(user.id, "both")}
-                className="flex items-center gap-2 text-blue-700 hover:text-white hover:bg-blue-600 border border-blue-200 bg-blue-50 px-4 py-2 rounded-lg text-sm font-medium transition"
-              >
-                <FaFileArchive className="w-4 h-4" />
-                Complet
-              </button>
+     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 text-center">
+  {users.map(user => {
+    const summary = getSummaryForUser(user.id); // contains nulls or 0s if no data
+    const hasData = summary && summary.totalDistance > 0;
+    return (
+      <div
+        key={user.id}
+        className="group bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-2 relative"
+      >
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-transparent to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+        
+        {/* Header */}
+        <div className="px-6 py-5 border-b border-gray-50 bg-gradient-to-r from-slate-50 to-gray-50 relative">
+          <div className="flex items-center justify-center mb-2">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
+              <span className="text-white font-bold text-lg">
+                {user.name.charAt(0).toUpperCase()}
+              </span>
             </div>
           </div>
-        ))}
+          <h2 className="text-xl font-bold text-gray-800 truncate group-hover:text-gray-900 transition-colors">
+            {user.name}
+          </h2>
+        </div>
+
+        {/* Content */}
+        {hasData ? (
+          <div className="px-6 py-6 text-sm text-gray-700 space-y-4 relative">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                <span className="font-medium text-blue-800">Distance totale :</span>
+                <span className="font-bold text-blue-900">{summary.totalDistance} km</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                <span className="font-medium text-green-800">Frais totaux :</span>
+                <span className="font-bold text-green-900">{(summary.totalTripCost ?? 0).toFixed(2)} DH</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                <span className="font-medium text-purple-800">Dépenses justifiées :</span>
+                <span className="font-bold text-purple-900">{summary.justified} / {summary.justified + summary.unjustified}</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="px-6 py-12 text-gray-400 text-sm italic relative">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <span className="text-2xl">📊</span>
+              </div>
+              Aucune dépense enregistrée ce mois.
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="px-6 py-5 bg-gradient-to-r from-gray-50 to-slate-50 flex flex-wrap justify-center gap-2 relative">
+          <button
+            onClick={() => handleExport(user.id, "excel")}
+            className="flex items-center gap-2 text-emerald-700 hover:text-white hover:bg-emerald-600 border-2 border-emerald-200 hover:border-emerald-600 bg-emerald-50 hover:bg-emerald-600 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md"
+          >
+            <FaFileExcel className="w-4 h-4" />
+            Excel
+          </button>
+          <button
+            onClick={() => handleExport(user.id, "pdf")}
+            className="flex items-center gap-2 text-rose-700 hover:text-white hover:bg-rose-600 border-2 border-rose-200 hover:border-rose-600 bg-rose-50 hover:bg-rose-600 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md"
+          >
+            <FaFilePdf className="w-4 h-4" />
+            PDF
+          </button>
+          <button
+            onClick={() => handleExport(user.id, "both")}
+            className="flex items-center gap-2 text-blue-700 hover:text-white hover:bg-blue-600 border-2 border-blue-200 hover:border-blue-600 bg-blue-50 hover:bg-blue-600 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md"
+          >
+            <FaFileArchive className="w-4 h-4" />
+            Complet
+          </button>
+        </div>
       </div>
+    );
+  })}
+</div>
+
     </div>
   );
 }

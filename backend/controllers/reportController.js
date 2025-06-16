@@ -36,6 +36,101 @@ async function getDashboardData(userId, year, month) {
   return { userInfo, trips, userMissionRates, userCarLoans, travelTypes };
 }
 
+exports.getUserAggregates = async (req, res) => {
+  try {
+    const { year, month } = req.query;
+    if (!year || month === undefined) {
+      return res.status(400).json({ error: "Missing year or month" });
+    }
+
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, Number(month) + 1, 0);
+
+    const users = await User.findAll();
+
+    const summaries = await Promise.all(
+      users.map(async (user) => {
+        const [deplacements, userMissionRates, userCarLoans] = await Promise.all([
+          Deplacement.findAll({
+            where: {
+              userId: user.id,
+              date: { [Op.between]: [startDate, endDate] }
+            },
+            include: [{ model: Depense, as: "depenses" }]
+          }),
+          TauxMissionUtilisateur.findAll({ where: { userId: user.id } }),
+          CarLoan.findAll({ where: { userId: user.id } })
+        ]);
+
+        let totalDistance = 0;
+        let totalExpenses = 0;
+        let justified = 0;
+        let unjustified = 0;
+
+        // 🔁 For each trip
+        for (const trip of deplacements) {
+          totalDistance += parseFloat(trip.distanceKm) || 0;
+
+          // ✅ Total cost = expenses + mission rate + car loan distance
+          const expensesTotal = getTotalExpenses(trip.depenses);
+
+          const travelTypeRate = userMissionRates.find(
+            rate => rate.typeDeDeplacementId === trip.typeDeDeplacementId
+          );
+          const travelTypeAmount = travelTypeRate ? parseFloat(travelTypeRate.tarifParJour) || 0 : 0;
+
+          let distanceCost = 0;
+          if (trip.carLoanId && trip.distanceKm) {
+            const carLoan = userCarLoans.find(loan => loan.id === trip.carLoanId);
+            if (carLoan) {
+              distanceCost = (parseFloat(trip.distanceKm) || 0) * (parseFloat(carLoan.tarifParKm) || 0);
+            }
+          }
+
+          totalExpenses += expensesTotal + travelTypeAmount + distanceCost;
+
+          // 📦 Justification count
+          for (const expense of trip.depenses) {
+            const justificatif = expense.cheminJustificatif;
+            if (justificatif && justificatif.trim() !== "") {
+              justified++;
+            } else {
+              unjustified++;
+            }
+          }
+        }
+
+        return {
+          userId: user.id,
+          totalDistance,
+          totalTripCost: totalExpenses,
+          justified,
+          unjustified
+        };
+      })
+    );
+
+    res.json(summaries);
+  } catch (error) {
+    console.error("Error in getUserAggregates:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// ─── Utility Functions ─────────────────────────────────────────────
+
+/**
+ * Returns the total of all expense amounts in the given array of expenses.
+ * If the given argument is not an array, returns 0.
+ *
+ * @param {Array<Object>} depenses An array of expense objects with a 'montant' property.
+ * @returns {number} The total of all expense amounts in the given array.
+ */
+function getTotalExpenses(depenses) {
+  if (!Array.isArray(depenses)) return 0;
+  return depenses.reduce((total, expense) => total + (parseFloat(expense.montant) || 0), 0);
+}
+
 /**
  * Pure helper: generate Excel file on disk, return its path.
  */
