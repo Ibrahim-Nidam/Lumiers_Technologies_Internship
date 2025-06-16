@@ -920,6 +920,132 @@ const clearExpenseFile = async (tripId, expenseId) => {
     return !loadingStates.types && !loadingStates.trips && travelTypes.length > 0 && expenseTypes.length > 0
   }
 
+  /**
+ * Creates and sends an email with the monthly report as attachment
+ * @param {string} format - The format of the report ('pdf' or 'excel')
+ * @returns {Promise<void>}
+ */
+const sendEmailWithReport = async (format = 'pdf') => {
+  try {
+    // Get user data for email context
+    let userInfo = {};
+    try {
+      const userData = localStorage.getItem("user") || sessionStorage.getItem("user");
+      if (userData) {
+        userInfo = typeof userData === 'string' ? JSON.parse(userData) : userData;
+      }
+    } catch (error) {
+      console.error('Error parsing user data:', error);
+    }
+
+    // Prepare dashboard data
+    const dashboardData = {
+      trips: getMonthlyTrips(),
+      userInfo: {
+        fullName: userInfo?.nom_complete || userInfo?.name || 'N/A',
+      },
+      userMissionRates,
+      userCarLoans,
+      expenseTypes,
+      travelTypes
+    };
+
+    // Generate the report file
+    
+    if (format === 'excel') {
+      await handleExcelExport(currentYear, currentMonth, dashboardData);
+    } else {
+      await handlePDFExport(currentYear, currentMonth, dashboardData);
+    }
+
+    // Create email content
+    const monthNames = [
+      'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+    ];
+    
+    const monthName = monthNames[currentMonth];
+    const userName = userInfo?.nom_complete || userInfo?.name || 'Agent';
+    
+    const subject = `Rapport de déplacements - ${monthName} ${currentYear} - ${userName}`;
+    
+    const emailBody = `Bonjour,
+
+Veuillez trouver ci-joint mon rapport de déplacements pour le mois de ${monthName} ${currentYear}.
+
+Résumé du mois :
+- Nombre de déplacements : ${getMonthlyTrips().length}
+- Distance totale : ${getMonthlyDistanceTotal().toFixed(2)} km
+- Nombre de dépenses : ${getMonthlyExpensesCount()}
+- Montant total : ${getMonthlyTotal().toFixed(2)} €
+
+Cordialement,
+${userName}`;
+
+    // Create mailto link
+    const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
+    
+    // Open email client
+    window.open(mailtoLink);
+    
+
+  } catch (error) {
+    console.error('Failed to create email:', error);
+    alert('Erreur lors de la création de l\'email. Veuillez réessayer.');
+  }
+};
+
+/**
+ * Show email format selection modal
+ */
+const showEmailFormatSelection = () => {
+  // Create modal element
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+  modal.innerHTML = `
+    <div class="bg-white rounded-lg p-6 max-w-sm mx-4 shadow-xl">
+      <h3 class="text-lg font-semibold mb-4 text-gray-800">Choisir le format du rapport</h3>
+      <div class="space-y-3">
+        <button id="email-pdf" class="w-full px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center space-x-2">
+          <span>📄</span>
+          <span>Envoyer en PDF</span>
+        </button>
+        <button id="email-excel" class="w-full px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center space-x-2">
+          <span>📊</span>
+          <span>Envoyer en Excel</span>
+        </button>
+        <button id="email-cancel" class="w-full px-4 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
+          Annuler
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // Event listeners
+  document.getElementById('email-pdf').onclick = () => {
+    document.body.removeChild(modal);
+    sendEmailWithReport('pdf');
+  };
+  
+  document.getElementById('email-excel').onclick = () => {
+    document.body.removeChild(modal);
+    sendEmailWithReport('excel');
+  };
+  
+  document.getElementById('email-cancel').onclick = () => {
+    document.body.removeChild(modal);
+  };
+
+  // Close on outside click
+  modal.onclick = (e) => {
+    if (e.target === modal) {
+      document.body.removeChild(modal);
+    }
+  };
+};
+
   return {
     // State
     trips,
@@ -947,6 +1073,8 @@ const clearExpenseFile = async (tripId, expenseId) => {
     goToToday,
     goToYearMonth,
     toggleDayExpansion,
+    sendEmailWithReport,
+  showEmailFormatSelection,
 
     // Trip CRUD
     addTrip,

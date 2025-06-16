@@ -7,7 +7,6 @@ import {
   ChevronRight,
   Plus,
   Trash2,
-  Download,
   FileSpreadsheet,
   MapPin,
   ChevronDown,
@@ -15,8 +14,8 @@ import {
   Calendar,
   X,
   Check,
+  Download, Mail
 } from "lucide-react"
-
 const AgentDashboardUI = ({
   // State
   expenseTypes,
@@ -40,7 +39,8 @@ const AgentDashboardUI = ({
   goToToday,
   goToYearMonth,
   toggleDayExpansion,
-
+// sendEmailWithReport,
+  showEmailFormatSelection,
   // Trip CRUD
   addTrip,
   updateTripField,
@@ -720,25 +720,37 @@ const AgentDashboardUI = ({
               </p>
             </div>
             <div className="flex items-center space-x-2">
-              <button
-                onClick={exportMonthlyExcel}
-                className="flex items-center cursor-pointer space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
-                style={{ borderColor: colors.primary, color: colors.primary }}
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Exporter Excel</span>
-                <span className="sm:hidden">Excel</span>
-              </button>
-              <button
-                onClick={exportMonthlyPDF}
-                className="flex items-center cursor-pointer space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
-                style={{ borderColor: colors.primary, color: colors.primary }}
-              >
-                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Exporter PDF</span>
-                <span className="sm:hidden">PDF</span>
-              </button>
-            </div>
+  <button
+    onClick={exportMonthlyExcel}
+    className="flex items-center cursor-pointer space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
+    style={{ borderColor: colors.primary, color: colors.primary }}
+  >
+    <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+    <span className="hidden sm:inline">Exporter Excel</span>
+    <span className="sm:hidden">Excel</span>
+  </button>
+  
+  <button
+    onClick={exportMonthlyPDF}
+    className="flex items-center cursor-pointer space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
+    style={{ borderColor: colors.primary, color: colors.primary }}
+  >
+    <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+    <span className="hidden sm:inline">Exporter PDF</span>
+    <span className="sm:hidden">PDF</span>
+  </button>
+  
+  {/* New Send Email Button */}
+  <button
+    onClick={showEmailFormatSelection}
+    className="flex items-center cursor-pointer space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
+    style={{ borderColor: colors.primary, color: colors.primary }}
+  >
+    <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+    <span className="hidden sm:inline">Envoyer par Email</span>
+    <span className="sm:hidden">Email</span>
+  </button>
+</div>
           </div>
         </div>
       </div>
