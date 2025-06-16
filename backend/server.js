@@ -27,6 +27,8 @@ const missionRatesRouter = require("./routes/missionRates")
 const carLoanRatesRouter = require("./routes/carLoanRates")
 const deplacementRouter = require("./routes/deplacements")
 const dailyReturnRoutes = require("./routes/dailyReturnRoutes")
+const reportRouter = require('./routes/report');
+const zipRouter    = require('./routes/zip');
 
 const app = express()
 const corsOptions = {
@@ -58,6 +60,9 @@ app.use(express.json())
 
     app.use("/api/user-daily-returns", dailyReturnRoutes)
     app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+    app.use('/api/report', reportRouter);
+    app.use('/api/zip',    zipRouter);
 
     app.get("/api/dashboard-data", authMiddleware, async (req, res) => {
       const userId = req.user.userId
