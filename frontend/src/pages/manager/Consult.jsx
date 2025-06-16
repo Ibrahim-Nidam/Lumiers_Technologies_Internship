@@ -5,13 +5,9 @@ import { ChevronLeft, ChevronRight, Calendar } from "react-feather";
 import { colors } from "../../colors";
 import { FaFileExcel, FaFilePdf , FaFileArchive } from 'react-icons/fa';
 
-
-
 /**
  * Page de consultation des utilisateurs, permettant de télécharger 
- * des exports Excel et PDF des données de chaque utilisateur.
- *
- * @returns {React.ReactElement} Le composant React
+ * des exports Excel, PDF ou ZIP (Complet) des données.
  */
 export default function Consult() {
   const today = new Date();
@@ -20,25 +16,20 @@ export default function Consult() {
   const [showYearPicker, setShowYearPicker] = useState(false);
   const [years, setYears]               = useState([]);
   const [users, setUsers]               = useState([]);
+  
   const monthNames = [
     "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
     "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
   ];
-
 
   useEffect(() => {
     const cy = today.getFullYear();
     setYears([cy, cy - 1, cy - 2]);
 
     apiClient.get("/users/")
-      .then(res => setUsers(res.data))
+      .then(res =>  { console.log("USERS:", res.data); setUsers(res.data)})
       .catch(err => console.error(err));
   }, []);
-
-/**
- * Navigates to the previous month by updating the current month and year state.
- * If the current month is January, it wraps around to December of the previous year.
- */
 
   const goToPreviousMonth = () => {
     let m = currentMonth - 1, y = currentYear;
@@ -52,24 +43,12 @@ export default function Consult() {
     setCurrentMonth(m); setCurrentYear(y);
   };
 
-/**
- * Updates the current year and month states to the specified values
- * and hides the year picker.
- *
- * @param {number} year - The year to navigate to.
- * @param {number} month - The month to navigate to (0 for January, 11 for December).
- */
-
   const goToYearMonth = (year, month) => {
     setCurrentYear(year);
     setCurrentMonth(month);
     setShowYearPicker(false);
   };
 
-/**
- * Resets the current year and month states to the current date's year and month,
- * which has the effect of navigating to the current month.
- */
   const goToToday = () => {
     setCurrentYear(today.getFullYear());
     setCurrentMonth(today.getMonth());
@@ -80,42 +59,90 @@ export default function Consult() {
     month: "long", year: "numeric"
   });
 
-  // Formatte « YYYY-MM » avec deux chiffres pour le mois
-  const formattedMonth = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`;
-
   /**
-   * Export the specified user's data for the current month as a ZIP file.
-   *
-   * @param {number} userId - The ID of the user to export.
-   * @param {string} type - The type of data to export (allowed values: "rapports", "notes", "km").
-   *
-   * @throws {Error} If the export fails for any reason.
+   * type: 'excel' | 'pdf' | 'both'
    */
   const handleExport = async (userId, type) => {
-    try {
-      const response = await apiClient.get(
-        `/manager/export/${userId}`, // selon ta route: /api/manager/export/:userId
-        {
-          params: { type, month: formattedMonth },
-          responseType: "blob",
-        }
-      );
+  try {
+    // Build URL and params
+    let url;
+    const params = {
+      userId,
+      year: currentYear,
+      month: currentMonth
+    };
 
-      // crée un Blob de type ZIP
-      const blob = new Blob([response.data], { type: "application/zip" });
-      // déclenche le téléchargement
-      saveAs(
-        blob,
-        `export_user${userId}_${type}_${formattedMonth}.zip`
-      );
-    } catch (err) {
-      console.error("Export failed", err);
+    if (type === "excel") {
+      url = "/report/excel";
+    } else if (type === "pdf") {
+      url = "/report/pdf";
+    } else if (type === "both") {
+      url = "/zip";
     }
-  };
+
+    // Request the blob
+    const response = await apiClient.get(url, {
+      params,
+      responseType: "blob"
+    });
+
+    // Get filename from response headers or use backend logic
+    let filename;
+    
+    if (type === "both") {
+      // For ZIP files, try to get filename from Content-Disposition header
+      const contentDisposition = response.headers['content-disposition'];
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+      
+      // Fallback: construct filename similar to backend logic
+      if (!filename) {
+        const user = users.find(u => u.id === userId);
+        const monthDate = new Date(currentYear, currentMonth);
+        const frenchMonth = monthDate.toLocaleDateString('fr-FR', { month: 'long' });
+        const safeName = user?.name?.replace(/\s+/g, '_') || `user${userId}`;
+        filename = `${safeName}_${frenchMonth}_${currentYear}.zip`;
+      }
+    } else {
+      // For Excel and PDF, keep existing logic or improve similarly
+      const monthDate = new Date(currentYear, currentMonth);
+      const frenchMonth = monthDate.toLocaleDateString('fr-FR', { month: 'long' });
+      const user = users.find(u => u.id === userId);
+      const safeName = user?.name?.replace(/\s+/g, '_') || `user${userId}`;
+      
+      if (type === "excel") {
+        filename = `Note_de_frais_${safeName}_${frenchMonth}_${currentYear}.xlsx`;
+      } else if (type === "pdf") {
+        filename = `Note_de_frais_${safeName}_${frenchMonth}_${currentYear}.pdf`;
+      }
+    }
+
+    // Determine MIME type
+    let mime;
+    if (type === "excel") {
+      mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    } else if (type === "pdf") {
+      mime = "application/pdf";
+    } else {
+      mime = "application/zip";
+    }
+
+    // Trigger download
+    const blob = new Blob([response.data], { type: mime });
+    saveAs(blob, filename);
+
+  } catch (err) {
+    console.error("Export failed", err);
+  }
+};
 
   return (
     <div className="px-4 py-6 space-y-6">
-      {/* Header */}
+      {/* Header with month selector */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
         <div className="flex items-center justify-center sm:justify-start space-x-3 sm:space-x-4">
           <button onClick={goToPreviousMonth}
@@ -171,46 +198,46 @@ export default function Consult() {
       </div>
 
       {/* User Cards */}
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 text-center">
-  {users.map(user => (
-  <div 
-    key={user.id}
-    className="bg-white rounded border border-gray-200 shadow-md hover:shadow-lg transition-shadow duration-300"
-  >
-    <div className="px-6 py-4 border-b border-gray-100">
-      <h2 className="font-semibold text-gray-800 truncate">
-        {user.name}
-      </h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 text-center">
+        {users.map(user => (
+          <div 
+            key={user.id}
+            className="bg-white rounded border border-gray-200 shadow-md hover:shadow-lg transition-shadow duration-300"
+          >
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h2 className="font-semibold text-gray-800 truncate">
+                {user.name}
+              </h2>
+            </div>
+
+            <div className="px-6 py-4 bg-gray-50 flex flex-wrap justify-center gap-3">
+              <button 
+                onClick={() => handleExport(user.id, "excel")}
+                className="flex items-center gap-2 text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-200 bg-emerald-50 px-4 py-2 rounded-lg text-sm font-medium transition"
+              >
+                <FaFileExcel className="w-4 h-4" />
+                Excel
+              </button>
+
+              <button 
+                onClick={() => handleExport(user.id, "pdf")}
+                className="flex items-center gap-2 text-rose-700 hover:text-white hover:bg-rose-600 border border-rose-200 bg-rose-50 px-4 py-2 rounded-lg text-sm font-medium transition"
+              >
+                <FaFilePdf className="w-4 h-4" />
+                PDF
+              </button>
+
+              <button 
+                onClick={() => handleExport(user.id, "both")}
+                className="flex items-center gap-2 text-blue-700 hover:text-white hover:bg-blue-600 border border-blue-200 bg-blue-50 px-4 py-2 rounded-lg text-sm font-medium transition"
+              >
+                <FaFileArchive className="w-4 h-4" />
+                Complet
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
-
-    <div className="px-6 py-4 bg-gray-50 flex flex-wrap justify-center gap-3">
-      <button 
-        onClick={() => handleExport(user.id, "excel")}
-        className="flex cursor-pointer items-center gap-2 text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-200 bg-emerald-50 px-4 py-2 rounded-lg text-sm font-medium transition"
-      >
-        <FaFileExcel className="w-4 h-4" />
-        Excel
-      </button>
-
-      <button 
-        onClick={() => handleExport(user.id, "pdf")}
-        className="flex cursor-pointer items-center gap-2 text-rose-700 hover:text-white hover:bg-rose-600 border border-rose-200 bg-rose-50 px-4 py-2 rounded-lg text-sm font-medium transition"
-      >
-        <FaFilePdf className="w-4 h-4" />
-        PDF
-      </button>
-
-      <button 
-        onClick={() => handleExport(user.id, "both")}
-        className="flex cursor-pointer items-center gap-2 text-blue-700 hover:text-white hover:bg-blue-600 border border-blue-200 bg-blue-50 px-4 py-2 rounded-lg text-sm font-medium transition"
-      >
-        <FaFileArchive className="w-4 h-4" />
-        Complet
-      </button>
-    </div>
-  </div>
-))}
-</div>
-</div>
-);
+  );
 }
