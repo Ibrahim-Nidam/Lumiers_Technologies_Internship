@@ -23,6 +23,8 @@ const TypeDepense          = require("./TypeDepense")(sequelize, DataTypes);
 const Depense              = require("./Depense")(sequelize, DataTypes);
 const TypeDeDeplacement    = require("./TypeDeDeplacement")(sequelize, DataTypes);
 const TauxMissionUtilisateur = require("./TauxMissionUtilisateur")(sequelize, DataTypes);
+const TauxKilometriqueRole = require("./TauxKilometriqueRole")(sequelize, DataTypes);
+const TauxMissionRole = require("./TauxMissionRole")(sequelize, DataTypes);
 
 // 3) Set up associations…
 
@@ -132,6 +134,20 @@ Deplacement.belongsTo(TauxMissionUtilisateur, {
   as: "missionRate"
 });
 
+Role.hasMany(TauxKilometriqueRole, { foreignKey: "roleId", onDelete: "CASCADE", as: "kilometriqueRates" });
+TauxKilometriqueRole.belongsTo(Role, { foreignKey: "roleId", as: "role" });
+
+Role.hasMany(TauxMissionRole, { foreignKey: "roleId", onDelete: "CASCADE", as: "missionRates" });
+TauxMissionRole.belongsTo(Role, { foreignKey: "roleId", as: "role" });
+
+TauxKilometriqueRole.hasMany(Deplacement, { foreignKey: "tauxKilometriqueRoleId", onDelete: "SET NULL", as: "deplacementsByKilometriqueRole" });
+Deplacement.belongsTo(TauxKilometriqueRole, { foreignKey: "tauxKilometriqueRoleId", as: "kilometriqueRole" });
+
+TauxMissionRole.hasMany(Deplacement, { foreignKey: "tauxMissionRoleId", onDelete: "SET NULL", as: "deplacementsByMissionRole" });
+Deplacement.belongsTo(TauxMissionRole, { foreignKey: "tauxMissionRoleId", as: "missionRole" });
+
+TypeDeDeplacement.hasMany(TauxMissionRole, { foreignKey: "typeDeDeplacementId", as: "missionRatesByType" });
+TauxMissionRole.belongsTo(TypeDeDeplacement, { foreignKey: "typeDeDeplacementId", as: "typeDeDeplacement" });
 
 // 4) Export everything
 module.exports = {
