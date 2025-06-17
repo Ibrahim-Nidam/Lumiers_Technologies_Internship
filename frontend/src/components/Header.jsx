@@ -96,7 +96,7 @@ const Header = () => {
           </div>
 
           <nav className="hidden md:flex items-center space-x-8">
-            <Link
+            {/* <Link
               to="/about"
               className={`text-slate-700 hover:text-slate-900 font-medium text-sm transition-colors duration-200 relative group ${
                 isActive("/about") ? "border-b-2 border-primary" : ""
@@ -119,7 +119,7 @@ const Header = () => {
               }`}
             >
               Contact
-            </Link>
+            </Link> */}
             {isLoggedIn && (
               <Link
                 to={dashboardPath}
@@ -128,6 +128,17 @@ const Header = () => {
                 }`}
               >
                 Tableau de bord
+              </Link>
+            )}
+
+            {(userData?.role === "manager" || userData?.role === "SuperManager") && (
+              <Link
+                to="/agentDashboard"
+                className={`ml-4 text-slate-700 hover:text-slate-900 font-medium text-sm transition-colors duration-200 relative group ${
+                  isActive("/agentDashboard") ? "border-b-2 border-primary" : ""
+                }`}
+              >
+                Tableau de déplacement
               </Link>
             )}
 

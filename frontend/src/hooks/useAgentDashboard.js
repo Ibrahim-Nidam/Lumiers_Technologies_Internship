@@ -1001,20 +1001,20 @@ ${userName}`;
 const showEmailFormatSelection = () => {
   // Create modal element
   const modal = document.createElement('div');
-  modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+  modal.className = 'fixed inset-0 bg-[#b9bfcf] bg-opacity-50 flex items-center justify-center z-50';
   modal.innerHTML = `
     <div class="bg-white rounded-lg p-6 max-w-sm mx-4 shadow-xl">
       <h3 class="text-lg font-semibold mb-4 text-gray-800">Choisir le format du rapport</h3>
       <div class="space-y-3">
-        <button id="email-pdf" class="w-full px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center space-x-2">
+        <button id="email-pdf" class="w-full px-4 py-3 bg-red-500 text-white rounded hover:bg-red-600 transition-colors flex items-center justify-center space-x-2">
           <span>📄</span>
           <span>Envoyer en PDF</span>
         </button>
-        <button id="email-excel" class="w-full px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center space-x-2">
+        <button id="email-excel" class="w-full px-4 py-3 bg-green-500 text-white rounded hover:bg-green-600 transition-colors flex items-center justify-center space-x-2">
           <span>📊</span>
           <span>Envoyer en Excel</span>
         </button>
-        <button id="email-cancel" class="w-full px-4 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
+        <button id="email-cancel" class="w-full px-4 py-3 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition-colors">
           Annuler
         </button>
       </div>
