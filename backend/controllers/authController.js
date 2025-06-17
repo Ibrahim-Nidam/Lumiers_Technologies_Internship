@@ -29,11 +29,11 @@ exports.register = async (req, res) => {
       const existingManagers = await User.count({
         include: {
           model: Role,
-          where: { nom: ["manager", "SuperManager"] },
+          where: { nom: ["manager", "supermanager"] },
         },
       });
       if (existingManagers === 0) {
-        selectedRoleName = "SuperManager";
+        selectedRoleName = "supermanager";
       }
     }
 

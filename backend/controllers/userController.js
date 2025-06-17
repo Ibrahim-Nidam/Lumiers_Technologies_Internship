@@ -1,8 +1,6 @@
 const { User, Role } = require("../models");
 
-// ─────────────────────────────────────────────────────────────
 // GET Non-admin Users
-// ─────────────────────────────────────────────────────────────
 exports.getNonAdminUsers = async (req, res) => {
   try {
     const users = await User.findAll({
@@ -31,9 +29,7 @@ exports.getNonAdminUsers = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────
 // PATCH Toggle User Status or Car Ownership
-// ─────────────────────────────────────────────────────────────
 exports.toggleUserField = async (req, res) => {
   const { id } = req.params;
   const { field, value } = req.body;
@@ -77,5 +73,60 @@ exports.toggleUserField = async (req, res) => {
   } catch (err) {
     console.error("Error updating user field:", err);
     return res.status(500).json({ error: "Erreur serveur." });
+  }
+};
+
+// GET assignable roles (filter out admin and superadmin)
+exports.getAssignableRoles = async (req, res) => {
+  try {
+    const roles = await Role.findAll();
+    
+    // Filter out admin and superadmin (case-insensitive)
+    // Make sure to check for all possible variations
+    const filteredRoles = roles.filter(
+      (r) => !["admin", "superadmin", "super admin"].includes(r.nom.toLowerCase())
+    );
+    
+    // Map roles to uppercase names
+    const rolesUpper = filteredRoles.map(r => ({
+      id: r.id,
+      nom: r.nom
+    }));
+    
+    res.json(rolesUpper);
+  } catch (err) {
+    console.error("Error fetching roles:", err);
+    res.status(500).json({ error: "Erreur lors du chargement des rôles." });
+  }
+};
+
+
+
+// PATCH Update User Role
+exports.updateUserRole = async (req, res) => {
+  const { id } = req.params;
+  const { roleId } = req.body;
+
+  try {
+    // Find the user to update
+    const user = await User.findByPk(id, { include: Role });
+    if (!user) {
+      return res.status(404).json({ error: "Utilisateur introuvable." });
+    }
+
+    // Find the requested role
+    const role = await Role.findByPk(roleId);
+    if (!role) {
+      return res.status(400).json({ error: "Rôle invalide." });
+    }
+
+    // Assign the new role to the user
+    user.roleId = roleId; // Adjust property name if needed
+    await user.save();
+
+    res.json({ success: true, role: role.nom });
+  } catch (err) {
+    console.error("Error updating user role:", err);
+    res.status(500).json({ error: "Erreur serveur." });
   }
 };

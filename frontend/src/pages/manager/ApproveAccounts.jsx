@@ -1,28 +1,21 @@
 import { useEffect, useState, useCallback } from "react";
-import apiClient from "../../utils/axiosConfig"; // Import the configured axios instance
+import apiClient from "../../utils/axiosConfig"; // configured axios instance
 import { toast } from "sonner";
 
-/**
- * Component for managing user account approvals. It fetches all user accounts on mount and displays a table with the users' names, car status, account status and role.
- * The component also allows to toggle the car status and account status for each user.
- * @returns {JSX.Element} The component's JSX element.
- */
 export default function AccountApproval() {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [roles, setRoles] = useState([]);
 
   const fetchAccounts = useCallback(async () => {
     try {
       setLoading(true);
-      
       const res = await apiClient.get("/users");
       setAccounts(res.data);
     } catch (error) {
       console.error('Fetch accounts error:', error);
-      
       if (error.response?.status === 401) {
         toast.error("Session expirée. Redirection vers la connexion...");
-        // The interceptor will handle the redirect
       } else {
         toast.error("Échec du chargement des comptes");
       }
@@ -35,25 +28,32 @@ export default function AccountApproval() {
     fetchAccounts();
   }, [fetchAccounts]);
 
-/**
- * Toggles a specified field for a user account and updates the account state.
- * Sends a PATCH request to the server to change the value of the given field.
- * Updates the local account state and displays a success or error message.
- *
- * @param {number} id - The unique identifier of the user account.
- * @param {string} field - The name of the field to be toggled ('estActif' or 'possedeVoiturePersonnelle').
- * @param {boolean} currentValue - The current value of the field being toggled.
- */
+  useEffect(() => {
+    async function fetchRoles() {
+  try {
+    const res = await apiClient.get("/users/roles");
+    // Map roles to have 'id' and 'name' properties
+    const rolesWithName = res.data.map(r => ({
+      id: r.id,
+      name: r.nom.toUpperCase() // or keep original case if you prefer
+    }));
+    setRoles(rolesWithName);
+  } catch (error) {
+    toast.error("Impossible de charger la liste des rôles");
+    console.error(error);
+  }
+}
+
+    fetchRoles();
+  }, []);
 
   const toggleField = async (id, field, currentValue) => {
     const newValue = !currentValue;
-
     try {
       await apiClient.patch(`/users/${id}`, {
         field,
-        value: newValue
+        value: newValue,
       });
-
       setAccounts(prev =>
         prev.map(a =>
           a.id === id
@@ -66,7 +66,6 @@ export default function AccountApproval() {
             : a
         )
       );
-
       toast.success("Mise à jour réussie");
     } catch (err) {
       console.error('Toggle field error:', err);
@@ -78,6 +77,41 @@ export default function AccountApproval() {
       }
     }
   };
+
+  const updateUserRole = async (id, roleId) => {
+  try {
+    await apiClient.patch(`/users/${id}/role`, { roleId });
+    const updatedRole = roles.find(r => r.id === roleId);
+    setAccounts(prev =>
+      prev.map(a =>
+        a.id === id
+          ? {
+              ...a,
+              role: updatedRole ? updatedRole.name.toLowerCase() : a.role, // keep consistent casing
+              roleId: roleId,
+            }
+          : a
+      )
+    );
+    toast.success("Rôle mis à jour avec succès");
+  } catch (err) {
+    console.error("Update role error:", err);
+    toast.error(err.response?.data?.error || "Erreur lors de la mise à jour du rôle");
+  }
+};
+
+
+  // Helper to get role id from role name (for select onChange)
+  const getRoleIdByName = (name) => {
+    const found = roles.find(r => r.name === name);
+    return found ? found.id : null;
+  };
+
+  const handleRoleChange = (userId, newRoleName) => {
+  const roleId = getRoleIdByName(newRoleName);
+  if (!roleId) return toast.error("Rôle invalide sélectionné");
+  updateUserRole(userId, roleId);
+};
 
   if (loading) {
     return (
@@ -136,7 +170,9 @@ export default function AccountApproval() {
                   </td>
                   <td className="py-6 px-6">
                     <div
-                      onClick={() => toggleField(account.id, "possedeVoiturePersonnelle", account.hasCar)}
+                      onClick={() =>
+                        toggleField(account.id, "possedeVoiturePersonnelle", account.hasCar)
+                      }
                       className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium cursor-pointer ${
                         account.hasCar ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"
                       }`}
@@ -148,7 +184,9 @@ export default function AccountApproval() {
                     <div
                       onClick={() => toggleField(account.id, "estActif", account.status === "Actif")}
                       className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium cursor-pointer ${
-                        account.status === "Actif" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
+                        account.status === "Actif"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-yellow-100 text-yellow-800"
                       }`}
                     >
                       <div
@@ -159,7 +197,19 @@ export default function AccountApproval() {
                       {account.status}
                     </div>
                   </td>
-                  <td className="py-6 px-6 text-sm text-gray-600">{account.role}</td>
+                  <td className="py-6 px-6 text-sm text-gray-600">
+                    <select
+  value={account.role?.toUpperCase() || ""}
+  onChange={(e) => handleRoleChange(account.id, e.target.value)}
+>
+  {roles.map(role => (
+    <option key={role.id} value={role.name}>
+      {role.name}
+    </option>
+  ))}
+</select>
+
+                  </td>
                 </tr>
               ))}
             </tbody>

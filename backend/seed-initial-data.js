@@ -5,9 +5,9 @@ const { sequelize, Role, TypeDeDeplacement, TypeDepense } = require("./models");
 const rolesToSeed = [
   { nom: "agent", description: "Niveau d'accès de base" },
   { nom: "manager", description: "Accès à la gestion d'équipe" },
-  { nom: "SuperManager", description: "Accès à la gestion étendue de plusieurs équipes" },
+  { nom: "supermanager", description: "Accès à la gestion étendue de plusieurs équipes" },
   { nom: "admin", description: "Accès complet au système avec gestion des utilisateurs" },
-  { nom: "SuperAdmin", description: "Contrôle total du système et des paramètres critiques" },
+  { nom: "superadmin", description: "Contrôle total du système et des paramètres critiques" },
 
   { nom: "directeur", description: "Responsable de la direction globale des opérations" },
   { nom: "ingénieurs senior", description: "Ingénieurs expérimentés supervisant les projets complexes" },

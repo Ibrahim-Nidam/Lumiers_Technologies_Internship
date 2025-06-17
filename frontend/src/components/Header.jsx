@@ -64,10 +64,10 @@ const Header = () => {
     if (!user || !user.role) return "/profile-settings";
     switch (user.role) {
       case "admin":
-      case "SuperAdmin":
+      case "superadmin":
         return "/adminDashboard";
       case "manager":
-      case "SuperManager":
+      case "supermanager":
         return "/managerDashboard";
       default:
         return "/agentDashboard";
@@ -131,7 +131,7 @@ const Header = () => {
               </Link>
             )}
 
-            {(userData?.role === "manager" || userData?.role === "SuperManager") && (
+            {(userData?.role === "manager" || userData?.role === "supermanager") && (
               <Link
                 to="/agentDashboard"
                 className={`ml-4 text-slate-700 hover:text-slate-900 font-medium text-sm transition-colors duration-200 relative group ${

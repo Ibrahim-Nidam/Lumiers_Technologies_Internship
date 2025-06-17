@@ -12,9 +12,9 @@ import { colors } from "../colors";
 const getRedirectPath = (role) => {
   switch (role) {
     case "admin":
-    case "SuperAdmin":
+    case "superadmin":
     case "manager":
-    case "SuperManager":
+    case "supermanager":
       return "/managerDashboard";
     default:
       return "/agentDashboard";

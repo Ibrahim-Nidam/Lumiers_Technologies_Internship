@@ -29,6 +29,8 @@ const deplacementRouter = require("./routes/deplacements")
 const dailyReturnRoutes = require("./routes/dailyReturnRoutes")
 const reportRouter = require('./routes/report');
 const zipRouter    = require('./routes/zip');
+const { use } = require("react");
+// const roleRoutes = require("./routes/role");
 
 const app = express()
 const corsOptions = {
@@ -63,6 +65,7 @@ app.use(express.json())
 
     app.use('/api/report', reportRouter);
     app.use('/api/zip',    zipRouter);
+    app.use("/roles", usersRoutes);
 
     app.get("/api/dashboard-data", authMiddleware, async (req, res) => {
       const userId = req.user.userId
