@@ -98,12 +98,12 @@ exports.createDeplacement = async (req, res) => {
       return res.status(401).json({ error: "User not authenticated" })
     }
 
-    const { typeDeDeplacementId, date, intitule, libelleDestination, codeChantier, distanceKm, carLoanId, depenses } =
+    const { typeDeDeplacementId, date,  libelleDestination, codeChantier, distanceKm, carLoanId, depenses } =
       req.body
 
-    if (!typeDeDeplacementId || !date || !intitule || !libelleDestination || !distanceKm) {
+    if (!typeDeDeplacementId || !date || !libelleDestination || !distanceKm) {
       return res.status(400).json({
-        error: "Missing required fields: typeDeDeplacementId, date, intitule, libelleDestination, distanceKm",
+        error: "Missing required fields: typeDeDeplacementId, date, libelleDestination, distanceKm",
       })
     }
 
@@ -111,7 +111,6 @@ exports.createDeplacement = async (req, res) => {
       userId: req.user.userId,
       typeDeDeplacementId,
       date,
-      intitule,
       libelleDestination,
       codeChantier: codeChantier || null,
       distanceKm,
@@ -191,7 +190,7 @@ exports.updateDeplacement = async (req, res) => {
       return res.status(401).json({ error: "User not authenticated" })
     }
 
-    const { intitule, libelleDestination, typeDeDeplacementId, date, distanceKm, codeChantier, carLoanId, depenses } =
+    const {  libelleDestination, typeDeDeplacementId, date, distanceKm, codeChantier, carLoanId, depenses } =
       req.body
 
     const deplacement = await Deplacement.findOne({ where: { id, userId: req.user.userId } })
@@ -201,7 +200,6 @@ exports.updateDeplacement = async (req, res) => {
 
     // Update the main deplacement fields (only update provided fields)
     const updateData = {}
-    if (intitule !== undefined) updateData.intitule = intitule
     if (libelleDestination !== undefined) updateData.libelleDestination = libelleDestination
     if (typeDeDeplacementId !== undefined) updateData.typeDeDeplacementId = typeDeDeplacementId
     if (date !== undefined) updateData.date = date

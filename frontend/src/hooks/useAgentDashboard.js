@@ -363,7 +363,6 @@ const exportMonthlyPDF = () => {
 
       const newTrip = {
         typeDeDeplacementId: defaultTravelType.id,
-        intitule: "Nouveau déplacement",
         date: date,
         libelleDestination: "Destination à définir",
         distanceKm: "0", 
@@ -396,7 +395,6 @@ const exportMonthlyPDF = () => {
    * Update a field of a trip
    * @param {number} tripId - The ID of the trip to update
    * @param {string} field - The field to update. Can be one of:
-   *   - `intitule`
    *   - `libelleDestination`
    *   - `typeDeDeplacementId`
    *   - `date`
@@ -416,7 +414,6 @@ const exportMonthlyPDF = () => {
       if (!trip) return;
   
       const allowedFields = [
-        "intitule",
         "libelleDestination",
         "typeDeDeplacementId",
         "date",

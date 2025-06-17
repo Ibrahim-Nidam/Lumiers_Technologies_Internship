@@ -146,7 +146,7 @@ Deplacement.belongsTo(TauxKilometriqueRole, { foreignKey: "tauxKilometriqueRoleI
 TauxMissionRole.hasMany(Deplacement, { foreignKey: "tauxMissionRoleId", onDelete: "SET NULL", as: "deplacementsByMissionRole" });
 Deplacement.belongsTo(TauxMissionRole, { foreignKey: "tauxMissionRoleId", as: "missionRole" });
 
-TypeDeDeplacement.hasMany(TauxMissionRole, { foreignKey: "typeDeDeplacementId", as: "missionRatesByType" });
+TypeDeDeplacement.hasMany(TauxMissionRole, { foreignKey: "typeDeDeplacementId", as: "missionRatesByTypeRole" });
 TauxMissionRole.belongsTo(TypeDeDeplacement, { foreignKey: "typeDeDeplacementId", as: "typeDeDeplacement" });
 
 // 4) Export everything
