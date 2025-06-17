@@ -436,7 +436,7 @@ export default function ProfileSettings() {
               />
             </div>
 
-            <div className="lg:col-span-2">
+            {/* <div className="lg:col-span-2">
               <div className="flex items-center">
                 <input
                   type="checkbox"
@@ -449,7 +449,7 @@ export default function ProfileSettings() {
                   Possède une voiture personnelle
                 </label>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
 
@@ -668,7 +668,7 @@ export default function ProfileSettings() {
         )}
 
         {/* Daily Returns Section */}
-        <div className="bg-gray-50 p-4 sm:p-6 rounded">
+        {/* <div className="bg-gray-50 p-4 sm:p-6 rounded">
           <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">
             Indemnités journalières
           </h2>
@@ -685,7 +685,7 @@ export default function ProfileSettings() {
           >
             Accéder aux indemnités journalières
           </button>
-        </div>
+        </div> */}
 
         {/* Bouton Enregistrer */}
         <div className="flex justify-end">

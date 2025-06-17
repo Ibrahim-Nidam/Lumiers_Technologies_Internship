@@ -33,9 +33,9 @@ setShowPassword,
 passwordValidation,
 passwordStrength,
 strengthLabels,
-roles,
-carLoanChecked,
-onToggleCarLoan,
+// roles,
+// carLoanChecked,
+// onToggleCarLoan,
 termsAccepted,
 onToggleTerms,
 isLoading,
@@ -306,7 +306,7 @@ return (
     </div>
 
     {/* Role Selection */}
-    <div>
+    {/* <div>
         <label
         htmlFor="role"
         className="block text-sm font-medium text-slate-700 mb-1"
@@ -357,10 +357,10 @@ return (
             </svg>
         </div>
         </div>
-    </div>
+    </div> */}
 
     {/* Car Loan Checkbox */}
-    <div className="flex items-start">
+    {/* <div className="flex items-start">
         <div className="flex items-center h-5">
         <input
             id="possede_voiture_personnelle"
@@ -380,7 +380,7 @@ return (
             Location <span style={{ color: colors.primary }}>Voiture</span>
         </label>
         </div>
-    </div>
+    </div> */}
 
     {/* Terms and Conditions */}
     <div className="flex items-start">
