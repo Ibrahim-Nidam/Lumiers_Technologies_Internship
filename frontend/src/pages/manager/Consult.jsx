@@ -3,7 +3,7 @@ import apiClient from "../../utils/axiosConfig";
 import { saveAs } from "file-saver"; 
 import { ChevronLeft, ChevronRight, Calendar } from "react-feather";
 import { colors } from "../../colors";
-import { FaFileExcel, FaFilePdf , FaFileArchive } from 'react-icons/fa';
+import { FaFileExcel, FaFilePdf , FaFileArchive, FaDownload } from 'react-icons/fa';
 
 /**
  * Page de consultation des utilisateurs, permettant de télécharger 
@@ -86,6 +86,33 @@ useEffect(() => {
   const formattedHeader = monthStartDate.toLocaleDateString("fr-FR", {
     month: "long", year: "numeric"
   });
+
+  /**
+   * Download monthly recap Excel file for all users
+   */
+  const handleMonthlyRecap = async () => {
+    try {
+      const response = await apiClient.get("/report/monthly-recap", {
+        params: {
+          year: currentYear,
+          month: currentMonth
+        },
+        responseType: "blob"
+      });
+
+      const monthDate = new Date(currentYear, currentMonth);
+      const frenchMonth = monthDate.toLocaleDateString('fr-FR', { month: 'long' });
+      const filename = `Recapitulatif_${frenchMonth}_${currentYear}.xlsx`;
+
+      const blob = new Blob([response.data], { 
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" 
+      });
+      saveAs(blob, filename);
+
+    } catch (err) {
+      console.error("Monthly recap export failed", err);
+    }
+  };
 
   /**
    * type: 'excel' | 'pdf' | 'both'
@@ -172,7 +199,8 @@ useEffect(() => {
     <div className="px-4 py-6 space-y-6">
       {/* Header with month selector */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
-        <div className="flex items-center justify-center sm:justify-start space-x-3 sm:space-x-4">
+        <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-3 sm:gap-4">
+      <div className="flex items-center space-x-2 sm:space-x-4">
           <button onClick={goToPreviousMonth}
                   className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
                   style={{ color: colors.logo_text }}>
@@ -212,20 +240,30 @@ useEffect(() => {
               </div>
             )}
           </div>
+          
           <button onClick={goToNextMonth}
                   className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
                   style={{ color: colors.logo_text }}>
             <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
+          </div>
           <button onClick={goToToday}
                   className="px-2 sm:px-3 py-1 cursor-pointer text-xs sm:text-sm border rounded-lg hover:bg-gray-50 transition-colors"
                   style={{ borderColor: colors.secondary, color: colors.logo_text }}>
             Aujourd'hui
           </button>
+          {/* New Monthly Recap Button */}
+          <button 
+            onClick={handleMonthlyRecap}
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 border-0 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105"
+          >
+            <FaDownload className="w-3 h-3 sm:w-4 sm:h-4" />
+            Récapitulatif du mois
+          </button>
         </div>
       </div>
 
-     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 text-center">
+<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 text-center">
   {users.map(user => {
     const summary = getSummaryForUser(user.id); // contains nulls or 0s if no data
     const hasData = summary && summary.totalDistance > 0;
@@ -284,21 +322,21 @@ useEffect(() => {
         <div className="px-6 py-5 bg-gradient-to-r from-gray-50 to-slate-50 flex flex-wrap justify-center gap-2 relative">
           <button
             onClick={() => handleExport(user.id, "excel")}
-            className="flex items-center gap-2 text-emerald-700 hover:text-white hover:bg-emerald-600 border-2 border-emerald-200 hover:border-emerald-600 bg-emerald-50 hover:bg-emerald-600 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md"
+            className="flex items-center gap-2 text-emerald-700 hover:text-white  border-2 border-emerald-200 hover:border-emerald-600 bg-emerald-50 hover:bg-emerald-600 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md"
           >
             <FaFileExcel className="w-4 h-4" />
             Excel
           </button>
           <button
             onClick={() => handleExport(user.id, "pdf")}
-            className="flex items-center gap-2 text-rose-700 hover:text-white hover:bg-rose-600 border-2 border-rose-200 hover:border-rose-600 bg-rose-50 hover:bg-rose-600 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md"
+            className="flex items-center gap-2 text-rose-700 hover:text-white  border-2 border-rose-200 hover:border-rose-600 bg-rose-50 hover:bg-rose-600 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md"
           >
             <FaFilePdf className="w-4 h-4" />
             PDF
           </button>
           <button
             onClick={() => handleExport(user.id, "both")}
-            className="flex items-center gap-2 text-blue-700 hover:text-white hover:bg-blue-600 border-2 border-blue-200 hover:border-blue-600 bg-blue-50 hover:bg-blue-600 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md"
+            className="flex items-center gap-2 text-blue-700 hover:text-white  border-2 border-blue-200 hover:border-blue-600 bg-blue-50 hover:bg-blue-600 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md"
           >
             <FaFileArchive className="w-4 h-4" />
             Complet
@@ -309,6 +347,6 @@ useEffect(() => {
   })}
 </div>
 
-    </div>
-  );
+</div>
+);
 }

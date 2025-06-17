@@ -1,5 +1,3 @@
-// controllers/reportController.js
-
 const { Op } = require('sequelize');
 const {
   User, Deplacement, Depense,
@@ -35,6 +33,252 @@ async function getDashboardData(userId, year, month) {
 
   return { userInfo, trips, userMissionRates, userCarLoans, travelTypes };
 }
+
+function getTotalExpenses(depenses) {
+  return depenses.reduce((sum, expense) => sum + (parseFloat(expense.montant) || 0), 0);
+}
+
+exports.generateMonthlyRecap = async (req, res) => {
+  try {
+    const { year, month } = req.query;
+    
+    if (!year || month === undefined) {
+      return res.status(400).json({ error: "Missing year or month parameters" });
+    }
+
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, Number(month) + 1, 0);
+
+    // Get all users
+    const users = await User.findAll({
+      where: { estActif: true },
+      order: [['nomComplete', 'ASC']]
+    });
+
+    // Get all travel types
+    const travelTypes = await TypeDeDeplacement.findAll();
+
+    // Create workbook
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Récapitulatif Mensuel');
+
+    // Set up column headers
+    const baseColumns = [
+      { header: 'Nom Complet', key: 'fullName', width: 25 },
+      { header: 'Total Jours de Déplacement', key: 'totalTripDays', width: 20 }
+    ];
+
+    // Add columns for each travel type (days)
+    const typeColumns = [];
+    travelTypes.forEach(type => {
+      typeColumns.push({
+        header: `${type.nom} (Jours)`, // Changed from type.libelle to type.nom
+        key: `days_${type.id}`,
+        width: 18
+      });
+    });
+
+    // Add columns for each travel type (rates)
+    const rateColumns = [];
+    travelTypes.forEach(type => {
+      rateColumns.push({
+        header: `Taux ${type.nom} (DH)`, // Changed from type.libelle to type.nom
+        key: `rate_${type.id}`,
+        width: 18
+      });
+    });
+
+    const endColumns = [
+      { header: 'Distance Parcourue (KM)', key: 'totalDistance', width: 22 },
+      { header: 'Total Général (DH)', key: 'grandTotal', width: 18 }
+    ];
+
+    // Combine all columns
+    worksheet.columns = [...baseColumns, ...typeColumns, ...rateColumns, ...endColumns];
+
+    // Style the header row
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFF' } };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: '4472C4' }
+    };
+    headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    // Process each user
+    for (const user of users) {
+      // Get user's trips for the month
+      const [trips, userMissionRates, userCarLoans] = await Promise.all([
+        Deplacement.findAll({
+          where: {
+            userId: user.id,
+            date: { [Op.between]: [startDate, endDate] }
+          },
+          include: [
+            { model: Depense, as: 'depenses' },
+            { model: TypeDeDeplacement, as: 'typeDeDeplacement' }
+          ]
+        }),
+        TauxMissionUtilisateur.findAll({ where: { userId: user.id } }),
+        CarLoan.findAll({ where: { userId: user.id } })
+      ]);
+
+      // Initialize user data
+      const userData = {
+        fullName: user.nomComplete,
+        totalTripDays: trips.length,
+        totalDistance: 0,
+        grandTotal: 0
+      };
+
+      // Initialize type-specific data
+      const typeDays = {};
+      const typeRates = {};
+
+      travelTypes.forEach(type => {
+        typeDays[type.id] = 0;
+        typeRates[type.id] = 0;
+      });
+
+      // First pass: count days and get rates
+      for (const trip of trips) {
+        const typeId = trip.typeDeDeplacementId;
+        
+        // Count days by type
+        if (typeDays[typeId] !== undefined) {
+          typeDays[typeId]++;
+        }
+
+        // Get user's rate for this travel type (only set once per type)
+        if (typeRates[typeId] === 0) {
+          const userRate = userMissionRates.find(rate => rate.typeDeDeplacementId === typeId);
+          typeRates[typeId] = userRate ? parseFloat(userRate.tarifParJour) || 0 : 0;
+        }
+      }
+
+      // Second pass: calculate costs
+      for (const trip of trips) {
+        const typeId = trip.typeDeDeplacementId;
+
+        // Calculate distance
+        userData.totalDistance += parseFloat(trip.distanceKm) || 0;
+
+        // Calculate costs for this trip
+        let tripTotal = 0;
+
+        // Add expenses
+        const expensesTotal = getTotalExpenses(trip.depenses);
+        tripTotal += expensesTotal;
+
+        // Add daily mission rate (only if this type has days)
+        if (typeDays[typeId] > 0) {
+          tripTotal += typeRates[typeId];
+        }
+
+        // Add car loan distance cost
+        if (trip.carLoanId && trip.distanceKm) {
+          const carLoan = userCarLoans.find(loan => loan.id === trip.carLoanId);
+          if (carLoan) {
+            const distanceCost = (parseFloat(trip.distanceKm) || 0) * (parseFloat(carLoan.tarifParKm) || 0);
+            tripTotal += distanceCost;
+          }
+        }
+
+        userData.grandTotal += tripTotal;
+      }
+
+      // Prepare row data
+      const rowData = { ...userData };
+
+      // Add type-specific data to row
+      travelTypes.forEach(type => {
+        rowData[`days_${type.id}`] = typeDays[type.id];
+        // Only show rate if there are days for this type
+        rowData[`rate_${type.id}`] = typeDays[type.id] > 0 ? typeRates[type.id].toFixed(2) : '0.00';
+      });
+
+      // Format numbers
+      rowData.totalDistance = userData.totalDistance.toFixed(2);
+      rowData.grandTotal = userData.grandTotal.toFixed(2);
+
+      // Add row to worksheet
+      worksheet.addRow(rowData);
+    }
+
+    // Style data rows
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber > 1) { // Skip header row
+        row.alignment = { horizontal: 'center', vertical: 'middle' };
+        
+        // Alternate row colors
+        if (rowNumber % 2 === 0) {
+          row.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'F2F2F2' }
+          };
+        }
+      }
+    });
+
+    // Add borders to all cells
+    worksheet.eachRow((row) => {
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin' },
+          bottom: { style: 'thin' },
+          left: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+    });
+
+    // Add summary row
+    const summaryRowNumber = worksheet.rowCount + 2;
+    const summaryRow = worksheet.getRow(summaryRowNumber);
+    summaryRow.getCell(1).value = 'TOTAL GÉNÉRAL';
+    summaryRow.getCell(1).font = { bold: true };
+
+    // Calculate totals for summary
+    let totalAllTrips = 0;
+    let totalAllDistance = 0;
+    let totalAllAmount = 0;
+
+    for (let i = 2; i <= worksheet.rowCount - 1; i++) {
+      const row = worksheet.getRow(i);
+      totalAllTrips += parseInt(row.getCell(2).value) || 0;
+      totalAllDistance += parseFloat(row.getCell(worksheet.columns.length - 1).value) || 0;
+      totalAllAmount += parseFloat(row.getCell(worksheet.columns.length).value) || 0;
+    }
+
+    summaryRow.getCell(2).value = totalAllTrips;
+    summaryRow.getCell(worksheet.columns.length - 1).value = totalAllDistance.toFixed(2);
+    summaryRow.getCell(worksheet.columns.length).value = totalAllAmount.toFixed(2);
+
+    summaryRow.font = { bold: true };
+    summaryRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE599' }
+    };
+
+    // Set response headers
+    const monthLabel = getMonthLabel(year, month);
+    const filename = `Recapitulatif_${monthLabel.replace(' ', '_')}.xlsx`;
+    
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    // Write workbook to response
+    await workbook.xlsx.write(res);
+    res.end();
+
+  } catch (error) {
+    console.error('Error generating monthly recap:', error);
+    res.status(500).json({ error: 'Failed to generate monthly recap' });
+  }
+};
 
 exports.getUserAggregates = async (req, res) => {
   try {
