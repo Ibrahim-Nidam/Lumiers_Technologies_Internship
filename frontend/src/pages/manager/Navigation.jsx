@@ -15,9 +15,10 @@ export default function Navigation({ activeTab, setActiveTab }) {
   const tabs = [
     { id: "accounts", label: "Comptes", icon: "👥" },
     { id: "expenses", label: "Dépenses", icon: "💰" },
-    { id: "travel", label: "Déplacements", icon: "✈️" },
-    { id: "mission", label: "Missions", icon: "🎯" },
-    { id: "carloan", label: "Véhicules", icon: "🚗" },
+    // { id: "travel", label: "Déplacements", icon: "✈️" },
+    // { id: "mission", label: "Missions", icon: "🎯" },
+    // { id: "carloan", label: "Véhicules", icon: "🚗" },
+    { id: "rolerates", label: "Taux Rôles", icon: "💸" },
     { id: "manager", label: "Consulter", icon: "🗂️" },
   ]
 
