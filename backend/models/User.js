@@ -1,6 +1,7 @@
 module.exports = (sequelize, DataTypes) => {
   return sequelize.define("User", {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    roleId: { type: DataTypes.INTEGER, field: "roleId", references: {model: 'roles',key: 'id',}},
     nomComplete: { type: DataTypes.STRING, allowNull: false, field: "nom_complete" },
     courriel: { type: DataTypes.STRING, allowNull: false, unique: true },
     motDePasseHache: { type: DataTypes.STRING, allowNull: false, field: "mot_de_passe_hache" },

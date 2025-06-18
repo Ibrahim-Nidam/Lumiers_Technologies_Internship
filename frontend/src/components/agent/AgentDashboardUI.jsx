@@ -69,7 +69,8 @@ const AgentDashboardUI = ({
   exportMonthlyExcel,
 }) => {
   const [newExpenseTypeName, setNewExpenseTypeName] = useState({})
-
+const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user");
+  const user = userDataRaw ? JSON.parse(userDataRaw) : null;
   const years = Array.from({ length: 3 }, (_, i) => new Date().getFullYear() - i)
   const monthNames = [
     "Janvier",
@@ -160,7 +161,7 @@ const AgentDashboardUI = ({
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          {userMissionRates.length > 0 && (
+                          {user?.possede_voiture_personnelle && userMissionRates.length > 0 && (
                             <span className="text-xs font-medium" style={{ color: colors.logo_text }}>
                               {dayTrips
                                 .reduce((total, trip) => total + (Number.parseFloat(trip.distanceKm) || 0), 0)
@@ -225,7 +226,7 @@ const AgentDashboardUI = ({
                                 .join(", ") || "Destinations non définies"}
                             </span>
                           </div>
-                          {userMissionRates.length > 0 && (
+                          {user?.possede_voiture_personnelle && userMissionRates.length > 0 && (
                             <span className="text-sm font-medium flex-shrink-0" style={{ color: colors.logo_text }}>
                               {dayTrips
                                 .reduce((total, trip) => total + (Number.parseFloat(trip.distanceKm) || 0), 0)
@@ -233,6 +234,7 @@ const AgentDashboardUI = ({
                               km
                             </span>
                           )}
+
                         </div>
                         {(() => {
                           const allExpenses = dayTrips.flatMap((trip) => trip.depenses)
@@ -281,7 +283,7 @@ const AgentDashboardUI = ({
                             .join(", ") || "Destinations non définies"}
                         </span>
                       </div>
-                      {userMissionRates.length > 0 && (
+                      {user?.possede_voiture_personnelle && userMissionRates.length > 0 && (
                         <div className="flex items-center space-x-2">
                           <span className="text-sm font-medium" style={{ color: colors.logo_text }}>
                             {dayTrips
@@ -409,12 +411,18 @@ const AgentDashboardUI = ({
                       <select
                         value={trip.typeDeDeplacementId || ""}
                         onChange={(e) => {
-                          const value = e.target.value ? Number.parseInt(e.target.value) : null
-                          updateTripLocal(trip.id, "typeDeDeplacementId", value)
-                          updateTripField(trip.id, "typeDeDeplacementId", value)
+                          const value = e.target.value ? Number.parseInt(e.target.value) : null;
+                          updateTripLocal(trip.id, "typeDeDeplacementId", value);
+                          updateTripField(trip.id, "typeDeDeplacementId", value);
                         }}
-                        className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
-                        style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
+                        className={`w-full px-2 sm:px-3 py-1.5 sm:py-2 border-2 rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm ${
+                          !trip.typeDeDeplacementId
+                            ? "border-red-500 ring-red-400"  // Highlight if nothing selected
+                            : "border-gray-300 ring-primary" // Normal style if selected
+                        }`}
+                        style={{
+                          "--tw-ring-color": colors.primary,
+                        }}
                       >
                         <option value="">Sélectionner un type</option>
                         {userMissionRates.map((rate) => (
@@ -423,50 +431,56 @@ const AgentDashboardUI = ({
                           </option>
                         ))}
                       </select>
+
                       </div>
                         <>
-                          <div>
-                          <label
-                        className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
-                        style={{ color: colors.logo_text }}
-                      >
-                        Taux kilométrique (optionnel)
-                      </label>
-                      <select
-                        value={trip.carLoanId || ""}
-                        onChange={(e) => {
-                          const value = e.target.value ? Number.parseInt(e.target.value) : null
-                          updateTripLocal(trip.id, "carLoanId", value)
-                          updateTripField(trip.id, "carLoanId", value)
-                        }}
-                        className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
-                        style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
-                      >
-                        <option value="">Aucun</option>
-                        {userCarLoans.map((carLoan) => (
-                          <option key={carLoan.id} value={carLoan.id}>
-                            {carLoan.libelle} - {carLoan.tarifParKm} MAD
-                          </option>
-                        ))}
-                      </select>
-                          </div>
-                          <div>
-                            <label
-                              className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
-                              style={{ color: colors.logo_text }}
-                            >
-                              Distance (km)
-                            </label>
-                            <input
-                              type="number"
-                              step="0.1"
-                              value={trip.distanceKm}
-                              onChange={(e) => updateTripLocal(trip.id, "distanceKm", e.target.value)}
-                              onBlur={(e) => updateTripField(trip.id, "distanceKm", e.target.value)}
-                              className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
-                              style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
-                            />
-                          </div>
+                          {user?.possede_voiture_personnelle && (
+                            <>
+                              <div>
+                                <label
+                                  className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
+                                  style={{ color: colors.logo_text }}
+                                >
+                                  Taux kilométrique (optionnel)
+                                </label>
+                                <select
+                                  value={trip.tauxKilometriqueRoleId || ""}
+                                  onChange={(e) => {
+                                    const value = e.target.value ? Number.parseInt(e.target.value) : null;
+                                    updateTripLocal(trip.id, "tauxKilometriqueRoleId", value);
+                                    updateTripField(trip.id, "tauxKilometriqueRoleId", value);
+                                  }}
+                                  className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
+                                  style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
+                                >
+                                  <option value="">Aucun</option>
+                                  {Array.isArray(userCarLoans?.rates) &&
+                                    userCarLoans.rates.map((carLoan) => (
+                                      <option key={carLoan.id} value={carLoan.id}>
+                                        {carLoan.libelle} - {carLoan.tarifParKm} MAD
+                                      </option>
+                                    ))}
+                                </select>
+                              </div>
+                              <div>
+                                <label
+                                  className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
+                                  style={{ color: colors.logo_text }}
+                                >
+                                  Distance (km)
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  value={trip.distanceKm ?? ""}
+                                  onChange={(e) => updateTripLocal(trip.id, "distanceKm", e.target.value)}
+                                  onBlur={(e) => updateTripField(trip.id, "distanceKm", e.target.value)}
+                                  className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
+                                  style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
+                                />
+                              </div>
+                            </>
+                          )}
                               {(showCodeChantier[trip.id] || trip.codeChantier) && (
                               <div className="mb-3 sm:mb-4">
                                 <label

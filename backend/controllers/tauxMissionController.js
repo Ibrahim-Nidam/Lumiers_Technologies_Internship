@@ -1,4 +1,4 @@
-const { TauxMissionRole, TypeDeDeplacement } = require('../models');
+const { TauxMissionRole, User, Role, TypeDeDeplacement } = require('../models');
 
 exports.getAll = async (req, res) => {
   try {
@@ -42,5 +42,49 @@ exports.remove = async (req, res) => {
     res.status(204).send();
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getUserMissionRates = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // Get user including their role(s)
+    const user = await User.findByPk(userId, {
+      include: {
+        model: Role,
+        as: "role",
+        attributes: ["id", "nom"],
+      },
+    });
+
+    if (!user || !user.role) {
+      return res.status(404).json({ message: "User or user role not found" });
+    }
+
+    // Assuming user.role is a single role (if many-to-one),
+    // or adjust if it's an array for many-to-many relationship
+    const roleId = Array.isArray(user.role) ? user.role[0].id : user.role.id;
+
+    // Fetch mission rates for this role
+    const missionRates = await TauxMissionRole.findAll({
+      where: { roleId },
+      include: [
+        {
+          model: TypeDeDeplacement,
+          as: "typeDeDeplacement",
+          attributes: ["id", "nom", "description"],
+        },
+      ],
+      order: [["dateCreation", "DESC"]],
+    });
+
+    res.json(missionRates);
+  } catch (error) {
+    console.error("Error fetching user mission rates by role:", error);
+    res.status(500).json({
+      message: "Error fetching user mission rates by role",
+      error: error.message,
+    });
   }
 };

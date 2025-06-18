@@ -99,7 +99,7 @@ exports.login = async (req, res) => {
   try {
     const user = await User.findOne({
       where: { courriel: email },
-      include: [{ model: Role, attributes: ["nom"] }],
+      include: [{ model: Role, as:"role", attributes: ["nom"] }],
     });
 
     if (!user) {
@@ -115,7 +115,7 @@ exports.login = async (req, res) => {
       return res.status(401).json({ error: "Email ou mot de passe invalide." });
     }
 
-    const payload = { userId: user.id, role: user.Role.nom };
+    const payload = { userId: user.id, role: user.role.nom };
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "8h" });
 
     return res.json({
@@ -125,7 +125,7 @@ exports.login = async (req, res) => {
         id: user.id,
         nom_complete: user.nomComplete,
         email: user.courriel,
-        role: user.Role.nom,
+        role: user.role.nom,
         possede_voiture_personnelle: user.possedeVoiturePersonnelle,
       },
     });

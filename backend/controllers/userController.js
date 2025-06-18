@@ -4,11 +4,11 @@ const { User, Role } = require("../models");
 exports.getNonAdminUsers = async (req, res) => {
   try {
     const users = await User.findAll({
-      include: [{ model: Role }],
+      include: [{ model: Role, as: "role" }],
     });
 
     const filtered = users.filter(user => {
-      const roleName = user.Role?.nom.toLowerCase();
+      const roleName = user.role?.nom.toLowerCase();
       return roleName !== "admin" && roleName !== "superadmin";
     });
 
@@ -18,7 +18,7 @@ exports.getNonAdminUsers = async (req, res) => {
       email: u.courriel,
       hasCar: u.possedeVoiturePersonnelle,
       status: u.estActif ? "Actif" : "Inactif",
-      role: u.Role?.nom,
+      role: u.role?.nom,
       avatar: u.nomComplete?.split(" ").map(w => w[0]).join("").toUpperCase(),
     }));
 
@@ -36,11 +36,11 @@ exports.toggleUserField = async (req, res) => {
 
   try {
     const requestingUser = await User.findByPk(req.user.userId, {
-      include: Role,
+      include: [{ model: Role, as: "role" }],
     });
 
     const targetUser = await User.findByPk(id, {
-      include: Role,
+      include: [{ model: Role, as: "role" }],
     });
 
     if (!targetUser) {
@@ -48,8 +48,8 @@ exports.toggleUserField = async (req, res) => {
     }
 
     const restrictedRoles = ["supermanager"];
-    const requesterRole = requestingUser.Role.nom.toLowerCase();
-    const targetRole = targetUser.Role.nom.toLowerCase();
+    const requesterRole = requestingUser.role?.nom.toLowerCase();
+    const targetRole = targetUser.role?.nom.toLowerCase();
 
     if (
       requesterRole === "manager" &&
@@ -80,19 +80,16 @@ exports.toggleUserField = async (req, res) => {
 exports.getAssignableRoles = async (req, res) => {
   try {
     const roles = await Role.findAll();
-    
-    // Filter out admin and superadmin (case-insensitive)
-    // Make sure to check for all possible variations
+
     const filteredRoles = roles.filter(
       (r) => !["admin", "superadmin", "super admin"].includes(r.nom.toLowerCase())
     );
-    
-    // Map roles to uppercase names
+
     const rolesUpper = filteredRoles.map(r => ({
       id: r.id,
       nom: r.nom
     }));
-    
+
     res.json(rolesUpper);
   } catch (err) {
     console.error("Error fetching roles:", err);
@@ -100,28 +97,25 @@ exports.getAssignableRoles = async (req, res) => {
   }
 };
 
-
-
 // PATCH Update User Role
 exports.updateUserRole = async (req, res) => {
   const { id } = req.params;
   const { roleId } = req.body;
 
   try {
-    // Find the user to update
-    const user = await User.findByPk(id, { include: Role });
+    const user = await User.findByPk(id, {
+      include: [{ model: Role, as: "role" }],
+    });
     if (!user) {
       return res.status(404).json({ error: "Utilisateur introuvable." });
     }
 
-    // Find the requested role
     const role = await Role.findByPk(roleId);
     if (!role) {
       return res.status(400).json({ error: "Rôle invalide." });
     }
 
-    // Assign the new role to the user
-    user.roleId = roleId; // Adjust property name if needed
+    user.roleId = roleId;
     await user.save();
 
     res.json({ success: true, role: role.nom });

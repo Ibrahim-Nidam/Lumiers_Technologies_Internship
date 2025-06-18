@@ -31,10 +31,12 @@ const TauxMissionRole = require("./TauxMissionRole")(sequelize, DataTypes);
 // ─── Roles ↔ Users
 Role.hasMany(User, {
   foreignKey: "roleId",
-  onDelete: "SET NULL"
+  onDelete: "SET NULL",
+  as: "users"
 });
 User.belongsTo(Role, {
-  foreignKey: "roleId"
+  foreignKey: "roleId",
+  as: "role"
 });
 
 // ─── Users ↔ CarLoans (TauxKilometriqueUtilisateur)

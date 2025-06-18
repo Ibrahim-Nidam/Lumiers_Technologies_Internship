@@ -29,10 +29,12 @@ export const useAgentDashboard = (currentUserId) => {
     const token = localStorage.getItem("token") || sessionStorage.getItem("token")
     return token ? { Authorization: `Bearer ${token}` } : {}
   }
+  
 
   const getUserData = () => {
     try {
       const userData = localStorage.getItem("user") || sessionStorage.getItem("user");
+      
       if (userData) {
         return typeof userData === 'string' ? JSON.parse(userData) : userData;
       }
@@ -62,75 +64,69 @@ export const useAgentDashboard = (currentUserId) => {
   };
 
   useEffect(() => {
-    const fetchTypes = async () => {
-      try {
-        const headers = getAuthHeaders()
-        setLoadingStates(prev => ({ ...prev, types: true, missionRates: true }))
+  const fetchTypes = async () => {
+    try {
+      const headers = getAuthHeaders();
+      setLoadingStates(prev => ({ ...prev, types: true, missionRates: true }));
 
-        const [travelResponse, expenseResponse] = await Promise.all([
-          apiClient.get(`/travel-types`, { headers }).catch(err => {
-            console.warn("Travel types endpoint failed:", err.response?.status)
-            return { data: [] }
-          }),
-          apiClient.get(`/expense-types`, { headers }).catch(err => {
-            console.warn("Expense types endpoint failed:", err.response?.status)
-            return { data: [] }
-          }),
-        ])
+      console.log("Fetching travel types and expense types...");
 
-        const travelTypesData = travelResponse.data || []
-        const expenseTypesData = expenseResponse.data || []
+      const [travelResponse, expenseResponse] = await Promise.all([
+        apiClient.get(`/travel-types`, { headers }).catch(err => {
+          console.warn("Travel types endpoint failed:", err.response?.status);
+          return { data: [] };
+        }),
+        apiClient.get(`/expense-types`, { headers }).catch(err => {
+          console.warn("Expense types endpoint failed:", err.response?.status);
+          return { data: [] };
+        }),
+      ]);
 
-        if (travelTypesData.length === 0) {
-          travelTypesData.push({ id: 1, nom: "Déplacement standard" })
-        }
-        if (expenseTypesData.length === 0) {
-          expenseTypesData.push({ id: 1, nom: "Frais de transport" })
-        }
+      const travelTypesData = travelResponse.data || [];
+      const expenseTypesData = expenseResponse.data || [];
 
-        setTravelTypes(travelTypesData)
-        setExpenseTypes(expenseTypesData)
-        setLoadingStates(prev => ({ ...prev, types: false }))
+      // console.log("Travel types received:", travelTypesData);
+      // console.log("Expense types received:", expenseTypesData);
 
-        try {
-          let missionRes
-          try {
-            missionRes = await apiClient.get(`/user-daily-returns`, { headers })
-          } catch (newErr) {
-            console.warn("New user-daily-returns failed:", newErr.response?.status)
-            missionRes = { data: [] }
-          }
-          const approvedRates = (missionRes.data || []).filter(r => r.statut === "approuvé")
-          setUserMissionRates(approvedRates)
-
-          let carLoansRes
-          try {
-            carLoansRes = await apiClient.get(`/car-loan-rates/user`, { headers })
-          } catch (loanErr) {
-            console.warn("Car loans endpoint failed:", loanErr.response?.status)
-            carLoansRes = { data: [] }
-          }
-          const approvedLoans = carLoansRes.data || []
-          setUserCarLoans(approvedLoans)
-        } catch {
-          console.warn("Mission rates / car loans fetch failed altogether")
-          setUserMissionRates([])
-          setUserCarLoans([])
-        }
-
-        setLoadingStates(prev => ({ ...prev, missionRates: false }))
-      } catch (error) {
-        console.error("Failed to fetch types:", error.response?.status, error.response?.data || error.message)
-        setLoadingStates(prev => ({ ...prev, types: false, missionRates: false }))
-        setTravelTypes([{ id: 1, nom: "Déplacement standard" }])
-        setExpenseTypes([{ id: 1, nom: "Frais de transport" }])
-        setUserMissionRates([])
-        setUserCarLoans([])
+      if (travelTypesData.length === 0) {
+        travelTypesData.push({ id: 1, nom: "Déplacement standard" });
+        console.log("Default travel type added");
       }
-    }
+      if (expenseTypesData.length === 0) {
+        expenseTypesData.push({ id: 1, nom: "Frais de transport" });
+        console.log("Default expense type added");
+      }
 
-    fetchTypes()
-  }, [currentUserId])
+      setTravelTypes(travelTypesData);
+      setExpenseTypes(expenseTypesData);
+      setLoadingStates(prev => ({ ...prev, types: false }));
+
+      // Fetch mission rates
+      console.log("Fetching user mission rates...");
+      const missionRes = await apiClient.get(`/taux-deplacement/user`, { headers });
+      console.log("User mission rates received:", missionRes.data);
+      setUserMissionRates(missionRes.data || []);
+
+      // Fetch kilometer rates
+      console.log("Fetching user kilometer rates...");
+      const kilometerRes = await apiClient.get(`/taux-kilometrique/user`, { headers });
+      console.log("User kilometer rates received:", kilometerRes.data);
+      setUserCarLoans(kilometerRes.data || []);
+
+      setLoadingStates(prev => ({ ...prev, missionRates: false }));
+    } catch (error) {
+      console.error("Failed to fetch types or rates:", error.response?.status, error.response?.data || error.message);
+      setLoadingStates(prev => ({ ...prev, types: false, missionRates: false }));
+      setTravelTypes([{ id: 1, nom: "Déplacement standard" }]);
+      setExpenseTypes([{ id: 1, nom: "Frais de transport" }]);
+      setUserMissionRates([]);
+      setUserCarLoans([]);
+    }
+  };
+
+  fetchTypes();
+}, [currentUserId]);
+
 
   useEffect(() => {
     const fetchTrips = async () => {
@@ -204,80 +200,79 @@ export const useAgentDashboard = (currentUserId) => {
   }
 
   const addTrip = async (date) => {
-    if (isUpdating) return
+    if (isUpdating) return;
 
     try {
-      setIsUpdating(true)
-      const defaultTravelType = travelTypes[0]
-      const tripExists = trips.some(trip => trip.date === date)
-      
+      setIsUpdating(true);
+      const defaultTravelType = travelTypes[0];
+      const tripExists = trips.some(trip => trip.date === date);
+
       if (tripExists) {
-        alert("Un déplacement a déjà été enregistré pour cette date.")
-        return
+        alert("Un déplacement a déjà été enregistré pour cette date.");
+        return;
       }
 
       if (!defaultTravelType || !defaultTravelType.id) {
-        console.error("No valid travel type available")
-        alert("Les types de déplacement ne sont pas encore chargés. Veuillez attendre ou rafraîchir la page.")
-        return
+        console.error("No valid travel type available");
+        alert("Les types de déplacement ne sont pas encore chargés. Veuillez attendre ou rafraîchir la page.");
+        return;
       }
 
       const newTrip = {
         typeDeDeplacementId: defaultTravelType.id,
         date: date,
         libelleDestination: "Destination à définir",
-        distanceKm: "0", 
-        codeChantier: "",
-        carLoanId: null,
+        distanceKm: "0",
+        codefiles: "",
+        tauxKilometriqueRoleId: null,
         depenses: [],
-      }
+      };
 
-      const headers = getAuthHeaders()
-      const response = await apiClient.post(`/deplacements`, newTrip, { headers })
-      setTrips(prevTrips => [...prevTrips, response.data])
-      setExpandedDays(new Set([...expandedDays, Number.parseInt(date.split("-")[2])]))
+      const headers = getAuthHeaders();
+      const response = await apiClient.post(`/deplacements`, newTrip, { headers });
+      setTrips(prevTrips => [...prevTrips, response.data]);
+      setExpandedDays(new Set([...expandedDays, Number.parseInt(date.split("-")[2])]));
     } catch (error) {
-      console.error("❌ Failed to add trip:", error)
-
+      console.error("❌ Failed to add trip:", error);
       if (error.response && error.response.data) {
-        console.error("Server response:", error.response.data)
-        alert(`Erreur: ${error.response.data.error || "Erreur lors de la création du déplacement"}`)
+        console.error("Server response:", error.response.data);
+        alert(`Erreur: ${error.response.data.error || "Erreur lors de la création du déplacement"}`);
       } else {
-        alert("Erreur lors de la création du déplacement. Veuillez réessayer.")
+        alert("Erreur lors de la création du déplacement. Veuillez réessayer.");
       }
     } finally {
-      setIsUpdating(false)
+      setIsUpdating(false);
     }
-  }
+  };
 
   const updateTripField = async (tripId, field, value) => {
     if (isUpdating) return;
-  
+
     try {
       setIsUpdating(true);
       const trip = trips.find(t => t.id === tripId);
       if (!trip) return;
-  
+
       const allowedFields = [
         "libelleDestination",
         "typeDeDeplacementId",
         "date",
         "distanceKm",
         "codeChantier",
-        "carLoanId",
+        "tauxKilometriqueRoleId",
         "depenses",
       ];
-  
+
       const updatedTrip = {};
       allowedFields.forEach(key => {
         if (key in trip) updatedTrip[key] = trip[key];
       });
-  
+
       updatedTrip[field] = value;
-  
+
       const headers = getAuthHeaders();
       const response = await apiClient.put(`/deplacements/${tripId}`, updatedTrip, { headers });
-  
+
       setTrips(prevTrips => prevTrips.map(t => t.id === tripId ? response.data : t));
     } catch (error) {
       console.error("Failed to update trip:", error);
@@ -517,20 +512,21 @@ export const useAgentDashboard = (currentUserId) => {
   }
 
   const getTripTotal = (trip) => {
-    const expensesTotal = getTotalExpenses(trip.depenses)
-    const travelTypeRate = userMissionRates.find(rate => rate.typeDeDeplacementId === trip.typeDeDeplacementId)
-    const travelTypeAmount = travelTypeRate ? Number.parseFloat(travelTypeRate.tarifParJour) || 0 : 0
+  const expensesTotal = getTotalExpenses(trip.depenses);
+  const travelTypeRate = userMissionRates.find(rate => rate.typeDeDeplacementId === trip.typeDeDeplacementId);
+  const travelTypeAmount = travelTypeRate ? Number.parseFloat(travelTypeRate.tarifParJour) || 0 : 0;
 
-    let distanceCost = 0
-    if (trip.carLoanId && trip.distanceKm) {
-      const carLoan = userCarLoans.find(loan => loan.id === trip.carLoanId)
-      if (carLoan) {
-        distanceCost = (Number.parseFloat(trip.distanceKm) || 0) * (Number.parseFloat(carLoan.tarifParKm) || 0)
-      }
+  let distanceCost = 0;
+  if (trip.tauxKilometriqueRoleId && trip.distanceKm) {
+    const kilometerRate = userCarLoans.rates?.find(rate => rate.id === trip.tauxKilometriqueRoleId);
+    if (kilometerRate) {
+      distanceCost = (Number.parseFloat(trip.distanceKm) || 0) * (Number.parseFloat(kilometerRate.tarifParKm) || 0);
     }
-
-    return expensesTotal + travelTypeAmount + distanceCost
   }
+
+  return expensesTotal + travelTypeAmount + distanceCost;
+};
+
 
   const getTripsForDay = (day) => {
     const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`
@@ -595,7 +591,7 @@ Résumé du mois :
 - Nombre de déplacements : ${getMonthlyTrips().length}
 - Distance totale : ${getMonthlyDistanceTotal().toFixed(2)} km
 - Nombre de dépenses : ${getMonthlyExpensesCount()}
-- Montant total : ${getMonthlyTotal().toFixed(2)} €
+- Montant total : ${getMonthlyTotal().toFixed(2)} MAD
 
 Cordialement,
 ${userName}`;
@@ -611,25 +607,26 @@ ${userName}`;
 
   const showEmailFormatSelection = () => {
     const modal = document.createElement('div');
-    modal.className = 'fixed inset-0 bg-[#b9bfcf] bg-opacity-50 flex items-center justify-center z-50';
+    modal.className = 'fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50';
     modal.innerHTML = `
-      <div class="bg-white rounded-lg p-6 max-w-sm mx-4 shadow-xl">
-        <h3 class="text-lg font-semibold mb-4 text-gray-800">Choisir le format du rapport</h3>
-        <div class="space-y-3">
-          <button id="email-pdf" class="w-full px-4 py-3 bg-red-500 text-white rounded hover:bg-red-600 transition-colors flex items-center justify-center space-x-2">
+      <div class="bg-white/30 backdrop-blur-lg rounded-xl p-6 sm:p-8 w-full max-w-md mx-4 shadow-2xl border border-white/20 animate-fade-in">
+        <h3 class="text-xl font-bold mb-6 text-white text-center drop-shadow">Choisir le format du rapport</h3>
+        <div class="space-y-4">
+          <button id="email-pdf" class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500/80 text-white text-sm font-medium rounded-lg hover:bg-red-600/90 focus:outline-none focus:ring-2 focus:ring-red-400 transition-all duration-200">
             <span>📄</span>
             <span>Envoyer en PDF</span>
           </button>
-          <button id="email-excel" class="w-full px-4 py-3 bg-green-500 text-white rounded hover:bg-green-600 transition-colors flex items-center justify-center space-x-2">
+          <button id="email-excel" class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-500/80 text-white text-sm font-medium rounded-lg hover:bg-emerald-600/90 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-all duration-200">
             <span>📊</span>
             <span>Envoyer en Excel</span>
           </button>
-          <button id="email-cancel" class="w-full px-4 py-3 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition-colors">
+          <button id="email-cancel" class="w-full px-4 py-3 bg-white/30 text-white text-sm font-medium rounded-lg hover:bg-white/40 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-200">
             Annuler
           </button>
         </div>
       </div>
     `;
+
 
     document.body.appendChild(modal);
 

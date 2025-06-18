@@ -1,4 +1,4 @@
-const { TauxKilometriqueRole } = require('../models');
+const { TauxKilometriqueRole, User, Role  } = require('../models');
 
 exports.getAll = async (req, res) => {
   try {
@@ -40,5 +40,41 @@ exports.remove = async (req, res) => {
     res.status(204).send();
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+
+exports.getUserCarLoans = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    console.log("Fetching mission rates for userId:", userId);
+
+    // Get user with their role
+    const user = await User.findByPk(userId, {
+      include: {
+        model: Role,
+        as: "role",
+        attributes: ["id", "nom"]
+      }
+    });
+
+    console.log("User fetched:", user ? user.toJSON() : null);
+
+    if (!user || !user.role) {
+      return res.status(404).json({ message: "User or role not found" });
+    }
+
+    const roleId = user.role.id;
+
+    // Fetch rates based on role
+    const rates = await TauxKilometriqueRole.findAll({
+      where: { roleId },
+      order: [["dateCreation", "DESC"]]
+    });
+
+    res.json({ role: user.role.nom, rates });
+  } catch (error) {
+    console.error("Error fetching user's kilometer rates:", error);
+    res.status(500).json({ message: "Error fetching rates", error: error.message });
   }
 };

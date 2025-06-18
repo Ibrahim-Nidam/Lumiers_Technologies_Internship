@@ -34,7 +34,7 @@ export const handleExcelExport = async (year, month, dashboardData) => {
   const calculateTotals = () => {
     const { trips, userMissionRates, userCarLoans, travelTypes } = dashboardData;
     const dailyAllowances = new Map();
-    const mileageCosts   = new Map();
+    const mileageCosts = new Map();
     let totalMisc = 0, miscCount = 0;
 
     trips.forEach(trip => {
@@ -43,20 +43,24 @@ export const handleExcelExport = async (year, month, dashboardData) => {
         miscCount += trip.depenses.length;
         trip.depenses.forEach(e => totalMisc += parseFloat(e.montant)||0);
       }
-      // mileage
+      
+      // mileage - Fixed to match hook logic
       const dist = parseFloat(trip.distanceKm)||0;
-      if (trip.carLoanId && dist>0) {
-        const loan = userCarLoans.find(l=>l.id===trip.carLoanId);
-        if (loan) {
-          const rate = parseFloat(loan.tarifParKm)||0;
-          const cost = dist*rate;
-          const key  = loan.libelle||'(Véhicule non spécifié)';
+      if (trip.tauxKilometriqueRoleId && dist > 0) {
+        // Look for the rate in userCarLoans.rates array (matching hook logic)
+        const kilometerRate = userCarLoans.rates?.find(rate => rate.id === trip.tauxKilometriqueRoleId);
+        if (kilometerRate) {
+          const rate = parseFloat(kilometerRate.tarifParKm)||0;
+          const cost = dist * rate;
+          // Use the rate's libelle or a default key
+          const key = kilometerRate.libelle || '(Véhicule non spécifié)';
           if (!mileageCosts.has(key)) mileageCosts.set(key, { distance:0, total:0, rate });
           const cur = mileageCosts.get(key);
           cur.distance += dist;
-          cur.total    += cost;
+          cur.total += cost;
         }
       }
+      
       // daily allowances
       const mr = userMissionRates.find(r=>r.typeDeDeplacementId===trip.typeDeDeplacementId);
       if (mr) {
@@ -177,7 +181,6 @@ export const handleExcelExport = async (year, month, dashboardData) => {
  *
  * @returns {Promise<void>} A Promise that resolves when the PDF has been generated and downloaded.
  */
-
 export const handlePDFExport = async (year, month, dashboardData) => {
   const label = getMonthLabel(year, month);
 
@@ -198,7 +201,7 @@ export const handlePDFExport = async (year, month, dashboardData) => {
 
     // Use Maps to dynamically group expenses
     const dailyAllowances = new Map();
-    const mileageCosts = new Map(); // Key will be the car loan's libelle
+    const mileageCosts = new Map(); // Key will be the rate's libelle
     let totalMiscExpenses = 0;
     let miscExpensesCount = 0; // Counter for the number of expenses
 
@@ -211,15 +214,16 @@ export const handlePDFExport = async (year, month, dashboardData) => {
         });
       }
 
-      // 2. Group Mileage Costs by car loan libelle
+      // 2. Group Mileage Costs by rate libelle - Fixed to match hook logic
       const distance = parseFloat(trip.distanceKm) || 0;
-      if (trip.carLoanId && distance > 0) {
-        const carLoan = userCarLoans.find(loan => loan.id === trip.carLoanId);
-        if (carLoan) {
-          const rate = parseFloat(carLoan.tarifParKm) || 0;
+      if (trip.tauxKilometriqueRoleId && distance > 0) {
+        // Look for the rate in userCarLoans.rates array (matching hook logic)
+        const kilometerRate = userCarLoans.rates?.find(rate => rate.id === trip.tauxKilometriqueRoleId);
+        if (kilometerRate) {
+          const rate = parseFloat(kilometerRate.tarifParKm) || 0;
           const cost = distance * rate;
-          // Use the 'libelle' as the key to group different vehicle types
-          const libelle = carLoan.libelle || '(Véhicule non spécifié)';
+          // Use the rate's libelle as the key to group different vehicle types
+          const libelle = kilometerRate.libelle || '(Véhicule non spécifié)';
 
           if (!mileageCosts.has(libelle)) {
             mileageCosts.set(libelle, { distance: 0, total: 0, rate: rate });
@@ -291,7 +295,7 @@ export const handlePDFExport = async (year, month, dashboardData) => {
       ]);
   });
 
-  // Add a row for each unique mileage category (based on carLoan.libelle)
+  // Add a row for each unique mileage category (based on rate libelle)
   totals.mileageCosts.forEach((data, libelle) => {
       tableBody.push([
           `Frais kilométrique (${libelle})`, // Dynamically add libelle
@@ -308,7 +312,6 @@ export const handlePDFExport = async (year, month, dashboardData) => {
       {}, {}, {},
       { text: totals.grandTotal.toFixed(2), bold: true, alignment: 'right', fillColor: '#f0f0f0' }
   ]);
-
 
   const docDefinition = {
     content: [

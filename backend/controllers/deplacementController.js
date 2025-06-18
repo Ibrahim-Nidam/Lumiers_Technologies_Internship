@@ -3,15 +3,13 @@ const {
   Depense,
   TypeDeDeplacement,
   TypeDepense,
-  TauxMissionUtilisateur,
-  CarLoan,
+  TauxMissionRole,
+  TauxKilometriqueRole,
   Sequelize,
 } = require("../models")
 const { Op } = Sequelize
 const path = require("path");
 const fs = require("fs")
-
-
 
 exports.getDeplacements = async (req, res) => {
   try {
@@ -63,13 +61,13 @@ exports.getDeplacements = async (req, res) => {
           as: "typeDeDeplacement",
         },
         {
-          model: TauxMissionUtilisateur,
-          as: "missionRate",
+          model: TauxMissionRole,
+          as: "missionRole",
           required: false,
         },
         {
-          model: CarLoan,
-          as: "carLoan",
+          model: TauxKilometriqueRole,
+          as: "kilometriqueRole",
           required: false,
         },
       ],
@@ -98,7 +96,7 @@ exports.createDeplacement = async (req, res) => {
       return res.status(401).json({ error: "User not authenticated" })
     }
 
-    const { typeDeDeplacementId, date,  libelleDestination, codeChantier, distanceKm, carLoanId, depenses } =
+    const { typeDeDeplacementId, date,  libelleDestination, codeChantier, distanceKm, tauxKilometriqueRoleId, depenses } =
       req.body
 
     if (!typeDeDeplacementId || !date || !libelleDestination || !distanceKm) {
@@ -114,7 +112,7 @@ exports.createDeplacement = async (req, res) => {
       libelleDestination,
       codeChantier: codeChantier || null,
       distanceKm,
-      carLoanId: carLoanId || null,
+      tauxKilometriqueRoleId: tauxKilometriqueRoleId || null,
     })
 
     // Create associated expenses if provided
@@ -155,13 +153,13 @@ exports.createDeplacement = async (req, res) => {
           as: "typeDeDeplacement",
         },
         {
-          model: TauxMissionUtilisateur,
-          as: "missionRate",
+          model: TauxMissionRole,
+          as: "missionRole",
           required: false,
         },
         {
-          model: CarLoan,
-          as: "carLoan",
+          model: TauxKilometriqueRole,
+          as: "kilometriqueRole",
           required: false,
         },
       ],
@@ -190,7 +188,7 @@ exports.updateDeplacement = async (req, res) => {
       return res.status(401).json({ error: "User not authenticated" })
     }
 
-    const {  libelleDestination, typeDeDeplacementId, date, distanceKm, codeChantier, carLoanId, depenses } =
+    const {  libelleDestination, typeDeDeplacementId, date, distanceKm, codeChantier, tauxKilometriqueRoleId, depenses } =
       req.body
 
     const deplacement = await Deplacement.findOne({ where: { id, userId: req.user.userId } })
@@ -205,7 +203,7 @@ exports.updateDeplacement = async (req, res) => {
     if (date !== undefined) updateData.date = date
     if (distanceKm !== undefined) updateData.distanceKm = distanceKm
     if (codeChantier !== undefined) updateData.codeChantier = codeChantier
-    if (carLoanId !== undefined) updateData.carLoanId = carLoanId
+    if (tauxKilometriqueRoleId !== undefined) updateData.tauxKilometriqueRoleId = tauxKilometriqueRoleId
 
     await deplacement.update(updateData)
 
@@ -253,13 +251,13 @@ exports.updateDeplacement = async (req, res) => {
           as: "typeDeDeplacement",
         },
         {
-          model: TauxMissionUtilisateur,
-          as: "missionRate",
+          model: TauxMissionRole,
+          as: "missionRole",
           required: false,
         },
         {
-          model: CarLoan,
-          as: "carLoan",
+          model: TauxKilometriqueRole,
+          as: "kilometriqueRole",
           required: false,
         },
       ],

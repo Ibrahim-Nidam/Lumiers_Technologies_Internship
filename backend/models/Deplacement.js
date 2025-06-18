@@ -1,5 +1,5 @@
-module.exports = (sequelize, DataTypes) => {
-  return sequelize.define("Deplacement", {
+module.exports = (sequelize, DataTypes) =>
+  sequelize.define("Deplacement", {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     userId: { type: DataTypes.INTEGER, allowNull: false, field: "utilisateur_id" },
     carLoanId: { type: DataTypes.INTEGER, allowNull: true, field: "car_loan_id" },
@@ -17,7 +17,8 @@ module.exports = (sequelize, DataTypes) => {
     tableName: "deplacements",
     timestamps: false,
     hooks: {
-      beforeUpdate: (d) => { d.dateModification = new Date(); },
-    }
+      beforeUpdate: (deplacement) => {
+        deplacement.dateModification = new Date();
+      },
+    },
   });
-};
