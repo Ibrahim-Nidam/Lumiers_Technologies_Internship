@@ -5,14 +5,6 @@ const path = require("path");
 
 const {
   sequelize,
-  Role,
-  User,
-  CarLoan,
-  Deplacement,
-  TypeDepense,
-  Depense,
-  TypeDeDeplacement,
-  TauxMissionUtilisateur,
 } = require("./models")
 
 const { seedInitialData } = require("./seed-initial-data")
@@ -29,8 +21,11 @@ const deplacementRouter = require("./routes/deplacements")
 const dailyReturnRoutes = require("./routes/dailyReturnRoutes")
 const reportRouter = require('./routes/report');
 const zipRouter    = require('./routes/zip');
+const TauxMissionRole = require("./routes/tauxMissionRoutes")
+const roleRoutes = require("./routes/roleRoutes")
+
+
 const { use } = require("react");
-// const roleRoutes = require("./routes/role");
 
 const app = express()
 const corsOptions = {
@@ -52,11 +47,15 @@ app.use(express.json())
     app.use("/api/auth", authRoutes)
     app.use("/api", profileRoutes)
     app.use("/api/expense-types", expenseTypesRoutes)
+    
     app.use("/api/travel-types", travelTypesRouter)
-    app.use("/api/users", usersRoutes)
-    app.use("/api/mission-rates", missionRatesRouter)
+    app.use("/api/taux-deplacement", TauxMissionRole)
+    app.use('/api/roles', roleRoutes);
 
-    app.use("/api/car-loan-rates", carLoanRatesRouter)
+    app.use("/api/users", usersRoutes)
+    // app.use("/api/mission-rates", missionRatesRouter)
+
+    // app.use("/api/car-loan-rates", carLoanRatesRouter)
 
     app.use("/api/deplacements", deplacementRouter)
 

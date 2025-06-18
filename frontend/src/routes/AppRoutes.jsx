@@ -18,11 +18,11 @@ import DailyReturnsPage from "../pages/DailyReturnsPage";
 // Manager Dashboard Sub-Pages
 import ApproveAccounts from "../pages/manager/ApproveAccounts";
 import ExpenseTypes from "../pages/manager/ExpenseTypes";
-// import DisplacementTypes from "../pages/manager/DisplacementTypes";
+import DisplacementTypes from "../pages/manager/DisplacementTypes";
 // import MissionRates from "../pages/manager/MissionRates";
 // import CarLoanRates from "../pages/manager/CarLoanRates";
 import Consult from "../pages/manager/Consult";
-import Rate from "../pages/manager/Rates";
+import Role from "../pages/manager/Role";
 
 /**
  * Defines the routes for the application.
@@ -66,11 +66,11 @@ export default function AppRoutes() {
             <Route index element={<ApproveAccounts />} />
             <Route path="approve-accounts" element={<ApproveAccounts />} />
             <Route path="expense-types" element={<ExpenseTypes />} />
-            {/* <Route path="displacement-types" element={<DisplacementTypes />} /> */}
+            <Route path="displacement-types" element={<DisplacementTypes />} />
             {/* <Route path="mission-rates" element={<MissionRates />} /> */}
             {/* <Route path="car-loan-rates" element={<CarLoanRates />} /> */}
             <Route path="consult" element={<Consult />} />
-            <Route path="rolerates" element={<Rate />} />
+            <Route path="role" element={<Role />} />
           </Route>
 
           <Route path="/profile-settings" element={<ProfileSettings />} />

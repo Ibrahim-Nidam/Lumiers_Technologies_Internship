@@ -14,13 +14,16 @@
 export default function Navigation({ activeTab, setActiveTab }) {
   const tabs = [
     { id: "accounts", label: "Comptes", icon: "👥" },
+    { id: "role", label: "Rôles", icon: "🏷️" },
     { id: "expenses", label: "Dépenses", icon: "💰" },
-    // { id: "travel", label: "Déplacements", icon: "✈️" },
+    { id: "travel", label: "Déplacements", icon: "✈️" },
+    { id: "carrates", label: "Taux Véhicule", icon: "🚘" },
+    { id: "travelrates", label: "Taux Déplacement", icon: "🧳" },
     // { id: "mission", label: "Missions", icon: "🎯" },
     // { id: "carloan", label: "Véhicules", icon: "🚗" },
-    { id: "rolerates", label: "Taux Rôles", icon: "💸" },
     { id: "manager", label: "Consulter", icon: "🗂️" },
-  ]
+];
+
 
   return (
     <div className="bg-white/80 backdrop-blur-sm rounded shadow-sm border border-gray-100 p-2">

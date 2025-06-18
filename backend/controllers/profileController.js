@@ -21,7 +21,7 @@ function formatStatus(statut) {
 exports.getRoles = async (req, res) => {
   try {
     const roles = await Role.findAll({
-      attributes: ["id", "nom", "description"],
+      attributes: ["id", "nom"],
       order: [["id", "ASC"]],
     });
     res.json(roles);

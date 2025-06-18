@@ -7,7 +7,7 @@ import TravelTypes from "../../pages/manager/DisplacementTypes"
 import MissionRates from "../../pages/manager/MissionRates"
 import CarLoanRates from "../../pages/manager/CarLoanRates"
 import Consult from "../../pages/manager/Consult"
-import RoleRates  from "../../pages/manager/Rates"
+import Role  from "../../pages/manager/Role"
 
 /**
  * The AdminDashboard component renders the entire manager dashboard interface.
@@ -42,8 +42,8 @@ export default function AdminDashboard() {
         return <CarLoanRates key="carloan" />
       case "manager":
         return <Consult key="manager" />
-      case "rolerates":
-        return <RoleRates key="rolerates" />
+      case "role":
+        return <Role key="role" />
       default:
         return <AccountApproval key="accounts-default" />
     }
