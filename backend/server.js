@@ -23,6 +23,7 @@ const reportRouter = require('./routes/report');
 const zipRouter    = require('./routes/zip');
 const TauxMissionRole = require("./routes/tauxMissionRoutes")
 const roleRoutes = require("./routes/roleRoutes")
+const TauxKilometriqueRole = require("./routes/tauxKilometriqueRoutes")
 
 
 const { use } = require("react");
@@ -51,6 +52,7 @@ app.use(express.json())
     app.use("/api/travel-types", travelTypesRouter)
     app.use("/api/taux-deplacement", TauxMissionRole)
     app.use('/api/roles', roleRoutes);
+    app.use("/api/taux-kilometrique", TauxKilometriqueRole)
 
     app.use("/api/users", usersRoutes)
     // app.use("/api/mission-rates", missionRatesRouter)
