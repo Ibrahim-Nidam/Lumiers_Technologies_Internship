@@ -19,6 +19,7 @@ import DailyReturnsPage from "../pages/DailyReturnsPage";
 import ApproveAccounts from "../pages/manager/ApproveAccounts";
 import ExpenseTypes from "../pages/manager/ExpenseTypes";
 import DisplacementTypes from "../pages/manager/DisplacementTypes";
+import TauxDeplacement from "../pages/manager/TauxDeplacement";
 // import MissionRates from "../pages/manager/MissionRates";
 // import CarLoanRates from "../pages/manager/CarLoanRates";
 import Consult from "../pages/manager/Consult";
@@ -71,6 +72,7 @@ export default function AppRoutes() {
             {/* <Route path="car-loan-rates" element={<CarLoanRates />} /> */}
             <Route path="consult" element={<Consult />} />
             <Route path="role" element={<Role />} />
+            <Route path="taux-deplacement" element={<TauxDeplacement />} />
           </Route>
 
           <Route path="/profile-settings" element={<ProfileSettings />} />

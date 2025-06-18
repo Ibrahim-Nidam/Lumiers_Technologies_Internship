@@ -161,4 +161,6 @@ module.exports = {
   Depense,
   TypeDeDeplacement,
   TauxMissionUtilisateur,
+  TauxKilometriqueRole,
+  TauxMissionRole
 };
