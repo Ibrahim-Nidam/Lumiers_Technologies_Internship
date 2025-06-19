@@ -224,7 +224,7 @@ export default function ExpenseTypes() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Description</label>
+            <label className="block text-sm font-medium text-gray-700">Description (Optionnel)</label>
             <textarea
               value={newType.description}
               onChange={(e) =>

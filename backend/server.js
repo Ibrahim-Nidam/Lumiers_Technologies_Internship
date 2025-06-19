@@ -15,8 +15,8 @@ const authMiddleware = require("./middleware/authMiddleware")
 const expenseTypesRoutes = require("./routes/expenseTypes")
 const travelTypesRouter = require("./routes/travelTypes")
 const usersRoutes = require("./routes/users")
-const missionRatesRouter = require("./routes/missionRates")
-const carLoanRatesRouter = require("./routes/carLoanRates")
+// const missionRatesRouter = require("./routes/missionRates")
+// const carLoanRatesRouter = require("./routes/carLoanRates")
 const deplacementRouter = require("./routes/deplacements")
 const dailyReturnRoutes = require("./routes/dailyReturnRoutes")
 const reportRouter = require('./routes/report');
@@ -30,7 +30,7 @@ const { use } = require("react");
 
 const app = express()
 const corsOptions = {
-  origin: "http://localhost:5173", // Vite default
+  origin: "http://localhost:5173",
   credentials: true,
 }
 app.use(cors(corsOptions))

@@ -482,7 +482,7 @@ const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user
                             </>
                           )}
                               {(showCodeChantier[trip.id] || trip.codeChantier) && (
-                              <div className="mb-3 sm:mb-4">
+                              <div className="mb-3 sm:mb-4 w-100">
                                 <label
                                   className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
                                   style={{ color: colors.logo_text }}
@@ -494,7 +494,7 @@ const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user
                                   value={trip.codeChantier}
                                   onChange={(e) => updateTripLocal(trip.id, "codeChantier", e.target.value)}
                                   onBlur={(e) => updateTripField(trip.id, "codeChantier", e.target.value)}
-                                  className="w-full sm:w-1/2 lg:w-1/3 px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
+                                  className="sm:w-1/2 lg:w-1/3 px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
                                   style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
                                   placeholder="Ex: CH-2025-001"
                                 />

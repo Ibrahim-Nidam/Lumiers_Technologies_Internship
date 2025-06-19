@@ -38,7 +38,8 @@ export default function TauxKilometriquePage() {
     setRoles(rolesRes.data);
   };
 
-  const groupedByRole = roles.map(role => ({
+  const groupedByRole = roles .filter(role => role.nom.toLowerCase() !== "agent")
+                              .map(role => ({
     role,
     rates: rates.filter(r => r.roleId === role.id),
   }));

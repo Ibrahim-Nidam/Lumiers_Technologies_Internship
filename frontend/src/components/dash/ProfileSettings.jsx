@@ -20,37 +20,37 @@ export default function ProfileSettings() {
   });
 
   // Now each carLoan object also has a 'status' property (string)
-  const [carLoans, setCarLoans] = useState([
-    { libelle: "", tarifParKm: "", status: "Nouveau" },
-  ]);
+  // const [carLoans, setCarLoans] = useState([
+  //   { libelle: "", tarifParKm: "", status: "Nouveau" },
+  // ]);
   const [showPassword, setShowPassword] = useState(false);
 
   // Helper function to load car loans data
-  const loadCarLoansData = async () => {
-    try {
-      const loansRes = await axios.get(
-        "http://localhost:3001/api/users/me/carloans"
-      );
-      const loansData = loansRes.data;
+  // const loadCarLoansData = async () => {
+  //   try {
+  //     const loansRes = await axios.get(
+  //       "http://localhost:3001/api/users/me/carloans"
+  //     );
+  //     const loansData = loansRes.data;
 
-      // Populate carLoans, including their status
-      if (Array.isArray(loansData) && loansData.length > 0) {
-        setCarLoans(
-          loansData.map((loan) => ({
-            libelle: loan.libelle || "",
-            tarifParKm:
-              loan.tarifParKm != null ? loan.tarifParKm.toString() : "",
-            status: loan.status || "—",
-          }))
-        );
-      } else {
-        setCarLoans([{ libelle: "", tarifParKm: "", status: "Nouveau" }]);
-      }
-    } catch (error) {
-      console.error("loadCarLoansData ERROR →", error);
-      throw error; // Re-throw to be handled by caller
-    }
-  };
+  //     // Populate carLoans, including their status
+  //     if (Array.isArray(loansData) && loansData.length > 0) {
+  //       setCarLoans(
+  //         loansData.map((loan) => ({
+  //           libelle: loan.libelle || "",
+  //           tarifParKm:
+  //             loan.tarifParKm != null ? loan.tarifParKm.toString() : "",
+  //           status: loan.status || "—",
+  //         }))
+  //       );
+  //     } else {
+  //       setCarLoans([{ libelle: "", tarifParKm: "", status: "Nouveau" }]);
+  //     }
+  //   } catch (error) {
+  //     console.error("loadCarLoansData ERROR →", error);
+  //     throw error; // Re-throw to be handled by caller
+  //   }
+  // };
 
   useEffect(() => {
     const token =
@@ -66,7 +66,6 @@ export default function ProfileSettings() {
         // 1) GET /api/users/me
         const userRes = await axios.get("http://localhost:3001/api/users/me");
         const userData = userRes.data;
-        console.log("User data loaded:", userData);
 
         // Populate formData
         setFormData({
@@ -79,7 +78,7 @@ export default function ProfileSettings() {
         });
 
         // 2) Load car loans data
-        await loadCarLoansData();
+        // await loadCarLoansData();
       } catch (error) {
         console.error("loadData ERROR →", error);
         if (error.response?.status !== 401) {
@@ -208,25 +207,25 @@ export default function ProfileSettings() {
     }
 
     // Validate car loans
-    if (formData.possedeVoiturePersonnelle) {
-      const validCarLoans = carLoans.filter(
-        (loan) => loan.libelle.trim() || loan.tarifParKm
-      );
-      for (let loan of validCarLoans) {
-        if (!loan.libelle.trim()) {
-          setMessage("Le libellé ne peut pas être vide");
-          setMessageType("error");
-          setMessageSection("taux");
-          return false;
-        }
-        if (!loan.tarifParKm || parseFloat(loan.tarifParKm) <= 1) {
-          setMessage("Le tarif par km doit être supérieur à 1");
-          setMessageType("error");
-          setMessageSection("taux");
-          return false;
-        }
-      }
-    }
+    // if (formData.possedeVoiturePersonnelle) {
+    //   const validCarLoans = carLoans.filter(
+    //     (loan) => loan.libelle.trim() || loan.tarifParKm
+    //   );
+    //   for (let loan of validCarLoans) {
+    //     if (!loan.libelle.trim()) {
+    //       setMessage("Le libellé ne peut pas être vide");
+    //       setMessageType("error");
+    //       setMessageSection("taux");
+    //       return false;
+    //     }
+    //     if (!loan.tarifParKm || parseFloat(loan.tarifParKm) <= 1) {
+    //       setMessage("Le tarif par km doit être supérieur à 1");
+    //       setMessageType("error");
+    //       setMessageSection("taux");
+    //       return false;
+    //     }
+    //   }
+    // }
 
     return true;
   };
@@ -251,23 +250,23 @@ export default function ProfileSettings() {
       await axios.put("http://localhost:3001/api/users/me", userPayload);
 
       // 2) If "possedeVoiturePersonnelle" is true, update car loans
-      if (formData.possedeVoiturePersonnelle) {
-        const payloadLoans = carLoans
-          .filter((loan) => loan.libelle.trim() || loan.tarifParKm)
-          .map((loan) => ({
-            libelle: loan.libelle.trim(),
-            tarifParKm: parseFloat(loan.tarifParKm),
-            // Note: we don't send status back; it's read-only
-          }));
+      // if (formData.possedeVoiturePersonnelle) {
+      //   const payloadLoans = carLoans
+      //     .filter((loan) => loan.libelle.trim() || loan.tarifParKm)
+      //     .map((loan) => ({
+      //       libelle: loan.libelle.trim(),
+      //       tarifParKm: parseFloat(loan.tarifParKm),
+      //       // Note: we don't send status back; it's read-only
+      //     }));
 
-          await axios.put(
-          "http://localhost:3001/api/users/me/carloans",
-          payloadLoans
-        );
+      //     await axios.put(
+      //     "http://localhost:3001/api/users/me/carloans",
+      //     payloadLoans
+      //   );
 
-        // 🔥 KEY FIX: Refresh car loans data after update to get latest status
-        await loadCarLoansData();
-      }
+      //   // 🔥 KEY FIX: Refresh car loans data after update to get latest status
+      //   await loadCarLoansData();
+      // }
       // Note: We don't delete all car loans when unchecking the box anymore
       // The car loans will remain in the database but won't be displayed
 

@@ -310,9 +310,9 @@ useEffect(() => {
         ) : (
           <div className="px-6 py-12 text-gray-400 text-sm italic relative">
             <div className="text-center">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              {/* <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <span className="text-2xl">📊</span>
-              </div>
+              </div> */}
               Aucune dépense enregistrée ce mois.
             </div>
           </div>

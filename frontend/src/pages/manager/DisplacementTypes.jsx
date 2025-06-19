@@ -230,7 +230,7 @@ export default function TravelTypes() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">
-              Description
+              Description (Optionnel)
             </label>
             <textarea
               value={newType.description}

@@ -19,26 +19,26 @@ export default function Register() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
-  const [carLoanChecked, setCarLoanChecked] = useState(false);
-  const [showCarLoanForm, setShowCarLoanForm] = useState(false);
-  const [carLoanEntries, setCarLoanEntries] = useState([
-    { destination: "", taux: "" },
-  ]);
+  // const [carLoanChecked, setCarLoanChecked] = useState(false);
+  // const [showCarLoanForm, setShowCarLoanForm] = useState(false);
+  // const [carLoanEntries, setCarLoanEntries] = useState([
+  //   { destination: "", taux: "" },
+  // ]);
   const [termsAccepted, setTermsAccepted] = useState(false);
 
-  const roles = [
-    { value: "agent", label: "Agent", description: "Niveau d'accès de base" },
-    {
-      value: "manager",
-      label: "Gestionnaire",
-      description: "Accès à la gestion d'équipe",
-    },
-    {
-      value: "admin",
-      label: "Administrateur",
-      description: "Accès complet au système",
-    },
-  ];
+  // const roles = [
+  //   { value: "agent", label: "Agent", description: "Niveau d'accès de base" },
+  //   {
+  //     value: "manager",
+  //     label: "Gestionnaire",
+  //     description: "Accès à la gestion d'équipe",
+  //   },
+  //   {
+  //     value: "admin",
+  //     label: "Administrateur",
+  //     description: "Accès complet au système",
+  //   },
+  // ];
 
   // ------------- password utils -------------
   const validatePassword = useCallback((password) => {
@@ -76,56 +76,56 @@ export default function Register() {
   }, []);
 
   // ------------- Car Loan Validation -------------
-  const validateCarLoanEntries = useCallback((entries) => {
-    const errors = [];
-    const destinations = [];
+  // const validateCarLoanEntries = useCallback((entries) => {
+  //   const errors = [];
+  //   const destinations = [];
     
-    // Filter out empty entries
-    const validEntries = entries.filter(entry => 
-      entry.destination.trim() !== '' || entry.taux !== ''
-    );
+  //   // Filter out empty entries
+  //   const validEntries = entries.filter(entry => 
+  //     entry.destination.trim() !== '' || entry.taux !== ''
+  //   );
     
-    if (validEntries.length === 0) {
-      return { isValid: true, errors: [] };
-    }
+  //   if (validEntries.length === 0) {
+  //     return { isValid: true, errors: [] };
+  //   }
 
-    validEntries.forEach((entry, index) => {
-      const destination = entry.destination.trim();
-      const taux = parseFloat(entry.taux);
+  //   validEntries.forEach((entry, index) => {
+  //     const destination = entry.destination.trim();
+  //     const taux = parseFloat(entry.taux);
       
-      // Check for empty destination
-      if (destination === '') {
-        errors.push(`Entrée ${index + 1}: La destination ne peut pas être vide`);
-        return;
-      }
+  //     // Check for empty destination
+  //     if (destination === '') {
+  //       errors.push(`Entrée ${index + 1}: La destination ne peut pas être vide`);
+  //       return;
+  //     }
       
-      // Check for empty or invalid taux
-      if (entry.taux === '' || isNaN(taux)) {
-        errors.push(`Entrée ${index + 1}: Le taux ne peut pas être vide`);
-        return;
-      }
+  //     // Check for empty or invalid taux
+  //     if (entry.taux === '' || isNaN(taux)) {
+  //       errors.push(`Entrée ${index + 1}: Le taux ne peut pas être vide`);
+  //       return;
+  //     }
       
-      // Check if taux <= 1
-      if (taux <= 1) {
-        errors.push(`Entrée ${index + 1}: Le taux doit être supérieur à 1`);
-      }
+  //     // Check if taux <= 1
+  //     if (taux <= 1) {
+  //       errors.push(`Entrée ${index + 1}: Le taux doit être supérieur à 1`);
+  //     }
       
-      // Check for duplicates (case insensitive)
-      const lowerDestination = destination.toLowerCase();
-      const existingIndex = destinations.findIndex(dest => dest.toLowerCase() === lowerDestination);
+  //     // Check for duplicates (case insensitive)
+  //     const lowerDestination = destination.toLowerCase();
+  //     const existingIndex = destinations.findIndex(dest => dest.toLowerCase() === lowerDestination);
       
-      if (existingIndex !== -1) {
-        errors.push(`Destination en double détectée: "${destination}" (entrées ${existingIndex + 1} et ${index + 1})`);
-      } else {
-        destinations.push(destination);
-      }
-    });
+  //     if (existingIndex !== -1) {
+  //       errors.push(`Destination en double détectée: "${destination}" (entrées ${existingIndex + 1} et ${index + 1})`);
+  //     } else {
+  //       destinations.push(destination);
+  //     }
+  //   });
 
-    return {
-      isValid: errors.length === 0,
-      errors: errors
-    };
-  }, []);
+  //   return {
+  //     isValid: errors.length === 0,
+  //     errors: errors
+  //   };
+  // }, []);
 
   const passwordStrength = getPasswordStrength(form.password);
   const passwordValidation = validatePassword(form.password);
@@ -145,14 +145,14 @@ export default function Register() {
   };
 
   // Toggle car loan checkbox
-  const handleToggleCarLoan = (e) => {
-    setCarLoanChecked(e.target.checked);
-    if (!e.target.checked) {
-      // if they uncheck, hide second form & reset entries
-      setShowCarLoanForm(false);
-      setCarLoanEntries([{ destination: "", taux: "" }]);
-    }
-  };
+  // const handleToggleCarLoan = (e) => {
+  //   setCarLoanChecked(e.target.checked);
+  //   if (!e.target.checked) {
+  //     // if they uncheck, hide second form & reset entries
+  //     setShowCarLoanForm(false);
+  //     setCarLoanEntries([{ destination: "", taux: "" }]);
+  //   }
+  // };
 
   // Toggle terms checkbox
   const handleToggleTerms = (e) => {
@@ -181,39 +181,40 @@ export default function Register() {
     }
 
     // 3) If carLoanChecked → show second form; else → final submit
-    if (carLoanChecked) {
-      setShowCarLoanForm(true);
-    } else {
+    // if (carLoanChecked) {
+    //   setShowCarLoanForm(true);
+    // } 
+    else {
       handleFinalSubmit();
     }
   };
 
   // ------------- Step 2: CarLoan helpers -------------
-  const handleCarLoanInputChange = (index, field, value) => {
-    setCarLoanEntries((prev) => {
-      const arr = [...prev];
-      arr[index][field] = value;
-      return arr;
-    });
-    // Clear message when user makes changes
-    if (message) clearMessage();
-  };
+  // const handleCarLoanInputChange = (index, field, value) => {
+  //   setCarLoanEntries((prev) => {
+  //     const arr = [...prev];
+  //     arr[index][field] = value;
+  //     return arr;
+  //   });
+  //   // Clear message when user makes changes
+  //   if (message) clearMessage();
+  // };
 
-  const addCarLoanEntry = () => {
-    setCarLoanEntries((prev) => [...prev, { destination: "", taux: "" }]);
-  };
+  // const addCarLoanEntry = () => {
+  //   setCarLoanEntries((prev) => [...prev, { destination: "", taux: "" }]);
+  // };
 
   // ------------- Final submission (common) + CarLoan validation -------------
   const handleFinalSubmit = async () => {
     // If we have car loan entries, validate them first
-    if (carLoanChecked && carLoanEntries.length > 0) {
-      const validation = validateCarLoanEntries(carLoanEntries);
-      if (!validation.isValid) {
-        setMessage(validation.errors.join('. '));
-        setMessageType("error");
-        return; // Don't proceed with submission
-      }
-    }
+    // if (carLoanChecked && carLoanEntries.length > 0) {
+    //   const validation = validateCarLoanEntries(carLoanEntries);
+    //   if (!validation.isValid) {
+    //     setMessage(validation.errors.join('. '));
+    //     setMessageType("error");
+    //     return; // Don't proceed with submission
+    //   }
+    // }
 
     clearMessage();
     setIsLoading(true);
@@ -221,7 +222,7 @@ export default function Register() {
     try {
       const submitData = {
         ...form,
-        carLoan: carLoanChecked ? carLoanEntries : null,
+        // carLoan: carLoanChecked ? carLoanEntries : null,
       };
 
       const res = await fetch("http://localhost:3001/api/auth/register", {
@@ -239,9 +240,9 @@ export default function Register() {
 
         // Reset everything
         setForm({ name: "", email: "", password: "", role: "agent" });
-        setCarLoanEntries([{ destination: "", taux: "" }]);
-        setCarLoanChecked(false);
-        setShowCarLoanForm(false);
+        // setCarLoanEntries([{ destination: "", taux: "" }]);
+        // setCarLoanChecked(false);
+        // setShowCarLoanForm(false);
         setTermsAccepted(false);
       } else {
         setMessage(data.error || "Échec de l'inscription. Veuillez réessayer.");
@@ -258,18 +259,7 @@ export default function Register() {
   // -------------------------------------------------------------------
   // Render either UserForm (step 1) or CarLoanForm (step 2)
   // -------------------------------------------------------------------
-  return showCarLoanForm ? (
-    <CarLoanForm
-      carLoanEntries={carLoanEntries}
-      onChangeEntry={handleCarLoanInputChange}
-      onAddEntry={addCarLoanEntry}
-      onFinalSubmit={handleFinalSubmit}
-      isLoading={isLoading}
-      message={message}
-      messageType={messageType}
-      clearMessage={clearMessage}
-    />
-  ) : (
+  return  (
     <UserForm
       form={form}
       onChange={handleChange}
@@ -279,9 +269,9 @@ export default function Register() {
       passwordValidation={passwordValidation}
       passwordStrength={passwordStrength}
       strengthLabels={strengthLabels}
-      roles={roles}
-      carLoanChecked={carLoanChecked}
-      onToggleCarLoan={handleToggleCarLoan}
+      // roles={roles}
+      // carLoanChecked={carLoanChecked}
+      // onToggleCarLoan={handleToggleCarLoan}
       termsAccepted={termsAccepted}
       onToggleTerms={handleToggleTerms}
       isLoading={isLoading}

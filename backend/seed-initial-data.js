@@ -5,7 +5,7 @@ const { sequelize, Role, TypeDeDeplacement, TypeDepense } = require("./models");
 const rolesToSeed = [
   { nom: "agent" },
   { nom: "manager" },
-  { nom: "supermanager" },
+  // { nom: "supermanager" },
   { nom: "directeur" },
   { nom: "ingénieurs senior" },
   { nom: "conducteur de travaux" },
@@ -26,10 +26,10 @@ const typesDeDeplacementToSeed = [
 ];
 
 const typesDepensesToSeed = [
-  { nom: "Déjeuner",       description: "Frais de nourriture durant le déplacement" },
-  { nom: "Gazole",      description: "Frais de carburant" },
+  { nom: "Auto Route",   description: "Frais de péage ou d’autoroute" },
+  { nom: "Impression",  description: "Frais d’impression ou de documents" },
+  { nom: "Hôtel",       description: "Frais d'hébergement à l'hôtel" },
   { nom: "Parking",     description: "Frais de stationnement" },
-  { nom: "Hébergement", description: "Frais d'hôtel ou de logement" },
 ];
 
 // 2) Export an async function that just does the “findOrCreate” loops
