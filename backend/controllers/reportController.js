@@ -1,7 +1,7 @@
 const { Op } = require('sequelize');
 const {
-  User, Deplacement, Depense,
-  TauxMissionUtilisateur, CarLoan, TypeDeDeplacement
+  User, Deplacement, Depense, Role,
+  TauxMissionRole, TauxKilometriqueRole, TypeDeDeplacement
 } = require('../models');
 const ExcelJS   = require('exceljs');
 const pdfMake   = require('pdfmake/build/pdfmake');
@@ -22,16 +22,27 @@ async function getDashboardData(userId, year, month) {
   const start = new Date(year, month, 1);
   const end   = new Date(year, month + 1, 0);
 
-  const userInfo         = await User.findByPk(userId);
-  const trips            = await Deplacement.findAll({
+  const userInfo = await User.findByPk(userId, {
+    include: [{ model: Role, as: 'role' }]
+  });
+  
+  const trips = await Deplacement.findAll({
     where: { userId, date: { [Op.between]: [start, end] } },
     include: [{ model: Depense, as: 'depenses' }]
   });
-  const userMissionRates = await TauxMissionUtilisateur.findAll({ where: { userId } });
-  const userCarLoans     = await CarLoan.findAll({ where: { userId } });
-  const travelTypes      = await TypeDeDeplacement.findAll();
 
-  return { userInfo, trips, userMissionRates, userCarLoans, travelTypes };
+  // Get rates based on user's role
+  const roleMissionRates = await TauxMissionRole.findAll({ 
+    where: { roleId: userInfo.roleId } 
+  });
+  
+  const roleKilometricRates = await TauxKilometriqueRole.findAll({ 
+    where: { roleId: userInfo.roleId } 
+  });
+  
+  const travelTypes = await TypeDeDeplacement.findAll();
+
+  return { userInfo, trips, roleMissionRates, roleKilometricRates, travelTypes };
 }
 
 function getTotalExpenses(depenses) {
@@ -49,9 +60,10 @@ exports.generateMonthlyRecap = async (req, res) => {
     const startDate = new Date(year, month, 1);
     const endDate = new Date(year, Number(month) + 1, 0);
 
-    // Get all users
+    // Get all users with their roles
     const users = await User.findAll({
       where: { estActif: true },
+      include: [{ model: Role, as: 'role' }],
       order: [['nomComplete', 'ASC']]
     });
 
@@ -72,7 +84,7 @@ exports.generateMonthlyRecap = async (req, res) => {
     const typeColumns = [];
     travelTypes.forEach(type => {
       typeColumns.push({
-        header: `${type.nom} (Jours)`, // Changed from type.libelle to type.nom
+        header: `${type.nom} (Jours)`,
         key: `days_${type.id}`,
         width: 18
       });
@@ -82,7 +94,7 @@ exports.generateMonthlyRecap = async (req, res) => {
     const rateColumns = [];
     travelTypes.forEach(type => {
       rateColumns.push({
-        header: `Taux ${type.nom} (DH)`, // Changed from type.libelle to type.nom
+        header: `Taux ${type.nom} (DH)`,
         key: `rate_${type.id}`,
         width: 18
       });
@@ -109,7 +121,7 @@ exports.generateMonthlyRecap = async (req, res) => {
     // Process each user
     for (const user of users) {
       // Get user's trips for the month
-      const [trips, userMissionRates, userCarLoans] = await Promise.all([
+      const [trips, roleMissionRates, roleKilometricRates] = await Promise.all([
         Deplacement.findAll({
           where: {
             userId: user.id,
@@ -120,8 +132,8 @@ exports.generateMonthlyRecap = async (req, res) => {
             { model: TypeDeDeplacement, as: 'typeDeDeplacement' }
           ]
         }),
-        TauxMissionUtilisateur.findAll({ where: { userId: user.id } }),
-        CarLoan.findAll({ where: { userId: user.id } })
+        TauxMissionRole.findAll({ where: { roleId: user.roleId } }),
+        TauxKilometriqueRole.findAll({ where: { roleId: user.roleId } })
       ]);
 
       // Initialize user data
@@ -150,10 +162,10 @@ exports.generateMonthlyRecap = async (req, res) => {
           typeDays[typeId]++;
         }
 
-        // Get user's rate for this travel type (only set once per type)
+        // Get role's rate for this travel type (only set once per type)
         if (typeRates[typeId] === 0) {
-          const userRate = userMissionRates.find(rate => rate.typeDeDeplacementId === typeId);
-          typeRates[typeId] = userRate ? parseFloat(userRate.tarifParJour) || 0 : 0;
+          const roleRate = roleMissionRates.find(rate => rate.typeDeDeplacementId === typeId);
+          typeRates[typeId] = roleRate ? parseFloat(roleRate.tarifParJour) || 0 : 0;
         }
       }
 
@@ -176,11 +188,13 @@ exports.generateMonthlyRecap = async (req, res) => {
           tripTotal += typeRates[typeId];
         }
 
-        // Add car loan distance cost
-        if (trip.carLoanId && trip.distanceKm) {
-          const carLoan = userCarLoans.find(loan => loan.id === trip.carLoanId);
-          if (carLoan) {
-            const distanceCost = (parseFloat(trip.distanceKm) || 0) * (parseFloat(carLoan.tarifParKm) || 0);
+        // Add kilometric cost based on role rates
+        if (trip.distanceKm) {
+          // For now, use the first kilometric rate found for the role
+          // You might want to implement logic to choose the appropriate rate
+          const roleKilometricRate = roleKilometricRates[0];
+          if (roleKilometricRate) {
+            const distanceCost = (parseFloat(trip.distanceKm) || 0) * (parseFloat(roleKilometricRate.tarifParKm) || 0);
             tripTotal += distanceCost;
           }
         }
@@ -290,11 +304,13 @@ exports.getUserAggregates = async (req, res) => {
     const startDate = new Date(year, month, 1);
     const endDate = new Date(year, Number(month) + 1, 0);
 
-    const users = await User.findAll();
+    const users = await User.findAll({
+      include: [{ model: Role, as: 'role' }]
+    });
 
     const summaries = await Promise.all(
       users.map(async (user) => {
-        const [deplacements, userMissionRates, userCarLoans] = await Promise.all([
+        const [deplacements, roleMissionRates, roleKilometricRates] = await Promise.all([
           Deplacement.findAll({
             where: {
               userId: user.id,
@@ -302,8 +318,8 @@ exports.getUserAggregates = async (req, res) => {
             },
             include: [{ model: Depense, as: "depenses" }]
           }),
-          TauxMissionUtilisateur.findAll({ where: { userId: user.id } }),
-          CarLoan.findAll({ where: { userId: user.id } })
+          TauxMissionRole.findAll({ where: { roleId: user.roleId } }),
+          TauxKilometriqueRole.findAll({ where: { roleId: user.roleId } })
         ]);
 
         let totalDistance = 0;
@@ -315,19 +331,21 @@ exports.getUserAggregates = async (req, res) => {
         for (const trip of deplacements) {
           totalDistance += parseFloat(trip.distanceKm) || 0;
 
-          // ✅ Total cost = expenses + mission rate + car loan distance
+          // ✅ Total cost = expenses + mission rate + kilometric cost
           const expensesTotal = getTotalExpenses(trip.depenses);
 
-          const travelTypeRate = userMissionRates.find(
+          const travelTypeRate = roleMissionRates.find(
             rate => rate.typeDeDeplacementId === trip.typeDeDeplacementId
           );
           const travelTypeAmount = travelTypeRate ? parseFloat(travelTypeRate.tarifParJour) || 0 : 0;
 
           let distanceCost = 0;
-          if (trip.carLoanId && trip.distanceKm) {
-            const carLoan = userCarLoans.find(loan => loan.id === trip.carLoanId);
-            if (carLoan) {
-              distanceCost = (parseFloat(trip.distanceKm) || 0) * (parseFloat(carLoan.tarifParKm) || 0);
+          if (trip.distanceKm) {
+            // Use the first available kilometric rate for the role
+            // You might want to implement logic to choose the appropriate rate based on some criteria
+            const roleKilometricRate = roleKilometricRates[0];
+            if (roleKilometricRate) {
+              distanceCost = (parseFloat(trip.distanceKm) || 0) * (parseFloat(roleKilometricRate.tarifParKm) || 0);
             }
           }
 
@@ -361,59 +379,51 @@ exports.getUserAggregates = async (req, res) => {
   }
 };
 
-// ─── Utility Functions ─────────────────────────────────────────────
-
-/**
- * Returns the total of all expense amounts in the given array of expenses.
- * If the given argument is not an array, returns 0.
- *
- * @param {Array<Object>} depenses An array of expense objects with a 'montant' property.
- * @returns {number} The total of all expense amounts in the given array.
- */
-function getTotalExpenses(depenses) {
-  if (!Array.isArray(depenses)) return 0;
-  return depenses.reduce((total, expense) => total + (parseFloat(expense.montant) || 0), 0);
-}
-
 /**
  * Pure helper: generate Excel file on disk, return its path.
  */
 exports.generateExcelReport = async (userId, year, month) => {
   try {
-    const { userInfo, trips, userMissionRates, userCarLoans, travelTypes } =
+    const { userInfo, trips, roleMissionRates, roleKilometricRates, travelTypes } =
       await getDashboardData(userId, year, month);
-    const label    = getMonthLabel(year, month);
+    const label = getMonthLabel(year, month);
     const fullName = userInfo.nomComplete;
 
     // 1) calculateTotals
     const dailyAllowances = new Map();
-    const mileageCosts    = new Map();
+    const mileageCosts = new Map();
     let totalMisc = 0, miscCount = 0;
 
     trips.forEach(trip => {
       if (Array.isArray(trip.depenses)) {
-        miscCount += trip.depenses.length;
-        trip.depenses.forEach(e => totalMisc += parseFloat(e.montant) || 0);
-      }
-      const dist = parseFloat(trip.distanceKm) || 0;
-      if (trip.carLoanId && dist > 0) {
-        const loan = userCarLoans.find(l => l.id === trip.carLoanId);
-        if (loan) {
-          const rate = parseFloat(loan.tarifParKm) || 0;
-          const cost = dist * rate;
-          const key  = loan.libelle || '(Véhicule non spécifié)';
-          if (!mileageCosts.has(key)) mileageCosts.set(key, { distance: 0, total: 0, rate });
-          const cur = mileageCosts.get(key);
-          cur.distance += dist; cur.total += cost;
-        }
-      }
-      const mr = userMissionRates.find(r => r.typeDeDeplacementId === trip.typeDeDeplacementId);
+    miscCount += trip.depenses.length;
+    trip.depenses.forEach(e => totalMisc += parseFloat(e.montant) || 0);
+  }
+  
+  const dist = parseFloat(trip.distanceKm) || 0;
+  if (dist > 0) {
+    const roleKilometricRate = roleKilometricRates[0];
+    if (roleKilometricRate) {
+      const rate = parseFloat(roleKilometricRate.tarifParKm) || 0;
+      const cost = dist * rate;
+      const key = roleKilometricRate.libelle || '(Véhicule non spécifié)';
+      // Log each trip's details
+      console.log(`Trip ID: ${trip.id || 'unknown'}, Distance: ${dist}, Rate Label: ${key}, Rate Value: ${rate}, Cost: ${cost}`);
+      if (!mileageCosts.has(key)) mileageCosts.set(key, { distance: 0, total: 0, rate });
+      const cur = mileageCosts.get(key);
+      cur.distance += dist; 
+      cur.total += cost;
+    }
+  }
+      
+      const mr = roleMissionRates.find(r => r.typeDeDeplacementId === trip.typeDeDeplacementId);
       if (mr) {
         const rate = parseFloat(mr.tarifParJour) || 0;
         const name = travelTypes.find(t => t.id === trip.typeDeDeplacementId)?.nom || 'Inconnu';
         if (!dailyAllowances.has(rate)) dailyAllowances.set(rate, { count: 0, total: 0, name });
         const cur = dailyAllowances.get(rate);
-        cur.count++; cur.total += rate;
+        cur.count++; 
+        cur.total += rate;
       }
     });
 
@@ -429,22 +439,22 @@ exports.generateExcelReport = async (userId, year, month) => {
     const imgId = wb.addImage({ base64: logo, extension: 'png' });
     ws.addImage(imgId, { tl: { col: 0, row: 0 }, ext: { width: 120, height: 60 } });
     ws.mergeCells('D1:E2');
-    ws.getCell('D1').value     = `Nom et Prénom : ${fullName}`;
+    ws.getCell('D1').value = `Nom et Prénom : ${fullName}`;
     ws.getCell('D1').alignment = { horizontal: 'right', vertical: 'middle' };
-    ws.getCell('D1').font      = { size: 12 };
+    ws.getCell('D1').font = { size: 12 };
 
     // title
     ws.mergeCells('A4:E4');
-    ws.getCell('A4').value     = `Note de frais – ${label}`;
-    ws.getCell('A4').font      = { size: 16, bold: true };
+    ws.getCell('A4').value = `Note de frais – ${label}`;
+    ws.getCell('A4').font = { size: 16, bold: true };
     ws.getCell('A4').alignment = { horizontal: 'center' };
 
     // table header
     const headerRow = ws.addRow(['Désignation','Chantier','Quantité','Taux / J','Montant']);
     headerRow.eachCell(cell => {
-      cell.font      = { bold: true };
-      cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } };
-      cell.border    = {
+      cell.font = { bold: true };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } };
+      cell.border = {
         top: { style: 'thin' }, left: { style: 'thin' },
         bottom: { style: 'thin' }, right: { style: 'thin' }
       };
@@ -476,9 +486,9 @@ exports.generateExcelReport = async (userId, year, month) => {
     // grand total
     const totalRow = ws.addRow(['Total Dépense','','','','']);
     ws.mergeCells(`A${totalRow.number}:D${totalRow.number}`);
-    ws.getCell(`E${totalRow.number}`).value     = grand.toFixed(2);
-    ws.getCell(`E${totalRow.number}`).font      = { bold: true };
-    ws.getCell(`E${totalRow.number}`).fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } };
+    ws.getCell(`E${totalRow.number}`).value = grand.toFixed(2);
+    ws.getCell(`E${totalRow.number}`).font = { bold: true };
+    ws.getCell(`E${totalRow.number}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } };
     ws.getCell(`E${totalRow.number}`).alignment = { horizontal: 'right' };
 
     // auto‑width
@@ -509,40 +519,45 @@ exports.generateExcelReport = async (userId, year, month) => {
  */
 exports.generatePDFReport = async (userId, year, month) => {
   try {
-    const { userInfo, trips, userMissionRates, userCarLoans, travelTypes } =
+    const { userInfo, trips, roleMissionRates, roleKilometricRates, travelTypes } =
       await getDashboardData(userId, year, month);
-    const label    = getMonthLabel(year, month);
+    const label = getMonthLabel(year, month);
     const fullName = userInfo.nomComplete;
 
     // calculateTotals
     let totalMiscExpenses = 0, miscExpensesCount = 0;
-    const mileageCosts   = new Map();
-    const dailyAllowances= new Map();
+    const mileageCosts = new Map();
+    const dailyAllowances = new Map();
 
     trips.forEach(trip => {
       if (Array.isArray(trip.depenses)) {
         miscExpensesCount += trip.depenses.length;
         trip.depenses.forEach(e => totalMiscExpenses += parseFloat(e.montant) || 0);
       }
+      
       const dist = parseFloat(trip.distanceKm) || 0;
-      if (trip.carLoanId && dist > 0) {
-        const loan = userCarLoans.find(l => l.id === trip.carLoanId);
-        if (loan) {
-          const rate = parseFloat(loan.tarifParKm) || 0;
+      if (dist > 0) {
+        // Use the first available kilometric rate for the role
+        const roleKilometricRate = roleKilometricRates[0];
+        if (roleKilometricRate) {
+          const rate = parseFloat(roleKilometricRate.tarifParKm) || 0;
           const cost = dist * rate;
-          const libelle = loan.libelle || '(Véhicule non spécifié)';
+          const libelle = roleKilometricRate.libelle || '(Véhicule non spécifié)';
           if (!mileageCosts.has(libelle)) mileageCosts.set(libelle, { distance: 0, total: 0, rate });
           const cur = mileageCosts.get(libelle);
-          cur.distance += dist; cur.total += cost;
+          cur.distance += dist; 
+          cur.total += cost;
         }
       }
-      const mr = userMissionRates.find(r => r.typeDeDeplacementId === trip.typeDeDeplacementId);
+      
+      const mr = roleMissionRates.find(r => r.typeDeDeplacementId === trip.typeDeDeplacementId);
       if (mr) {
         const rate = parseFloat(mr.tarifParJour) || 0;
         const name = travelTypes.find(t => t.id === trip.typeDeDeplacementId)?.nom || 'Inconnu';
         if (!dailyAllowances.has(rate)) dailyAllowances.set(rate, { count: 0, total: 0, name });
         const cur = dailyAllowances.get(rate);
-        cur.count++; cur.total += rate;
+        cur.count++; 
+        cur.total += rate;
       }
     });
 
@@ -554,10 +569,10 @@ exports.generatePDFReport = async (userId, year, month) => {
     const tableBody = [
       [
         { text: 'Désignation', bold: true, fillColor: '#f0f0f0' },
-        { text: 'Chantier',    bold: true, fillColor: '#f0f0f0' },
-        { text: 'Quantité',    bold: true, fillColor: '#f0f0f0' },
-        { text: 'Taux / J',    bold: true, fillColor: '#f0f0f0' },
-        { text: 'Montant',     bold: true, fillColor: '#f0f0f0' }
+        { text: 'Chantier', bold: true, fillColor: '#f0f0f0' },
+        { text: 'Quantité', bold: true, fillColor: '#f0f0f0' },
+        { text: 'Taux / J', bold: true, fillColor: '#f0f0f0' },
+        { text: 'Montant', bold: true, fillColor: '#f0f0f0' }
       ],
       [
         'Feuille de depens','',
@@ -621,7 +636,7 @@ exports.generatePDFReport = async (userId, year, month) => {
             body: [
               [
                 { text:'Signature de l\'intéressé', alignment:'center', border:[true,true,true,false] },
-                { text:'Signature du responsable',   alignment:'center', border:[true,true,true,false] }
+                { text:'Signature du responsable', alignment:'center', border:[true,true,true,false] }
               ],
               [
                 { text:'', margin:[0,40,0,0], border:[true,false,true,true] },
@@ -633,7 +648,7 @@ exports.generatePDFReport = async (userId, year, month) => {
         }
       ],
       styles: {
-        header:   { fontSize:16, bold:true, alignment:'center', margin:[0,0,0,20] },
+        header: { fontSize:16, bold:true, alignment:'center', margin:[0,0,0,20] },
         userInfo: { fontSize:12, alignment:'right' }
       },
       defaultStyle: { fontSize:10 }
