@@ -36,7 +36,7 @@ export default function TauxDeplacement() {
       roleId,
       typeDeDeplacementId: typeId,
       tarifParJour: parseFloat(value),
-      libelle: "nouveau taux" // hidden
+      // libelle: "nouveau taux" // hidden
     };
 
     if (existing) {
@@ -74,7 +74,9 @@ export default function TauxDeplacement() {
             </tr>
           </thead>
           <tbody>
-            {roles.map(role => (
+            {roles
+            .filter(role => role.nom.toLowerCase() !== "agent")
+            .map(role => (
               <tr key={role.id}>
                 <td className="border p-2 font-semibold uppercase" style={{ color: colors.logo_text }}>
                   {role.nom}
@@ -132,7 +134,9 @@ export default function TauxDeplacement() {
 
       {/* Mobile */}
       <div className="block md:hidden space-y-4">
-        {roles.map(role => (
+        {roles
+        .filter(role => role.nom.toLowerCase() !== "agent")
+        .map(role => (
           <div key={role.id} className="border rounded shadow p-4">
             <h2 className="text-md font-bold uppercase mb-2" style={{ color: colors.logo_text }}>
               {role.nom}

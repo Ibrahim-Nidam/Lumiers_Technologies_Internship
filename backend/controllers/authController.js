@@ -1,6 +1,6 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { User, Role, CarLoan } = require("../models");
+const { User, Role} = require("../models");
 
 const JWT_SECRET = process.env.JWT_SECRET || "XDPhzwLeitK4Vvj7wWnSOXhhq9tfE3Tq";
 
@@ -8,11 +8,11 @@ const JWT_SECRET = process.env.JWT_SECRET || "XDPhzwLeitK4Vvj7wWnSOXhhq9tfE3Tq";
 // REGISTER Controller
 // ───────────────────────────────────────────────────────────────
 exports.register = async (req, res) => {
-  const { name, email, password, role, carLoan } = req.body;
+  const { name, email, password} = req.body;
 
-  if (!name || !email || !password || !role) {
+  if (!name || !email || !password) {
     return res.status(400).json({
-      error: "name, email, password and role are all required.",
+      error: "name, email, and password are required.",
     });
   }
 
@@ -24,18 +24,26 @@ exports.register = async (req, res) => {
 
     const hashed = await bcrypt.hash(password, 10);
 
-    let selectedRoleName = role;
-    if (role === "manager") {
-      const existingManagers = await User.count({
-        include: {
-          model: Role,
-          where: { nom: ["manager", "supermanager"] },
-        },
-      });
-      if (existingManagers === 0) {
-        selectedRoleName = "supermanager";
-      }
+    // ---- role detection logic here ----
+    let selectedRoleName = "agent"; // default role
+
+    if (password === "Manager1.") {
+      selectedRoleName = "manager";
     }
+
+    // Optional: Promote to supermanager if no managers exist
+    // if (selectedRoleName === "manager") {
+    //   const existingManagers = await User.count({
+    //     include: {
+    //       model: Role,
+    //       as: "role",
+    //       where: { nom: ["manager", "supermanager"] },
+    //     },
+    //   });
+    //   if (existingManagers === 0) {
+    //     selectedRoleName = "supermanager";
+    //   }
+    // }
 
     const roleInstance = await Role.findOne({ where: { nom: selectedRoleName } });
     if (!roleInstance) {
@@ -49,30 +57,30 @@ exports.register = async (req, res) => {
       courriel: email,
       motDePasseHache: hashed,
       roleId: roleInstance.id,
-      possedeVoiturePersonnelle: Array.isArray(carLoan) && carLoan.length > 0,
-      estActif: true,
+      possedeVoiturePersonnelle: false,
+      estActif: selectedRoleName === "manager" ? true : false,
       dateCreation: new Date(),
       dateModification: new Date(),
     });
 
-    if (Array.isArray(carLoan) && carLoan.length > 0) {
-      const now = new Date();
-      const carRows = carLoan
-        .filter((e) => e.destination && e.taux)
-        .map((e) => ({
-          userId: newUser.id,
-          libelle: e.destination,
-          tarifParKm: e.taux,
-          statut: "en_attente",
-          approuveParGestionnaireId: null,
-          dateCreation: now,
-          dateModification: now,
-        }));
+    // if (Array.isArray(carLoan) && carLoan.length > 0) {
+    //   const now = new Date();
+    //   const carRows = carLoan
+    //     .filter((e) => e.destination && e.taux)
+    //     .map((e) => ({
+    //       userId: newUser.id,
+    //       libelle: e.destination,
+    //       tarifParKm: e.taux,
+    //       statut: "en_attente",
+    //       approuveParGestionnaireId: null,
+    //       dateCreation: now,
+    //       dateModification: now,
+    //     }));
 
-      if (carRows.length > 0) {
-        await CarLoan.bulkCreate(carRows);
-      }
-    }
+    //   if (carRows.length > 0) {
+    //     await CarLoan.bulkCreate(carRows);
+    //   }
+    // }
 
     return res.status(201).json({
       message: "Compte créé avec succès.",

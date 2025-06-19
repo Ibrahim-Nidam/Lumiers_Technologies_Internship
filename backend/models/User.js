@@ -5,6 +5,7 @@ module.exports = (sequelize, DataTypes) => {
     nomComplete: { type: DataTypes.STRING, allowNull: false, field: "nom_complete" },
     courriel: { type: DataTypes.STRING, allowNull: false, unique: true },
     motDePasseHache: { type: DataTypes.STRING, allowNull: false, field: "mot_de_passe_hache" },
+    cartNational: { type: DataTypes.STRING, allowNull: false, unique: true, field: "carte_nationale" },
     possedeVoiturePersonnelle: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false, field: "possede_voiture_personnelle" },
     estActif: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true, field: "est_actif" },
     dateCreation: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW, field: "date_creation" },
