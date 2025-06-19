@@ -6,7 +6,7 @@ const {
 const ExcelJS   = require('exceljs');
 const pdfMake   = require('pdfmake/build/pdfmake');
 const pdfFonts  = require('pdfmake/build/vfs_fonts');
-pdfMake.vfs     = pdfFonts;          // embed default fonts
+pdfMake.vfs     = pdfFonts;
 const fs        = require('fs-extra');
 const path      = require('path');
 const logo      = require('../utils/base64Logo');
@@ -28,7 +28,10 @@ async function getDashboardData(userId, year, month) {
   
   const trips = await Deplacement.findAll({
     where: { userId, date: { [Op.between]: [start, end] } },
-    include: [{ model: Depense, as: 'depenses' }]
+    include: [
+      { model: Depense, as: 'depenses' },
+      { model: TauxKilometriqueRole, as: 'kilometriqueRole' }
+    ]
   });
 
   // Get rates based on user's role
@@ -47,6 +50,44 @@ async function getDashboardData(userId, year, month) {
 
 function getTotalExpenses(depenses) {
   return depenses.reduce((sum, expense) => sum + (parseFloat(expense.montant) || 0), 0);
+}
+
+// NEW: Helper function to get the appropriate kilometric rate for a trip
+function getKilometricRateForTrip(trip, roleKilometricRates, userInfo) {
+  // Priority 1: If trip has a specific kilometric rate assigned
+  if (trip.tauxKilometriqueRoleId && trip.kilometriqueRole) {
+    return trip.kilometriqueRole;
+  }
+  
+  // Priority 2: If trip has an associated kilometric rate through foreign key
+  if (trip.tauxKilometriqueRoleId) {
+    const specificRate = roleKilometricRates.find(rate => rate.id === trip.tauxKilometriqueRoleId);
+    if (specificRate) return specificRate;
+  }
+  
+  // Priority 3: Logic based on trip characteristics
+  // You can implement custom logic here based on:
+  // - Vehicle type (if user has personal car)
+  // - Distance ranges
+  // - Travel type
+  // - etc.
+  
+  if (userInfo.possedeVoiturePersonnelle) {
+    // Look for "Véhicule Personnel" or similar
+    const personalVehicleRate = roleKilometricRates.find(rate => 
+      rate.libelle && rate.libelle.toLowerCase().includes('personnel')
+    );
+    if (personalVehicleRate) return personalVehicleRate;
+  } else {
+    // Look for "Véhicule de Service" or similar
+    const serviceVehicleRate = roleKilometricRates.find(rate => 
+      rate.libelle && rate.libelle.toLowerCase().includes('service')
+    );
+    if (serviceVehicleRate) return serviceVehicleRate;
+  }
+  
+  // Priority 4: Default to first available rate
+  return roleKilometricRates[0] || null;
 }
 
 exports.generateMonthlyRecap = async (req, res) => {
@@ -129,7 +170,8 @@ exports.generateMonthlyRecap = async (req, res) => {
           },
           include: [
             { model: Depense, as: 'depenses' },
-            { model: TypeDeDeplacement, as: 'typeDeDeplacement' }
+            { model: TypeDeDeplacement, as: 'typeDeDeplacement' },
+            { model: TauxKilometriqueRole, as: 'kilometriqueRole' } // FIXED: Include kilometric rate
           ]
         }),
         TauxMissionRole.findAll({ where: { roleId: user.roleId } }),
@@ -188,13 +230,11 @@ exports.generateMonthlyRecap = async (req, res) => {
           tripTotal += typeRates[typeId];
         }
 
-        // Add kilometric cost based on role rates
+        // FIXED: Add kilometric cost using specific rate for this trip
         if (trip.distanceKm) {
-          // For now, use the first kilometric rate found for the role
-          // You might want to implement logic to choose the appropriate rate
-          const roleKilometricRate = roleKilometricRates[0];
-          if (roleKilometricRate) {
-            const distanceCost = (parseFloat(trip.distanceKm) || 0) * (parseFloat(roleKilometricRate.tarifParKm) || 0);
+          const specificKilometricRate = getKilometricRateForTrip(trip, roleKilometricRates, user);
+          if (specificKilometricRate) {
+            const distanceCost = (parseFloat(trip.distanceKm) || 0) * (parseFloat(specificKilometricRate.tarifParKm) || 0);
             tripTotal += distanceCost;
           }
         }
@@ -208,7 +248,6 @@ exports.generateMonthlyRecap = async (req, res) => {
       // Add type-specific data to row
       travelTypes.forEach(type => {
         rowData[`days_${type.id}`] = typeDays[type.id];
-        // Only show rate if there are days for this type
         rowData[`rate_${type.id}`] = typeDays[type.id] > 0 ? typeRates[type.id].toFixed(2) : '0.00';
       });
 
@@ -316,7 +355,10 @@ exports.getUserAggregates = async (req, res) => {
               userId: user.id,
               date: { [Op.between]: [startDate, endDate] }
             },
-            include: [{ model: Depense, as: "depenses" }]
+            include: [
+              { model: Depense, as: "depenses" },
+              { model: TauxKilometriqueRole, as: 'kilometriqueRole' } // FIXED: Include kilometric rate
+            ]
           }),
           TauxMissionRole.findAll({ where: { roleId: user.roleId } }),
           TauxKilometriqueRole.findAll({ where: { roleId: user.roleId } })
@@ -327,11 +369,11 @@ exports.getUserAggregates = async (req, res) => {
         let justified = 0;
         let unjustified = 0;
 
-        // 🔁 For each trip
+        // For each trip
         for (const trip of deplacements) {
           totalDistance += parseFloat(trip.distanceKm) || 0;
 
-          // ✅ Total cost = expenses + mission rate + kilometric cost
+          // Total cost = expenses + mission rate + kilometric cost
           const expensesTotal = getTotalExpenses(trip.depenses);
 
           const travelTypeRate = roleMissionRates.find(
@@ -341,17 +383,16 @@ exports.getUserAggregates = async (req, res) => {
 
           let distanceCost = 0;
           if (trip.distanceKm) {
-            // Use the first available kilometric rate for the role
-            // You might want to implement logic to choose the appropriate rate based on some criteria
-            const roleKilometricRate = roleKilometricRates[0];
-            if (roleKilometricRate) {
-              distanceCost = (parseFloat(trip.distanceKm) || 0) * (parseFloat(roleKilometricRate.tarifParKm) || 0);
+            // FIXED: Use specific kilometric rate for this trip
+            const specificKilometricRate = getKilometricRateForTrip(trip, roleKilometricRates, user);
+            if (specificKilometricRate) {
+              distanceCost = (parseFloat(trip.distanceKm) || 0) * (parseFloat(specificKilometricRate.tarifParKm) || 0);
             }
           }
 
           totalExpenses += expensesTotal + travelTypeAmount + distanceCost;
 
-          // 📦 Justification count
+          // Justification count
           for (const expense of trip.depenses) {
             const justificatif = expense.cheminJustificatif;
             if (justificatif && justificatif.trim() !== "") {
@@ -380,7 +421,7 @@ exports.getUserAggregates = async (req, res) => {
 };
 
 /**
- * Pure helper: generate Excel file on disk, return its path.
+ * FIXED: Generate Excel file with separate kilometric rates
  */
 exports.generateExcelReport = async (userId, year, month) => {
   try {
@@ -389,32 +430,37 @@ exports.generateExcelReport = async (userId, year, month) => {
     const label = getMonthLabel(year, month);
     const fullName = userInfo.nomComplete;
 
-    // 1) calculateTotals
+    // FIXED: Calculate totals with separate kilometric rates
     const dailyAllowances = new Map();
-    const mileageCosts = new Map();
+    const mileageCosts = new Map(); // This will now properly separate different rates
     let totalMisc = 0, miscCount = 0;
 
     trips.forEach(trip => {
       if (Array.isArray(trip.depenses)) {
-    miscCount += trip.depenses.length;
-    trip.depenses.forEach(e => totalMisc += parseFloat(e.montant) || 0);
-  }
-  
-  const dist = parseFloat(trip.distanceKm) || 0;
-  if (dist > 0) {
-    const roleKilometricRate = roleKilometricRates[0];
-    if (roleKilometricRate) {
-      const rate = parseFloat(roleKilometricRate.tarifParKm) || 0;
-      const cost = dist * rate;
-      const key = roleKilometricRate.libelle || '(Véhicule non spécifié)';
-      // Log each trip's details
-      console.log(`Trip ID: ${trip.id || 'unknown'}, Distance: ${dist}, Rate Label: ${key}, Rate Value: ${rate}, Cost: ${cost}`);
-      if (!mileageCosts.has(key)) mileageCosts.set(key, { distance: 0, total: 0, rate });
-      const cur = mileageCosts.get(key);
-      cur.distance += dist; 
-      cur.total += cost;
-    }
-  }
+        miscCount += trip.depenses.length;
+        trip.depenses.forEach(e => totalMisc += parseFloat(e.montant) || 0);
+      }
+      
+      const dist = parseFloat(trip.distanceKm) || 0;
+      if (dist > 0) {
+        // FIXED: Get specific kilometric rate for this trip
+        const specificKilometricRate = getKilometricRateForTrip(trip, roleKilometricRates, userInfo);
+        if (specificKilometricRate) {
+          const rate = parseFloat(specificKilometricRate.tarifParKm) || 0;
+          const cost = dist * rate;
+          const key = specificKilometricRate.libelle || '(Véhicule non spécifié)';
+          
+          console.log(`Trip ID: ${trip.id || 'unknown'}, Distance: ${dist}, Rate Label: ${key}, Rate Value: ${rate}, Cost: ${cost}`);
+          
+          // FIXED: Each rate is calculated separately
+          if (!mileageCosts.has(key)) {
+            mileageCosts.set(key, { distance: 0, total: 0, rate });
+          }
+          const cur = mileageCosts.get(key);
+          cur.distance += dist; 
+          cur.total += cost;
+        }
+      }
       
       const mr = roleMissionRates.find(r => r.typeDeDeplacementId === trip.typeDeDeplacementId);
       if (mr) {
@@ -431,11 +477,11 @@ exports.generateExcelReport = async (userId, year, month) => {
     mileageCosts.forEach(v => grand += v.total);
     dailyAllowances.forEach(v => grand += v.total);
 
-    // 2) build Excel
+    // Build Excel
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet(label);
 
-    // header image + name
+    // Header image + name
     const imgId = wb.addImage({ base64: logo, extension: 'png' });
     ws.addImage(imgId, { tl: { col: 0, row: 0 }, ext: { width: 120, height: 60 } });
     ws.mergeCells('D1:E2');
@@ -443,13 +489,13 @@ exports.generateExcelReport = async (userId, year, month) => {
     ws.getCell('D1').alignment = { horizontal: 'right', vertical: 'middle' };
     ws.getCell('D1').font = { size: 12 };
 
-    // title
+    // Title
     ws.mergeCells('A4:E4');
     ws.getCell('A4').value = `Note de frais – ${label}`;
     ws.getCell('A4').font = { size: 16, bold: true };
     ws.getCell('A4').alignment = { horizontal: 'center' };
 
-    // table header
+    // Table header
     const headerRow = ws.addRow(['Désignation','Chantier','Quantité','Taux / J','Montant']);
     headerRow.eachCell(cell => {
       cell.font = { bold: true };
@@ -461,11 +507,11 @@ exports.generateExcelReport = async (userId, year, month) => {
       cell.alignment = { vertical: 'middle', horizontal: 'center' };
     });
 
-    // misc expenses
+    // Misc expenses
     ws.addRow(['Feuille de depens','', miscCount, '-', totalMisc.toFixed(2)])
       .alignment = { horizontal: 'right' };
 
-    // daily allowances
+    // Daily allowances
     dailyAllowances.forEach(({ count, total, name }, rate) => {
       ws.addRow([
         `Frais journaliers (${name})`, '',
@@ -473,7 +519,7 @@ exports.generateExcelReport = async (userId, year, month) => {
       ]).alignment = { horizontal: 'right' };
     });
 
-    // mileage
+    // FIXED: Mileage costs - now each rate is separate
     mileageCosts.forEach(({ distance, total, rate }, libelle) => {
       ws.addRow([
         `Frais kilométrique (${libelle})`, '',
@@ -483,7 +529,7 @@ exports.generateExcelReport = async (userId, year, month) => {
       ]).alignment = { horizontal: 'right' };
     });
 
-    // grand total
+    // Grand total
     const totalRow = ws.addRow(['Total Dépense','','','','']);
     ws.mergeCells(`A${totalRow.number}:D${totalRow.number}`);
     ws.getCell(`E${totalRow.number}`).value = grand.toFixed(2);
@@ -491,7 +537,7 @@ exports.generateExcelReport = async (userId, year, month) => {
     ws.getCell(`E${totalRow.number}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } };
     ws.getCell(`E${totalRow.number}`).alignment = { horizontal: 'right' };
 
-    // auto‑width
+    // Auto-width
     ws.columns.forEach(c => {
       let max = 10;
       c.eachCell(cell => {
@@ -501,7 +547,7 @@ exports.generateExcelReport = async (userId, year, month) => {
       c.width = max + 2;
     });
 
-    // write to tmp and return path
+    // Write to tmp and return path
     const tmpDir = path.join(__dirname, '../tmp');
     await fs.ensureDir(tmpDir);
     const outPath = path.join(tmpDir, `report-${userId}-${year}-${month+1}.xlsx`);
@@ -519,41 +565,51 @@ exports.generateExcelReport = async (userId, year, month) => {
  */
 exports.generatePDFReport = async (userId, year, month) => {
   try {
+    // 1. Fetch all necessary data for the report
     const { userInfo, trips, roleMissionRates, roleKilometricRates, travelTypes } =
       await getDashboardData(userId, year, month);
     const label = getMonthLabel(year, month);
     const fullName = userInfo.nomComplete;
 
-    // calculateTotals
-    let totalMiscExpenses = 0, miscExpensesCount = 0;
-    const mileageCosts = new Map();
+    // 2. Calculate totals using the corrected logic from the Excel export
+    // This ensures that different kilometric rates are handled separately.
     const dailyAllowances = new Map();
+    const mileageCosts = new Map(); // Will store costs separated by rate type
+    let totalMisc = 0, miscCount = 0;
 
     trips.forEach(trip => {
+      // Sum miscellaneous expenses
       if (Array.isArray(trip.depenses)) {
-        miscExpensesCount += trip.depenses.length;
-        trip.depenses.forEach(e => totalMiscExpenses += parseFloat(e.montant) || 0);
+        miscCount += trip.depenses.length;
+        trip.depenses.forEach(e => totalMisc += parseFloat(e.montant) || 0);
       }
       
       const dist = parseFloat(trip.distanceKm) || 0;
       if (dist > 0) {
-        // Use the first available kilometric rate for the role
-        const roleKilometricRate = roleKilometricRates[0];
-        if (roleKilometricRate) {
-          const rate = parseFloat(roleKilometricRate.tarifParKm) || 0;
+        // Get the specific kilometric rate applicable to this trip
+        const specificKilometricRate = getKilometricRateForTrip(trip, roleKilometricRates, userInfo);
+        if (specificKilometricRate) {
+          const rate = parseFloat(specificKilometricRate.tarifParKm) || 0;
           const cost = dist * rate;
-          const libelle = roleKilometricRate.libelle || '(Véhicule non spécifié)';
-          if (!mileageCosts.has(libelle)) mileageCosts.set(libelle, { distance: 0, total: 0, rate });
-          const cur = mileageCosts.get(libelle);
+          // Use the rate's label (e.g., 'Véhicule Personnel') as the key
+          const key = specificKilometricRate.libelle || '(Véhicule non spécifié)';
+          
+          // Group mileage costs by the rate type
+          if (!mileageCosts.has(key)) {
+            mileageCosts.set(key, { distance: 0, total: 0, rate });
+          }
+          const cur = mileageCosts.get(key);
           cur.distance += dist; 
           cur.total += cost;
         }
       }
       
+      // Sum daily mission allowances
       const mr = roleMissionRates.find(r => r.typeDeDeplacementId === trip.typeDeDeplacementId);
       if (mr) {
         const rate = parseFloat(mr.tarifParJour) || 0;
         const name = travelTypes.find(t => t.id === trip.typeDeDeplacementId)?.nom || 'Inconnu';
+        // Group allowances by the daily rate
         if (!dailyAllowances.has(rate)) dailyAllowances.set(rate, { count: 0, total: 0, name });
         const cur = dailyAllowances.get(rate);
         cur.count++; 
@@ -561,27 +617,31 @@ exports.generatePDFReport = async (userId, year, month) => {
       }
     });
 
-    let grandTotal = totalMiscExpenses;
+    // Calculate the grand total
+    let grandTotal = totalMisc;
     mileageCosts.forEach(v => grandTotal += v.total);
     dailyAllowances.forEach(v => grandTotal += v.total);
 
-    // build tableBody
+    // 3. Build the table body for the PDF document
     const tableBody = [
+      // Header Row
       [
-        { text: 'Désignation', bold: true, fillColor: '#f0f0f0' },
-        { text: 'Chantier', bold: true, fillColor: '#f0f0f0' },
-        { text: 'Quantité', bold: true, fillColor: '#f0f0f0' },
-        { text: 'Taux / J', bold: true, fillColor: '#f0f0f0' },
-        { text: 'Montant', bold: true, fillColor: '#f0f0f0' }
+        { text: 'Désignation', bold: true, fillColor: '#f0f0f0', alignment: 'center' },
+        { text: 'Chantier', bold: true, fillColor: '#f0f0f0', alignment: 'center' },
+        { text: 'Quantité', bold: true, fillColor: '#f0f0f0', alignment: 'center' },
+        { text: 'Taux / J', bold: true, fillColor: '#f0f0f0', alignment: 'center' },
+        { text: 'Montant', bold: true, fillColor: '#f0f0f0', alignment: 'center' }
       ],
+      // Miscellaneous Expenses Row
       [
-        'Feuille de depens','',
-        { text: miscExpensesCount, alignment: 'right' },
-        '-',
-        { text: totalMiscExpenses.toFixed(2), alignment: 'right' }
+        'Feuille de depens', '',
+        { text: miscCount, alignment: 'right' },
+        { text: '-', alignment: 'center' },
+        { text: totalMisc.toFixed(2), alignment: 'right' }
       ]
     ];
 
+    // Add rows for each daily allowance type
     dailyAllowances.forEach(({ count, total, name }, rate) => {
       tableBody.push([
         `Frais journaliers (${name})`, '',
@@ -591,6 +651,7 @@ exports.generatePDFReport = async (userId, year, month) => {
       ]);
     });
 
+    // Add rows for each distinct kilometric rate
     mileageCosts.forEach(({ distance, total, rate }, libelle) => {
       tableBody.push([
         `Frais kilométrique (${libelle})`, '',
@@ -600,13 +661,14 @@ exports.generatePDFReport = async (userId, year, month) => {
       ]);
     });
 
+    // Add the Grand Total row
     tableBody.push([
       { text: 'Total Dépense', colSpan: 4, alignment: 'right', bold: true, fillColor: '#f0f0f0' },
       {}, {}, {},
       { text: grandTotal.toFixed(2), bold: true, alignment: 'right', fillColor: '#f0f0f0' }
     ]);
 
-    // docDefinition
+    // 4. Define the complete PDF document structure
     const docDef = {
       content: [
         {
@@ -614,55 +676,61 @@ exports.generatePDFReport = async (userId, year, month) => {
             { image: logo, width: 100, height: 50 },
             { text: `Nom et Prénom : ${fullName}`, style: 'userInfo', alignment: 'right' }
           ],
-          margin: [0, 0, 0, 20]
+          margin: [0, 0, 0, 20] // [left, top, right, bottom]
         },
         { text: `Note de frais - ${label}`, style: 'header' },
         {
           table: {
-            widths: ['*','auto','auto','auto','auto'],
+            widths: ['*', 'auto', 'auto', 'auto', 'auto'],
             body: tableBody
           },
           layout: {
-            hLineWidth: (i,n) => (i===0||i===n.table.body.length)?2:1,
-            vLineWidth: (i,n) => (i===0||i===n.table.widths.length)?2:1,
-            hLineColor: (i,n) => (i===0||i===n.table.body.length)?'black':'gray',
-            vLineColor: (i,n) => (i===0||i===n.table.widths.length)?'black':'gray'
+            hLineWidth: (i, node) => (i === 0 || i === node.table.body.length) ? 2 : 1,
+            vLineWidth: (i, node) => (i === 0 || i === node.table.widths.length) ? 2 : 1,
+            hLineColor: (i, node) => (i === 0 || i === node.table.body.length) ? 'black' : 'gray',
+            vLineColor: (i, node) => (i === 0 || i === node.table.widths.length) ? 'black' : 'gray'
           }
         },
-        { text: '\n\n\n' },
+        { text: '\n\n\n' }, // Spacer
         {
           table: {
-            widths: ['50%','50%'],
+            widths: ['50%', '50%'],
             body: [
               [
-                { text:'Signature de l\'intéressé', alignment:'center', border:[true,true,true,false] },
-                { text:'Signature du responsable', alignment:'center', border:[true,true,true,false] }
+                { text: 'Signature de l\'intéressé', alignment: 'center', border: [true, true, true, false] },
+                { text: 'Signature du responsable', alignment: 'center', border: [true, true, true, false] }
               ],
               [
-                { text:'', margin:[0,40,0,0], border:[true,false,true,true] },
-                { text:'', margin:[0,40,0,0], border:[true,false,true,true] }
+                { text: '', margin: [0, 40, 0, 0], border: [true, false, true, true] },
+                { text: '', margin: [0, 40, 0, 0], border: [true, false, true, true] }
               ]
             ]
           },
-          layout:'noBorders'
+          layout: 'noBorders'
         }
       ],
       styles: {
-        header: { fontSize:16, bold:true, alignment:'center', margin:[0,0,0,20] },
-        userInfo: { fontSize:12, alignment:'right' }
+        header: { fontSize: 16, bold: true, alignment: 'center', margin: [0, 0, 0, 20] },
+        userInfo: { fontSize: 12, alignment: 'right' }
       },
-      defaultStyle: { fontSize:10 }
+      defaultStyle: { fontSize: 10 }
     };
 
-    // write PDF buffer
+    // 5. Generate and save the PDF file to a temporary directory
     const tmpDir = path.join(__dirname, '../tmp');
     await fs.ensureDir(tmpDir);
-    const outPath = path.join(tmpDir, `report-${userId}-${year}-${month+1}.pdf`);
+    const outPath = path.join(tmpDir, `report-${userId}-${year}-${month + 1}.pdf`);
 
     const pdfDoc = pdfMake.createPdf(docDef);
     await new Promise((resolve, reject) => {
       pdfDoc.getBuffer(buffer => {
-        fs.writeFile(outPath, buffer, err => err ? reject(err) : resolve());
+        fs.writeFile(outPath, buffer, err => {
+          if (err) {
+            console.error("Error writing PDF to file:", err);
+            return reject(err);
+          }
+          resolve();
+        });
       });
     });
 
@@ -670,7 +738,7 @@ exports.generatePDFReport = async (userId, year, month) => {
 
   } catch (err) {
     console.error("❌ generatePDFReport failed:", err);
-    throw err;
+    throw err; // Re-throw the error to be caught by the calling handler
   }
 };
 
