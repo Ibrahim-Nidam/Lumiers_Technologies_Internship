@@ -1,5 +1,3 @@
-// controllers/zipController.js
-
 const path     = require('path');
 const fs       = require('fs-extra');
 const archiver = require('archiver');
