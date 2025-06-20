@@ -17,6 +17,7 @@ export default function Navigation({ activeTab, setActiveTab }) {
     { id: "role", label: "Rôles", icon: "🏷️" },
     { id: "expenses", label: "Dépenses", icon: "💰" },
     { id: "travel", label: "Déplacements", icon: "✈️" },
+    { id: "chantier", label: "Chantiers", icon: "🏗️" },
     { id: "travelrates", label: "Taux Déplacement", icon: "🧳" },
     { id: "carrates", label: "Taux Véhicule", icon: "🚘" },
     // { id: "mission", label: "Missions", icon: "🎯" },

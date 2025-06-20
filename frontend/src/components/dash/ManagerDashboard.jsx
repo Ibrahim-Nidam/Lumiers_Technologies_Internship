@@ -10,6 +10,7 @@ import Consult from "../../pages/manager/Consult"
 import Role  from "../../pages/manager/Role"
 import TauxDeplacement from "../../pages/manager/TauxDeplacement"
 import TauxVehicule from "../../pages/manager/TauxVehicule"
+import Chantier from "../../pages/manager/Chantier"
 
 /**
  * The AdminDashboard component renders the entire manager dashboard interface.
@@ -50,6 +51,8 @@ export default function AdminDashboard() {
         return <TauxDeplacement key="travelrates" />
       case "carrates":
         return <TauxVehicule key="carrates" />
+      case "chantier":
+        return <Chantier key="chantier" />
       default:
         return <AccountApproval key="accounts-default" />
     }

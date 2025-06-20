@@ -20,6 +20,7 @@ const zipRouter = require('./routes/zip');
 const TauxMissionRole = require("./routes/tauxMissionRoutes");
 const roleRoutes = require("./routes/roleRoutes");
 const TauxKilometriqueRole = require("./routes/tauxKilometriqueRoutes");
+const chantierRoutes = require("./routes/chantierRoutes");
 
 const app = express();
 
@@ -59,7 +60,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
     app.use("/api/user-daily-returns", dailyReturnRoutes);
     app.use("/api/report", reportRouter);
     app.use("/api/zip", zipRouter);
-
+    app.use("/api/chantiers", chantierRoutes);
     // Protected test route
     app.get("/api/dashboard-data", authMiddleware, async (req, res) => {
       const userId = req.user.userId;

@@ -21,6 +21,7 @@ import ExpenseTypes from "../pages/manager/ExpenseTypes";
 import DisplacementTypes from "../pages/manager/DisplacementTypes";
 import TauxDeplacement from "../pages/manager/TauxDeplacement";
 import TauxVehicule from "../pages/manager/TauxVehicule";
+import Chantier from "../pages/manager/Chantier";
 // import MissionRates from "../pages/manager/MissionRates";
 // import CarLoanRates from "../pages/manager/CarLoanRates";
 import Consult from "../pages/manager/Consult";
@@ -75,6 +76,7 @@ export default function AppRoutes() {
             <Route path="role" element={<Role />} />
             <Route path="taux-deplacement" element={<TauxDeplacement />} />
             <Route path="carrates" element={<TauxVehicule />} />
+            <Route path="chantier" element={<Chantier />} />
             {/* Add more manager routes as needed */}
           </Route>
 
