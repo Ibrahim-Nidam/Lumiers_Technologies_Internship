@@ -6,6 +6,8 @@ export default function AccountApproval() {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState([]);
+  const [editingCnie, setEditingCnie] = useState({});
+
 
   const fetchAccounts = useCallback(async () => {
     try {
@@ -78,6 +80,27 @@ export default function AccountApproval() {
     }
   };
 
+  const updateCnie = async (id, newCnie) => {
+    try {
+      await apiClient.patch(`/users/${id}`, {
+        field: "cartNational",
+        value: newCnie,
+      });
+      
+      setAccounts(prev =>
+        prev.map(user =>
+          user.id === id ? { ...user, cnie: newCnie } : user
+        )
+      );
+      setEditingCnie(prev => ({ ...prev, [id]: false }));
+      toast.success("CNIE mise à jour");
+    } catch (err) {
+      console.error("Update CNIE error:", err);
+      toast.error(err?.response?.data?.error || "Erreur lors de la mise à jour du CNIE");
+    }
+  };
+
+
   const updateUserRole = async (id, roleId) => {
   try {
     await apiClient.patch(`/users/${id}/role`, { roleId });
@@ -144,6 +167,9 @@ export default function AccountApproval() {
                   Utilisateur
                 </th>
                 <th className="py-4 px-6 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  CNIE
+                </th>
+                <th className="py-4 px-6 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Véhicule
                 </th>
                 <th className="py-4 px-6 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -168,6 +194,25 @@ export default function AccountApproval() {
                       </div>
                     </div>
                   </td>
+                  <td className="py-6 px-6 text-sm text-gray-700">
+                    {editingCnie[account.id] ? (
+                      <input
+                        type="text"
+                        defaultValue={account.cnie || ""}
+                        onBlur={(e) => updateCnie(account.id, e.target.value)}
+                        autoFocus
+                        className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                      />
+                    ) : (
+                      <span
+                        onClick={() => setEditingCnie(prev => ({ ...prev, [account.id]: true }))}
+                        className="cursor-pointer hover:underline text-purple-600"
+                      >
+                        {account.cnie || "—"}
+                      </span>
+                    )}
+                  </td>
+
                   <td className="py-6 px-6">
                     <div
                       onClick={() =>
@@ -199,15 +244,15 @@ export default function AccountApproval() {
                   </td>
                   <td className="py-6 px-6 text-sm text-gray-600">
                     <select
-  value={account.role?.toUpperCase() || ""}
-  onChange={(e) => handleRoleChange(account.id, e.target.value)}
->
-  {roles.map(role => (
-    <option key={role.id} value={role.name}>
-      {role.name}
-    </option>
-  ))}
-</select>
+                      value={account.role?.toUpperCase() || ""}
+                      onChange={(e) => handleRoleChange(account.id, e.target.value)}
+                    >
+                      {roles.map(role => (
+                        <option key={role.id} value={role.name}>
+                          {role.name}
+                        </option>
+                      ))}
+                    </select>
 
                   </td>
                 </tr>
