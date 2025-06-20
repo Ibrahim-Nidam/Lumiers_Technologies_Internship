@@ -16,6 +16,7 @@ export default function ProfileSettings() {
     courriel: "",
     motDePasse: "",
     confirmPassword: "",
+    cartNational: "",
     possedeVoiturePersonnelle: false,
   });
 
@@ -71,6 +72,7 @@ export default function ProfileSettings() {
         setFormData({
           nomComplete: userData.nomComplete || "",
           courriel: userData.courriel || "",
+          cartNational: userData.cartNational || "",
           motDePasse: "",
           confirmPassword: "",
           possedeVoiturePersonnelle:
@@ -189,6 +191,14 @@ export default function ProfileSettings() {
       return false;
     }
 
+    if (!formData.cartNational.trim() || formData.cartNational.length < 5) {
+      setMessage("La Carte Nationale (CNIE) est requise et doit contenir au moins 5 caractères.");
+      setMessageType("error");
+      setMessageSection("personal");
+      return false;
+    }
+
+
     // Validate password
     if (
       formData.motDePasse &&
@@ -244,6 +254,7 @@ export default function ProfileSettings() {
         nomComplete: formData.nomComplete.trim(),
         courriel: formData.courriel.trim(),
         possedeVoiturePersonnelle: formData.possedeVoiturePersonnelle,
+        cartNational: formData.cartNational.trim(),
         ...(formData.motDePasse ? { motDePasse: formData.motDePasse } : {}),
       };
 
@@ -434,6 +445,21 @@ export default function ProfileSettings() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
               />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Carte Nationale (CNIE) *
+              </label>
+              <input
+                type="text"
+                name="cartNational"
+                value={formData.cartNational}
+                onChange={handleInputChange}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
+              />
+            </div>
+
 
             {/* <div className="lg:col-span-2">
               <div className="flex items-center">

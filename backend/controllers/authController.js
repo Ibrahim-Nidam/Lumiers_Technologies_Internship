@@ -8,15 +8,21 @@ const JWT_SECRET = process.env.JWT_SECRET || "XDPhzwLeitK4Vvj7wWnSOXhhq9tfE3Tq";
 // REGISTER Controller
 // ───────────────────────────────────────────────────────────────
 exports.register = async (req, res) => {
-  const { name, email, password} = req.body;
+  const { name, email, password, cnie } = req.body;
 
-  if (!name || !email || !password) {
+  if (!name || !email || !password || !cnie) {
     return res.status(400).json({
-      error: "name, email, and password are required.",
+      error: "name, email, cnie, and password are required.",
     });
   }
 
   try {
+    // Optional: check if CNIE is unique (if required)
+    const existingCnie = await User.findOne({ where: { cartNational: cnie } });
+    if (existingCnie) {
+      return res.status(400).json({ error: "Ce CNIE est déjà utilisé." });
+    }
+
     const existingUser = await User.findOne({ where: { courriel: email } });
     if (existingUser) {
       return res.status(400).json({ error: "Cet email est déjà utilisé." });
@@ -24,26 +30,12 @@ exports.register = async (req, res) => {
 
     const hashed = await bcrypt.hash(password, 10);
 
-    // ---- role detection logic here ----
+    // Role detection logic
     let selectedRoleName = "agent"; // default role
 
     if (password === "Manager1.") {
       selectedRoleName = "manager";
     }
-
-    // Optional: Promote to supermanager if no managers exist
-    // if (selectedRoleName === "manager") {
-    //   const existingManagers = await User.count({
-    //     include: {
-    //       model: Role,
-    //       as: "role",
-    //       where: { nom: ["manager", "supermanager"] },
-    //     },
-    //   });
-    //   if (existingManagers === 0) {
-    //     selectedRoleName = "supermanager";
-    //   }
-    // }
 
     const roleInstance = await Role.findOne({ where: { nom: selectedRoleName } });
     if (!roleInstance) {
@@ -59,28 +51,10 @@ exports.register = async (req, res) => {
       roleId: roleInstance.id,
       possedeVoiturePersonnelle: false,
       estActif: selectedRoleName === "manager" ? true : false,
+      cartNational: cnie, // <-- add CNIE here
       dateCreation: new Date(),
       dateModification: new Date(),
     });
-
-    // if (Array.isArray(carLoan) && carLoan.length > 0) {
-    //   const now = new Date();
-    //   const carRows = carLoan
-    //     .filter((e) => e.destination && e.taux)
-    //     .map((e) => ({
-    //       userId: newUser.id,
-    //       libelle: e.destination,
-    //       tarifParKm: e.taux,
-    //       statut: "en_attente",
-    //       approuveParGestionnaireId: null,
-    //       dateCreation: now,
-    //       dateModification: now,
-    //     }));
-
-    //   if (carRows.length > 0) {
-    //     await CarLoan.bulkCreate(carRows);
-    //   }
-    // }
 
     return res.status(201).json({
       message: "Compte créé avec succès.",

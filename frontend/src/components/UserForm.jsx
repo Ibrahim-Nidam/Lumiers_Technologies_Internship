@@ -96,6 +96,51 @@ return (
         </div>
     </div>
 
+    {/* CNIE Field */}
+    <div>
+    <label
+        htmlFor="carte_nationale"
+        className="block text-sm font-medium text-slate-700 mb-1"
+    >
+        CNIE
+    </label>
+    <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <svg
+  className="h-5 w-5 text-slate-400"
+  aria-hidden="true"
+  xmlns="http://www.w3.org/2000/svg"
+  fill="currentColor"
+  viewBox="0 0 24 24"
+>
+  <path
+    fillRule="evenodd"
+    d="M4 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H4Zm10 5a1 1 0 0 1 1-1h3a1 1 0 1 1 0 2h-3a1 1 0 0 1-1-1Zm0 3a1 1 0 0 1 1-1h3a1 1 0 1 1 0 2h-3a1 1 0 0 1-1-1Zm0 3a1 1 0 0 1 1-1h3a1 1 0 1 1 0 2h-3a1 1 0 0 1-1-1Zm-8-5a3 3 0 1 1 6 0 3 3 0 0 1-6 0Zm1.942 4a3 3 0 0 0-2.847 2.051l-.044.133-.004.012c-.042.126-.055.167-.042.195.006.013.02.023.038.039.032.025.08.064.146.155A1 1 0 0 0 6 17h6a1 1 0 0 0 .811-.415.713.713 0 0 1 .146-.155c.019-.016.031-.026.038-.04.014-.027 0-.068-.042-.194l-.004-.012-.044-.133A3 3 0 0 0 10.059 14H7.942Z"
+    clipRule="evenodd"
+  />
+</svg>
+
+
+        </div>
+        <input
+        id="cnie"
+        name="cnie"
+        type="text"
+        autoComplete="off"
+        required
+        value={form.cnie}
+        onChange={onChange}
+        className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:border-transparent sm:text-sm transition-colors"
+        style={{
+            focusRingColor: `${colors.primary}40`,
+            "--tw-ring-color": `${colors.primary}40`,
+        }}
+        placeholder="AA123456"
+        />
+    </div>
+    </div>
+
+
     {/* Email Field */}
     <div>
         <label

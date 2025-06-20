@@ -7,18 +7,14 @@ exports.getNonAdminUsers = async (req, res) => {
       include: [{ model: Role, as: "role" }],
     });
 
-    const filtered = users.filter(user => {
-      const roleName = user.role?.nom.toLowerCase();
-      return roleName !== "admin" && roleName !== "superadmin";
-    });
-
-    const result = filtered.map(u => ({
+    const result = users.map(u => ({
       id: u.id,
       name: u.nomComplete,
       email: u.courriel,
       hasCar: u.possedeVoiturePersonnelle,
       status: u.estActif ? "Actif" : "Inactif",
       role: u.role?.nom,
+      cnie: u.cartNational,
       avatar: u.nomComplete?.split(" ").map(w => w[0]).join("").toUpperCase(),
     }));
 
@@ -35,35 +31,21 @@ exports.toggleUserField = async (req, res) => {
   const { field, value } = req.body;
 
   try {
-    const requestingUser = await User.findByPk(req.user.userId, {
-      include: [{ model: Role, as: "role" }],
-    });
-
-    const targetUser = await User.findByPk(id, {
-      include: [{ model: Role, as: "role" }],
-    });
+    const targetUser = await User.findByPk(id);
 
     if (!targetUser) {
       return res.status(404).json({ error: "Utilisateur introuvable." });
-    }
-
-    const restrictedRoles = ["supermanager"];
-    const requesterRole = requestingUser.role?.nom.toLowerCase();
-    const targetRole = targetUser.role?.nom.toLowerCase();
-
-    if (
-      requesterRole === "manager" &&
-      restrictedRoles.includes(targetRole)
-    ) {
-      return res.status(403).json({
-        error: "Vous n'avez pas la permission de modifier ce compte.",
-      });
     }
 
     if (field === "estActif") {
       targetUser.estActif = value;
     } else if (field === "possedeVoiturePersonnelle") {
       targetUser.possedeVoiturePersonnelle = value;
+    } else if (field === "cartNational") {
+      if (typeof value !== "string" || value.trim() === "") {
+        return res.status(400).json({ error: "CNIE invalide." });
+      }
+      targetUser.cartNational = value.trim();
     } else {
       return res.status(400).json({ error: "Champ non valide." });
     }
@@ -75,6 +57,7 @@ exports.toggleUserField = async (req, res) => {
     return res.status(500).json({ error: "Erreur serveur." });
   }
 };
+
 
 // GET assignable roles (filter out admin and superadmin)
 exports.getAssignableRoles = async (req, res) => {
