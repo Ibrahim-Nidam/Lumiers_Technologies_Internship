@@ -14,6 +14,7 @@ export default function Register() {
     email: "",
     password: "",
     role: "agent",
+    cnie: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -239,7 +240,7 @@ export default function Register() {
         setMessageType("success");
 
         // Reset everything
-        setForm({ name: "", email: "", password: "", role: "agent" });
+        setForm({ name: "", email: "", password: "", cnie: "" ,role: "agent" });
         // setCarLoanEntries([{ destination: "", taux: "" }]);
         // setCarLoanChecked(false);
         // setShowCarLoanForm(false);
