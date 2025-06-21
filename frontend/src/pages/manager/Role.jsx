@@ -1,10 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, X, Trash2, Pencil, Check } from "lucide-react";
+import { Plus, X, Trash2, Pencil, Check, Users, Settings } from "lucide-react";
 import apiClient from "../../utils/axiosConfig";
 import ConfirmDialog from "../../components/ConfirmDialog";
-import { colors } from "../../colors";
+
+const colors = {
+  primary: '#a52148',
+  secondary: '#b9bfcf',
+  black: '#000000',
+  white: '#ffffff',
+  logo_text: '#585e5c',
+};
 
 export default function RoleManager() {
   const [roles, setRoles] = useState([]);
@@ -61,89 +68,158 @@ export default function RoleManager() {
   };
 
   return (
-    <div className="min-h-screen p-6 bg-white">
-      <div className="max-w-3xl mx-auto space-y-6">
-        <h1 className="text-3xl font-bold text-center" style={{ color: colors.primary }}>
-          GESTION DES RÔLES
-        </h1>
-
-        {/* Input to add a new role */}
-        <div className="flex flex-wrap gap-2 items-center">
-          <input
-            type="text"
-            placeholder="Nouveau rôle"
-            value={newRole}
-            onChange={(e) => setNewRole(e.target.value)}
-            className="flex-1 min-w-[180px] border rounded px-3 py-2 focus:outline-none focus:ring"
-          />
-          <button
-            onClick={handleCreate}
-            className="bg-[#a52148] text-white px-4 py-2 rounded hover:bg-[#871939] transition"
-          >
-            <Plus size={18} />
-          </button>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="container mx-auto px-4 py-8 lg:px-8">
+        {/* Header Section */}
+        <div className="text-center mb-12">
+          
+          <h1 className="text-4xl md:text-5xl font-bold mb-2" style={{ color: colors.logo_text }}>
+            Gestion des Rôles
+          </h1>
+          <p className="text-lg" style={{ color: colors.secondary }}>
+            Créez et gérez les rôles de votre organisation
+          </p>
         </div>
 
-        {/* Role tags list */}
-        <div className="flex flex-wrap gap-3">
-          {roles.length > 0 ? (
-            roles.map((role) => (
-              <div
-                key={role.id}
-                className="group relative flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg border border-primary text-sm text-gray-800 font-semibold hover:shadow transition"
+        {/* Add New Role Card */}
+        <div className="max-w-2xl mx-auto mb-8">
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 md:p-8">
+            <div className="flex items-center mb-4">
+              <Plus className="w-6 h-6 mr-3" style={{ color: colors.primary }} />
+              <h2 className="text-xl font-semibold" style={{ color: colors.logo_text }}>
+                Ajouter un nouveau rôle
+              </h2>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                placeholder="Entrez le nom du rôle..."
+                value={newRole}
+                onChange={(e) => setNewRole(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+                className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-opacity-60 transition-colors text-gray-700"
+                style={{ focusBorderColor: colors.primary }}
+              />
+              <button
+                onClick={handleCreate}
+                disabled={!newRole.trim()}
+                className="flex items-center px-6 py-3 rounded-xl text-white font-medium transition-all duration-200 hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                style={{ backgroundColor: colors.primary }}
               >
-                {editingId === role.id ? (
-                  <input
-                    value={editingValue}
-                    onChange={(e) => setEditingValue(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleUpdate(role.id)}
-                    className="px-2 py-1 rounded text-sm border focus:outline-none"
-                    autoFocus
-                  />
-                ) : (
-                  <span className="uppercase">{role.nom}</span>
-                )}
+                <Plus className="w-5 h-5 sm:mr-2" />
+                <span className="hidden sm:inline">Ajouter</span>
+              </button>
 
-                <div className="flex gap-1 items-center">
-                  {editingId === role.id ? (
-                    <>
-                      <button
-                        onClick={() => handleUpdate(role.id)}
-                        className="text-green-600 hover:text-green-800"
-                      >
-                        <Check size={16} />
-                      </button>
-                      <button
-                        onClick={() => setEditingId(null)}
-                        className="text-gray-500 hover:text-gray-700"
-                      >
-                        <X size={16} />
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => {
-                          setEditingId(role.id);
-                          setEditingValue(role.nom);
-                        }}
-                        className="text-blue-600 hover:text-blue-800 opacity-0 group-hover:opacity-100 transition"
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        onClick={() => setConfirm({ open: true, id: role.id })}
-                        className="text-red-600 hover:text-red-800 opacity-0 group-hover:opacity-100 transition"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </>
-                  )}
+            </div>
+          </div>
+        </div>
+
+        {/* Roles Grid */}
+        <div className="max-w-6xl mx-auto">
+          {roles.length > 0 ? (
+            <>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <Users className="w-6 h-6 mr-3" style={{ color: colors.primary }} />
+                  <h2 className="text-2xl font-semibold" style={{ color: colors.logo_text }}>
+                    Rôles existants
+                  </h2>
+                </div>
+                <div className="text-sm px-3 py-1 rounded-full" style={{ backgroundColor: colors.secondary, color: colors.white }}>
+                  {roles.length} rôle{roles.length > 1 ? 's' : ''}
                 </div>
               </div>
-            ))
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                {roles.map((role) => (
+                  <div
+                    key={role.id}
+                    className="group bg-white rounded-xl shadow-md border border-gray-200 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: `${colors.primary}15` }}>
+                        <Users className="w-5 h-5" style={{ color: colors.primary }} />
+                      </div>
+                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {editingId === role.id ? (
+                          <>
+                            <button
+                              onClick={() => handleUpdate(role.id)}
+                              className="p-2 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingId(null);
+                                setEditingValue("");
+                              }}
+                              className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => {
+                                setEditingId(role.id);
+                                setEditingValue(role.nom);
+                              }}
+                              className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setConfirm({ open: true, id: role.id })}
+                              className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="text-center">
+                      {editingId === role.id ? (
+                        <input
+                          value={editingValue}
+                          onChange={(e) => setEditingValue(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && handleUpdate(role.id)}
+                          className="w-full px-3 py-2 text-center border-2 rounded-lg focus:outline-none text-lg font-semibold"
+                          style={{ borderColor: colors.primary }}
+                          autoFocus
+                        />
+                      ) : (
+                        <h3 className="text-lg font-semibold uppercase tracking-wide" style={{ color: colors.logo_text }}>
+                          {role.nom}
+                        </h3>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           ) : (
-            <p className="text-gray-400 italic text-sm">Aucun rôle à afficher</p>
+            <div className="text-center py-16">
+              <div className="inline-flex items-center justify-center w-20 h-20 mb-6 rounded-full" style={{ backgroundColor: `${colors.secondary}30` }}>
+                <Users className="w-10 h-10" style={{ color: colors.secondary }} />
+              </div>
+              <h3 className="text-2xl font-semibold mb-2" style={{ color: colors.logo_text }}>
+                Aucun rôle créé
+              </h3>
+              <p className="text-lg mb-6" style={{ color: colors.secondary }}>
+                Commencez par ajouter votre premier rôle
+              </p>
+              <button
+                onClick={() => document.querySelector('input[placeholder*="Entrez"]').focus()}
+                className="px-6 py-3 rounded-xl text-white font-medium transition-all duration-200 hover:scale-105 hover:shadow-lg"
+                style={{ backgroundColor: colors.primary }}
+              >
+                Créer un rôle
+              </button>
+            </div>
           )}
         </div>
       </div>

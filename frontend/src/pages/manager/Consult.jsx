@@ -1,63 +1,60 @@
 import { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight, Calendar, Search, Filter, Download } from "lucide-react";
+import { FaFileExcel, FaFilePdf, FaFileArchive, FaDownload } from 'react-icons/fa';
 import apiClient from "../../utils/axiosConfig";
 import { saveAs } from "file-saver"; 
-import { ChevronLeft, ChevronRight, Calendar } from "react-feather";
 import { colors } from "../../colors";
-import { FaFileExcel, FaFilePdf , FaFileArchive, FaDownload } from 'react-icons/fa';
 
-/**
- * Page de consultation des utilisateurs, permettant de télécharger 
- * des exports Excel, PDF ou ZIP (Complet) des données.
- */
+
 export default function Consult() {
   const today = new Date();
-  const [currentYear, setCurrentYear]   = useState(today.getFullYear());
+  const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [showYearPicker, setShowYearPicker] = useState(false);
-  const [years, setYears]               = useState([]);
-  const [users, setUsers]               = useState([]);
-
+  const [years, setYears] = useState([]);
+  const [users, setUsers] = useState([]);
   const [summaries, setSummaries] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showOnlyWithData, setShowOnlyWithData] = useState(false);
 
-const getSummaryForUser = (userId) => {
-  return summaries.find(s => s.userId === userId) || {
-    totalDistance: 0,
-    totalTripCost: 0,
-    justified: 0,
-    unjustified: 0
+  const getSummaryForUser = (userId) => {
+    return summaries.find(s => s.userId === userId) || {
+      totalDistance: 0,
+      totalTripCost: 0,
+      justified: 0,
+      unjustified: 0
+    };
   };
-};
 
-  
   const monthNames = [
     "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
     "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
   ];
 
- useEffect(() => {
-  const cy = today.getFullYear();
-  setYears([cy, cy - 1, cy - 2]);
+  useEffect(() => {
+    const cy = today.getFullYear();
+    setYears([cy, cy - 1, cy - 2]);
 
-  apiClient.get("/users/")
-    .then(res => setUsers(res.data))
-    .catch(err => console.error(err));
-}, []);
+    // Your existing API calls
+    apiClient.get("/users/")
+      .then(res => setUsers(res.data))
+      .catch(err => console.error(err));
+  }, []);
 
-useEffect(() => {
-  const fetchSummary = async () => {
-    try {
-      const res = await apiClient.get("/report/summary", {
-        params: { year: currentYear, month: currentMonth }
-      });
-      setSummaries(res.data);
-    } catch (err) {
-      console.error("Failed to fetch summary:", err);
-    }
-  };
+  useEffect(() => {
+    const fetchSummary = async () => {
+      try {
+        const res = await apiClient.get("/report/summary", {
+          params: { year: currentYear, month: currentMonth }
+        });
+        setSummaries(res.data);
+      } catch (err) {
+        console.error("Failed to fetch summary:", err);
+      }
+    };
 
-  fetchSummary();
-}, [currentYear, currentMonth]);
-
+    fetchSummary();
+  }, [currentYear, currentMonth]);
 
   const goToPreviousMonth = () => {
     let m = currentMonth - 1, y = currentYear;
@@ -87,9 +84,6 @@ useEffect(() => {
     month: "long", year: "numeric"
   });
 
-  /**
-   * Download monthly recap Excel file for all users
-   */
   const handleMonthlyRecap = async () => {
     try {
       const response = await apiClient.get("/report/monthly-recap", {
@@ -114,239 +108,408 @@ useEffect(() => {
     }
   };
 
-  /**
-   * type: 'excel' | 'pdf' | 'both'
-   */
   const handleExport = async (userId, type) => {
-  try {
-    // Build URL and params
-    let url;
-    const params = {
-      userId,
-      year: currentYear,
-      month: currentMonth
-    };
+    try {
+      let url;
+      const params = {
+        userId,
+        year: currentYear,
+        month: currentMonth
+      };
 
-    if (type === "excel") {
-      url = "/report/excel";
-    } else if (type === "pdf") {
-      url = "/report/pdf";
-    } else if (type === "both") {
-      url = "/zip";
-    }
-
-    // Request the blob
-    const response = await apiClient.get(url, {
-      params,
-      responseType: "blob"
-    });
-
-    // Get filename from response headers or use backend logic
-    let filename;
-    
-    if (type === "both") {
-      // For ZIP files, try to get filename from Content-Disposition header
-      const contentDisposition = response.headers['content-disposition'];
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-        if (filenameMatch && filenameMatch[1]) {
-          filename = filenameMatch[1].replace(/['"]/g, '');
-        }
+      if (type === "excel") {
+        url = "/report/excel";
+      } else if (type === "pdf") {
+        url = "/report/pdf";
+      } else if (type === "both") {
+        url = "/zip";
       }
+
+      const response = await apiClient.get(url, {
+        params,
+        responseType: "blob"
+      });
+
+      let filename;
       
-      // Fallback: construct filename similar to backend logic
-      if (!filename) {
-        const user = users.find(u => u.id === userId);
+      if (type === "both") {
+        const contentDisposition = response.headers['content-disposition'];
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+          if (filenameMatch && filenameMatch[1]) {
+            filename = filenameMatch[1].replace(/['"]/g, '');
+          }
+        }
+        
+        if (!filename) {
+          const user = users.find(u => u.id === userId);
+          const monthDate = new Date(currentYear, currentMonth);
+          const frenchMonth = monthDate.toLocaleDateString('fr-FR', { month: 'long' });
+          const safeName = user?.name?.replace(/\s+/g, '_') || `user${userId}`;
+          filename = `${safeName}_${frenchMonth}_${currentYear}.zip`;
+        }
+      } else {
         const monthDate = new Date(currentYear, currentMonth);
         const frenchMonth = monthDate.toLocaleDateString('fr-FR', { month: 'long' });
+        const user = users.find(u => u.id === userId);
         const safeName = user?.name?.replace(/\s+/g, '_') || `user${userId}`;
-        filename = `${safeName}_${frenchMonth}_${currentYear}.zip`;
+        
+        if (type === "excel") {
+          filename = `Note_de_frais_${safeName}_${frenchMonth}_${currentYear}.xlsx`;
+        } else if (type === "pdf") {
+          filename = `Note_de_frais_${safeName}_${frenchMonth}_${currentYear}.pdf`;
+        }
       }
-    } else {
-      // For Excel and PDF, keep existing logic or improve similarly
-      const monthDate = new Date(currentYear, currentMonth);
-      const frenchMonth = monthDate.toLocaleDateString('fr-FR', { month: 'long' });
-      const user = users.find(u => u.id === userId);
-      const safeName = user?.name?.replace(/\s+/g, '_') || `user${userId}`;
-      
+
+      let mime;
       if (type === "excel") {
-        filename = `Note_de_frais_${safeName}_${frenchMonth}_${currentYear}.xlsx`;
+        mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
       } else if (type === "pdf") {
-        filename = `Note_de_frais_${safeName}_${frenchMonth}_${currentYear}.pdf`;
+        mime = "application/pdf";
+      } else {
+        mime = "application/zip";
       }
+
+      const blob = new Blob([response.data], { type: mime });
+      saveAs(blob, filename);
+
+    } catch (err) {
+      console.error("Export failed", err);
     }
+  };
 
-    // Determine MIME type
-    let mime;
-    if (type === "excel") {
-      mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-    } else if (type === "pdf") {
-      mime = "application/pdf";
-    } else {
-      mime = "application/zip";
-    }
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const hasData = getSummaryForUser(user.id).totalDistance > 0;
+    return matchesSearch && (!showOnlyWithData || hasData);
+  });
 
-    // Trigger download
-    const blob = new Blob([response.data], { type: mime });
-    saveAs(blob, filename);
-
-  } catch (err) {
-    console.error("Export failed", err);
-  }
-};
+  const totalUsersWithData = users.filter(user => getSummaryForUser(user.id).totalDistance > 0).length;
+  const totalDistance = summaries.reduce((sum, s) => sum + s.totalDistance, 0);
+  const totalCost = summaries.reduce((sum, s) => sum + s.totalTripCost, 0);
 
   return (
-    <div className="px-4 py-6 space-y-6">
-      {/* Header with month selector */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
-        <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-3 sm:gap-4">
-      <div className="flex items-center space-x-2 sm:space-x-4">
-          <button onClick={goToPreviousMonth}
-                  className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                  style={{ color: colors.logo_text }}>
-            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-          </button>
-          <div className="relative">
-            <button onClick={() => setShowYearPicker(!showYearPicker)}
-                    className="flex items-center space-x-1 text-base sm:text-lg md:text-xl font-bold hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors"
-                    style={{ color: colors.logo_text }}>
-              <span>{formattedHeader}</span>
-              <Calendar className="w-4 h-4 sm:w-5 sm:h-5 opacity-70" />
-            </button>
-            {showYearPicker && (
-              <div className="absolute z-10 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 p-3 w-64 sm:w-72">
-                <div className="grid grid-cols-1 gap-2">
-                  {years.map(year => (
-                    <div key={year} className="mb-2">
-                      <h3 className="text-sm font-semibold mb-1 px-2"
-                          style={{ color: colors.logo_text }}>
-                        {year}
-                      </h3>
-                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-1">
-                        {monthNames.map((mon, idx) => (
-                          <button key={`${year}-${idx}`}
-                                  onClick={() => goToYearMonth(year, idx)}
-                                  className={`text-xs p-1.5 rounded-md hover:bg-gray-100 transition-colors ${
-                                    year === currentYear && idx === currentMonth
-                                      ? "bg-blue-100 text-blue-800 font-medium"
-                                      : "text-gray-700"}`}>
-                            {mon.substring(0, 3)}
-                          </button>
-                        ))}
-                      </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        
+        {/* Header Section */}
+        <div className="mb-8">
+          <div className="text-center mb-6">
+            <h1 className="text-3xl md:text-4xl font-bold mb-2" style={{ color: colors.logo_text }}>
+              Consultation des Utilisateurs
+            </h1>
+            <p className="text-gray-600 text-lg">
+              Gérez et exportez les données de vos utilisateurs
+            </p>
+          </div>
+
+          {/* Month Navigation */}
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              
+              {/* Month Selector */}
+              <div className="flex items-center justify-center lg:justify-start gap-4">
+                <button 
+                  onClick={goToPreviousMonth}
+                  className="p-3 rounded-xl hover:bg-gray-100 transition-all duration-200 hover:scale-105"
+                  style={{ color: colors.logo_text }}
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+                
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowYearPicker(!showYearPicker)}
+                    className="flex items-center gap-3 px-6 py-3 rounded-xl border-2 hover:bg-gray-50 transition-all duration-200 hover:scale-105"
+                    style={{ borderColor: colors.secondary, color: colors.logo_text }}
+                  >
+                    <Calendar className="w-5 h-5" />
+                    <span className="text-xl font-semibold capitalize">{formattedHeader}</span>
+                  </button>
+                  
+                  {showYearPicker && (
+                    <div className="absolute z-20 top-full mt-2 left-1/2 transform -translate-x-1/2 bg-white rounded-2xl shadow-2xl border border-gray-200 p-6 w-80">
+                      {years.map(year => (
+                        <div key={year} className="mb-4 last:mb-0">
+                          <h3 className="text-lg font-semibold mb-3 text-center" style={{ color: colors.logo_text }}>
+                            {year}
+                          </h3>
+                          <div className="grid grid-cols-4 gap-2">
+                            {monthNames.map((mon, idx) => (
+                              <button
+                                key={`${year}-${idx}`}
+                                onClick={() => goToYearMonth(year, idx)}
+                                className={`p-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 ${
+                                  year === currentYear && idx === currentMonth
+                                    ? "text-white shadow-lg"
+                                    : "text-gray-700 hover:bg-gray-100"
+                                }`}
+                                style={year === currentYear && idx === currentMonth ? 
+                                  { backgroundColor: colors.primary } : {}}
+                              >
+                                {mon.substring(0, 3)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
+                </div>
+                
+                <button 
+                  onClick={goToNextMonth}
+                  className="p-3 rounded-xl hover:bg-gray-100 transition-all duration-200 hover:scale-105"
+                  style={{ color: colors.logo_text }}
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <button 
+                  onClick={goToToday}
+                  className="px-6 py-3 rounded-xl border-2 font-medium transition-all duration-200 hover:scale-105 hover:shadow-lg"
+                  style={{ 
+                    borderColor: colors.secondary, 
+                    color: colors.logo_text,
+                    backgroundColor: 'white'
+                  }}
+                >
+                  Aujourd'hui
+                </button>
+                
+                <button 
+                  onClick={handleMonthlyRecap}
+                  className="flex items-center gap-3 px-6 py-3 rounded-xl text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                  style={{ backgroundColor: colors.primary }}
+                >
+                  <FaDownload className="w-4 h-4" />
+                  Récapitulatif du mois
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Statistics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-600 text-sm font-medium">Utilisateurs actifs</p>
+                  <p className="text-3xl font-bold mt-1" style={{ color: colors.primary }}>
+                    {totalUsersWithData}
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: colors.primary + '20' }}>
+                  <span className="text-2xl" style={{ color: colors.primary }}>👥</span>
                 </div>
               </div>
-            )}
-          </div>
-          
-          <button onClick={goToNextMonth}
-                  className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                  style={{ color: colors.logo_text }}>
-            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
-          </button>
-          </div>
-          <button onClick={goToToday}
-                  className="px-2 sm:px-3 py-1 cursor-pointer text-xs sm:text-sm border rounded-lg hover:bg-gray-50 transition-colors"
-                  style={{ borderColor: colors.secondary, color: colors.logo_text }}>
-            Aujourd'hui
-          </button>
-          {/* New Monthly Recap Button */}
-          <button 
-            onClick={handleMonthlyRecap}
-            className="flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 border-0 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105"
-          >
-            <FaDownload className="w-3 h-3 sm:w-4 sm:h-4" />
-            Récapitulatif du mois
-          </button>
-        </div>
-      </div>
+            </div>
 
-<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 text-center">
-  {users.map(user => {
-    const summary = getSummaryForUser(user.id); // contains nulls or 0s if no data
-    const hasData = summary && summary.totalDistance > 0;
-    return (
-      <div
-        key={user.id}
-        className="group bg-white rounded-2xl border border-gray-100 shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-2 relative"
-      >
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-transparent to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
-        
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-gray-50 bg-gradient-to-r from-slate-50 to-gray-50 relative">
-          <div className="flex items-center justify-center mb-2">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-lg">
-                {user.name.charAt(0).toUpperCase()}
-              </span>
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-600 text-sm font-medium">Distance totale</p>
+                  <p className="text-3xl font-bold mt-1" style={{ color: colors.primary }}>
+                    {totalDistance.toLocaleString()} km
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: colors.primary + '20' }}>
+                  <span className="text-2xl" style={{ color: colors.primary }}>🚗</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-600 text-sm font-medium">Coût total</p>
+                  <p className="text-3xl font-bold mt-1" style={{ color: colors.primary }}>
+                    {totalCost.toFixed(2)} DH
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: colors.primary + '20' }}>
+                  <span className="text-2xl" style={{ color: colors.primary }}>💰</span>
+                </div>
+              </div>
             </div>
           </div>
-          <h2 className="text-xl font-bold text-gray-800 truncate group-hover:text-gray-900 transition-colors">
-            {user.name}
-          </h2>
+
+          {/* Search and Filter */}
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Rechercher par nom d'utilisateur..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all duration-200"
+                  style={{ 
+                    borderColor: colors.secondary,
+                    focusRingColor: colors.primary
+                  }}
+                />
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <Filter className="w-5 h-5 text-gray-400" />
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showOnlyWithData}
+                    onChange={(e) => setShowOnlyWithData(e.target.checked)}
+                    className="w-5 h-5 rounded border-2 text-primary focus:ring-2"
+                    style={{ accentColor: colors.primary }}
+                  />
+                  <span className="text-gray-700 font-medium">
+                    Afficher uniquement les utilisateurs avec des données
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Content */}
-        {hasData ? (
-          <div className="px-6 py-6 text-sm text-gray-700 space-y-4 relative">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                <span className="font-medium text-blue-800">Distance totale :</span>
-                <span className="font-bold text-blue-900">{summary.totalDistance} km</span>
+        {/* Users Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+          {filteredUsers.map(user => {
+            const summary = getSummaryForUser(user.id);
+            const hasData = summary && summary.totalDistance > 0;
+            
+            return (
+              <div
+                  key={user.id}
+                  className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col justify-between min-h-80"
+                >
+
+                {/* User Header */}
+                <div className="p-4 border-b border-gray-100 flex-shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div 
+                      className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md"
+                      style={{ backgroundColor: colors.primary }}
+                    >
+                      {user.name.split(' ').map(n => n.charAt(0)).join('').toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-bold truncate" style={{ color: colors.logo_text }}>
+                        {user.name}
+                      </h3>
+                      <p className="text-gray-500 text-xs">
+                        {hasData ? "Utilisateur actif" : "Aucune activité"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stats Section - Fixed Height */}
+                <div className="p-4 flex-1 flex flex-col justify-center">
+                  {hasData ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 bg-blue-500 rounded-md flex items-center justify-center">
+                            <span className="text-white text-xs">🚗</span>
+                          </div>
+                          <span className="font-medium text-blue-800 text-sm">Distance</span>
+                        </div>
+                        <span className="text-blue-900 font-bold text-sm">
+                          {summary.totalDistance.toLocaleString()} km
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 bg-green-500 rounded-md flex items-center justify-center">
+                            <span className="text-white text-xs">💰</span>
+                          </div>
+                          <span className="font-medium text-green-800 text-sm">Frais</span>
+                        </div>
+                        <span className="text-green-900 font-bold text-sm">
+                          {summary.totalTripCost.toFixed(2)} DH
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 bg-purple-500 rounded-md flex items-center justify-center">
+                            <span className="text-white text-xs">✓</span>
+                          </div>
+                          <span className="font-medium text-purple-800 text-sm">Justifiées</span>
+                        </div>
+                        <span className="text-purple-900 font-bold text-sm">
+                          {summary.justified}/{summary.justified + summary.unjustified}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <span className="text-gray-400 text-lg">📊</span>
+                      </div>
+                      <p className="text-gray-500 font-medium text-sm">
+                        Aucune donnée
+                      </p>
+                      <p className="text-gray-400 text-xs mt-1">
+                        pour ce mois
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Export Buttons - Fixed Position */}
+                <div className="p-4 bg-gray-50 border-t border-gray-100 flex-shrink-0">
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      onClick={() => handleExport(user.id, "excel")}
+                      className="flex flex-col items-center gap-1 p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-all duration-200 hover:scale-105"
+                    >
+                      <FaFileExcel className="w-4 h-4" />
+                      <span className="text-xs font-medium">Excel</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => handleExport(user.id, "pdf")}
+                      className="flex flex-col items-center gap-1 p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all duration-200 hover:scale-105"
+                    >
+                      <FaFilePdf className="w-4 h-4" />
+                      <span className="text-xs font-medium">PDF</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => handleExport(user.id, "both")}
+                      className="flex flex-col items-center gap-1 p-2 text-white rounded-lg transition-all duration-200 hover:scale-105"
+                      style={{ backgroundColor: colors.primary }}
+                    >
+                      <FaFileArchive className="w-4 h-4" />
+                      <span className="text-xs font-medium">Complet</span>
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                <span className="font-medium text-green-800">Frais totaux :</span>
-                <span className="font-bold text-green-900">{(summary.totalTripCost ?? 0).toFixed(2)} DH</span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-                <span className="font-medium text-purple-800">Dépenses justifiées :</span>
-                <span className="font-bold text-purple-900">{summary.justified} / {summary.justified + summary.unjustified}</span>
-              </div>
+            );
+          })}
+        </div>
+
+        {/* Empty State */}
+        {filteredUsers.length === 0 && (
+          <div className="text-center py-16">
+            <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Search className="w-12 h-12 text-gray-400" />
             </div>
-          </div>
-        ) : (
-          <div className="px-6 py-12 text-gray-400 text-sm italic relative">
-            <div className="text-center">
-              {/* <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <span className="text-2xl">📊</span>
-              </div> */}
-              Aucune dépense enregistrée ce mois.
-            </div>
+            <h3 className="text-2xl font-bold text-gray-600 mb-2">
+              Aucun utilisateur trouvé
+            </h3>
+            <p className="text-gray-500">
+              Essayez d'ajuster vos critères de recherche ou de filtrage
+            </p>
           </div>
         )}
-
-        {/* Action Buttons */}
-        <div className="px-6 py-5 bg-gradient-to-r from-gray-50 to-slate-50 flex flex-wrap justify-center gap-2 relative">
-          <button
-            onClick={() => handleExport(user.id, "excel")}
-            className="flex items-center gap-2 text-emerald-700 hover:text-white  border-2 border-emerald-200 hover:border-emerald-600 bg-emerald-50 hover:bg-emerald-600 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md"
-          >
-            <FaFileExcel className="w-4 h-4" />
-            Excel
-          </button>
-          <button
-            onClick={() => handleExport(user.id, "pdf")}
-            className="flex items-center gap-2 text-rose-700 hover:text-white  border-2 border-rose-200 hover:border-rose-600 bg-rose-50 hover:bg-rose-600 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md"
-          >
-            <FaFilePdf className="w-4 h-4" />
-            PDF
-          </button>
-          <button
-            onClick={() => handleExport(user.id, "both")}
-            className="flex items-center gap-2 text-blue-700 hover:text-white  border-2 border-blue-200 hover:border-blue-600 bg-blue-50 hover:bg-blue-600 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md"
-          >
-            <FaFileArchive className="w-4 h-4" />
-            Complet
-          </button>
-        </div>
       </div>
-    );
-  })}
-</div>
-
-</div>
-);
+    </div>
+  );
 }
