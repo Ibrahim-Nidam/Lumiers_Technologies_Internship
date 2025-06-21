@@ -45,7 +45,7 @@ exports.toggleUserField = async (req, res) => {
       if (typeof value !== "string" || value.trim() === "") {
         return res.status(400).json({ error: "CNIE invalide." });
       }
-      targetUser.cartNational = value.trim();
+      targetUser.cartNational = value.trim().toUpperCase();
     } else {
       return res.status(400).json({ error: "Champ non valide." });
     }
@@ -105,5 +105,30 @@ exports.updateUserRole = async (req, res) => {
   } catch (err) {
     console.error("Error updating user role:", err);
     res.status(500).json({ error: "Erreur serveur." });
+  }
+};
+
+
+// GET Users With Cars
+exports.getUsersWithCars = async (req, res) => {
+  try {
+    const users = await User.findAll({
+      where: { possedeVoiturePersonnelle: true },
+      include: [{ model: Role, as: "role" }],
+    });
+
+    const result = users.map(u => ({
+      id: u.id,
+      nomComplete: u.nomComplete,
+      email: u.courriel,
+      role: u.role?.nom,
+      cnie: u.cartNational,
+      avatar: u.nomComplete?.split(" ").map(w => w[0]).join("").toUpperCase(),
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error("Error fetching users with cars:", err);
+    res.status(500).json({ error: "Échec du chargement des utilisateurs." });
   }
 };

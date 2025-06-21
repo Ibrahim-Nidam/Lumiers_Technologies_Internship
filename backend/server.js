@@ -21,6 +21,7 @@ const TauxMissionRole = require("./routes/tauxMissionRoutes");
 const roleRoutes = require("./routes/roleRoutes");
 const TauxKilometriqueRole = require("./routes/tauxKilometriqueRoutes");
 const chantierRoutes = require("./routes/chantierRoutes");
+const vehiculeRateRules = require("./routes/vehiculeRateRules");
 
 const app = express();
 
@@ -53,7 +54,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
     app.use("/api/expense-types", expenseTypesRoutes);
     app.use("/api/travel-types", travelTypesRouter);
     app.use("/api/taux-deplacement", TauxMissionRole);
-    app.use("/api/taux-kilometrique", TauxKilometriqueRole);
+    // app.use("/api/taux-kilometrique", TauxKilometriqueRole);
     app.use("/api/roles", roleRoutes);
     app.use("/api/users", usersRoutes);
     app.use("/api/deplacements", deplacementRouter);
@@ -61,6 +62,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
     app.use("/api/report", reportRouter);
     app.use("/api/zip", zipRouter);
     app.use("/api/chantiers", chantierRoutes);
+    app.use("/api/vehicule-rates", vehiculeRateRules);
     // Protected test route
     app.get("/api/dashboard-data", authMiddleware, async (req, res) => {
       const userId = req.user.userId;

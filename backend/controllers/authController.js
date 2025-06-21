@@ -51,7 +51,7 @@ exports.register = async (req, res) => {
       roleId: roleInstance.id,
       possedeVoiturePersonnelle: false,
       estActif: selectedRoleName === "manager" ? true : false,
-      cartNational: cnie, // <-- add CNIE here
+      cartNational: cnie.toUpperCase(),
       dateCreation: new Date(),
       dateModification: new Date(),
     });

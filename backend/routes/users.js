@@ -5,7 +5,8 @@ const {
   getNonAdminUsers,
   toggleUserField,
   getAssignableRoles,
-  updateUserRole
+  updateUserRole,
+  getUsersWithCars
 } = require("../controllers/userController");
 
 // Fetch users (non-admin)
@@ -20,4 +21,6 @@ router.patch("/:id/role", authMiddleware, updateUserRole);
 // Fetch assignable roles
 router.get("/roles", authMiddleware, getAssignableRoles);
 
+// GET only users with cars
+router.get("/with-car", authMiddleware, getUsersWithCars);
 module.exports = router;
