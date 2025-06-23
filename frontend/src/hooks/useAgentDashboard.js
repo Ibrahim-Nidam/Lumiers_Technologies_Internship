@@ -21,6 +21,7 @@ export const useAgentDashboard = (currentUserId) => {
     trips: true,
     missionRates: true,
   })
+  
 
   const currentYear = currentDate.getFullYear()
   const currentMonth = currentDate.getMonth()
@@ -88,14 +89,6 @@ export const useAgentDashboard = (currentUserId) => {
       // console.log("Travel types received:", travelTypesData);
       // console.log("Expense types received:", expenseTypesData);
 
-      if (travelTypesData.length === 0) {
-        travelTypesData.push({ id: 1, nom: "Déplacement standard" });
-        console.log("Default travel type added");
-      }
-      if (expenseTypesData.length === 0) {
-        expenseTypesData.push({ id: 1, nom: "Frais de transport" });
-        console.log("Default expense type added");
-      }
 
       setTravelTypes(travelTypesData);
       setExpenseTypes(expenseTypesData);
@@ -199,6 +192,7 @@ export const useAgentDashboard = (currentUserId) => {
     setExpandedDays(newExpanded)
   }
 
+  // trip crud logic
   const addTrip = async (date) => {
     if (isUpdating) return;
 
@@ -305,10 +299,8 @@ export const useAgentDashboard = (currentUserId) => {
     }
   }
 
-  const toggleCodeChantier = (tripId) => {
-    setShowCodeChantier(prev => ({ ...prev, [tripId]: !prev[tripId] }))
-  }
 
+  // Add expense to a trip
   const addExpense = async (tripId) => {
     if (isUpdating) return
 
@@ -347,6 +339,7 @@ export const useAgentDashboard = (currentUserId) => {
     }
   }
 
+  // Add new expense type
   const addExpenseType = async (tripId, typeName) => {
     if (isUpdating) return
 
@@ -506,6 +499,7 @@ export const useAgentDashboard = (currentUserId) => {
     }
   }
 
+
   const getTotalExpenses = (depenses) => {
     if (!Array.isArray(depenses)) return 0
     return depenses.reduce((total, expense) => total + (Number.parseFloat(expense.montant) || 0), 0)
@@ -528,11 +522,14 @@ export const useAgentDashboard = (currentUserId) => {
 };
 
 
+  // Get trips for a specific day
   const getTripsForDay = (day) => {
     const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`
     return trips.filter(trip => trip.date === dateStr)
   }
 
+
+  // Monthly calculations
   const getMonthlyTrips = () => {
     const monthStart = new Date(currentYear, currentMonth, 1)
     const monthEnd = new Date(currentYear, currentMonth + 1, 0)
@@ -562,6 +559,8 @@ export const useAgentDashboard = (currentUserId) => {
     return !loadingStates.types && !loadingStates.trips && travelTypes.length > 0 && expenseTypes.length > 0
   }
 
+
+  // email send logic
   const sendEmailWithReport = async (format = 'pdf') => {
     try {
       const userInfo = getUserData();
@@ -585,16 +584,16 @@ export const useAgentDashboard = (currentUserId) => {
       
       const emailBody = `Bonjour,
 
-Veuillez trouver ci-joint mon rapport de déplacements pour le mois de ${monthName} ${currentYear}.
+                        Veuillez trouver ci-joint mon rapport de déplacements pour le mois de ${monthName} ${currentYear}.
 
-Résumé du mois :
-- Nombre de déplacements : ${getMonthlyTrips().length}
-- Distance totale : ${getMonthlyDistanceTotal().toFixed(2)} km
-- Nombre de dépenses : ${getMonthlyExpensesCount()}
-- Montant total : ${getMonthlyTotal().toFixed(2)} MAD
+                        Résumé du mois :
+                        - Nombre de déplacements : ${getMonthlyTrips().length}
+                        - Distance totale : ${getMonthlyDistanceTotal().toFixed(2)} km
+                        - Nombre de dépenses : ${getMonthlyExpensesCount()}
+                        - Montant total : ${getMonthlyTotal().toFixed(2)} MAD
 
-Cordialement,
-${userName}`;
+                        Cordialement,
+                        ${userName}`;
 
       const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
       window.open(mailtoLink);
@@ -686,7 +685,6 @@ ${userName}`;
     updateTripField,
     updateTripLocal,
     deleteTrip,
-    toggleCodeChantier,
 
     // Expense CRUD
     addExpense,
