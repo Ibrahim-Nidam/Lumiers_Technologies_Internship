@@ -46,20 +46,20 @@ TypeDeDeplacement.hasMany(Deplacement, { foreignKey: "typeDeDeplacementId", onDe
 Deplacement.belongsTo(TypeDeDeplacement, { foreignKey: "typeDeDeplacementId", as: "typeDeDeplacement" });
 
 // ─── Role ↔ TauxKilometriqueRole (Legacy)
-Role.hasMany(TauxKilometriqueRole, { foreignKey: "roleId", onDelete: "CASCADE", as: "kilometriqueRates" });
-TauxKilometriqueRole.belongsTo(Role, { foreignKey: "roleId", as: "role" });
+// Role.hasMany(TauxKilometriqueRole, { foreignKey: "roleId", onDelete: "CASCADE", as: "kilometriqueRates" });
+// TauxKilometriqueRole.belongsTo(Role, { foreignKey: "roleId", as: "role" });
 
 // ─── Role ↔ TauxMissionRole
 Role.hasMany(TauxMissionRole, { foreignKey: "roleId", onDelete: "CASCADE", as: "missionRates" });
 TauxMissionRole.belongsTo(Role, { foreignKey: "roleId", as: "role" });
 
 // ─── Deplacement ↔ TauxKilometriqueRole (Legacy)
-TauxKilometriqueRole.hasMany(Deplacement, { foreignKey: "tauxKilometriqueRoleId", onDelete: "SET NULL", as: "deplacementsByKilometriqueRole" });
-Deplacement.belongsTo(TauxKilometriqueRole, { foreignKey: "tauxKilometriqueRoleId", as: "kilometriqueRole" });
+// TauxKilometriqueRole.hasMany(Deplacement, { foreignKey: "tauxKilometriqueRoleId", onDelete: "SET NULL", as: "deplacementsByKilometriqueRole" });
+// Deplacement.belongsTo(TauxKilometriqueRole, { foreignKey: "tauxKilometriqueRoleId", as: "kilometriqueRole" });
 
 // ─── Deplacement ↔ TauxMissionRole
-TauxMissionRole.hasMany(Deplacement, { foreignKey: "tauxMissionRoleId", onDelete: "SET NULL", as: "deplacementsByMissionRole" });
-Deplacement.belongsTo(TauxMissionRole, { foreignKey: "tauxMissionRoleId", as: "missionRole" });
+// TauxMissionRole.hasMany(Deplacement, { foreignKey: "tauxMissionRoleId", onDelete: "SET NULL", as: "deplacementsByMissionRole" });
+// Deplacement.belongsTo(TauxMissionRole, { foreignKey: "tauxMissionRoleId", as: "missionRole" });
 
 // ─── TypeDeDeplacement ↔ TauxMissionRole
 TypeDeDeplacement.hasMany(TauxMissionRole, { foreignKey: "typeDeDeplacementId", as: "missionRatesByTypeRole" });

@@ -14,6 +14,7 @@ const AgentDashboardUI = ({
   currentMonth,
   isUpdating,
   userCarLoans,
+  chantiers,
 
   // State setters
   setShowYearPicker,
@@ -54,7 +55,7 @@ const AgentDashboardUI = ({
   exportMonthlyExcel,
 }) => {
   const [newExpenseTypeName, setNewExpenseTypeName] = useState({})
-const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user");
+  const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user");
   const user = userDataRaw ? JSON.parse(userDataRaw) : null;
   const years = Array.from({ length: 3 }, (_, i) => new Date().getFullYear() - i)
   const monthNames = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre",]
@@ -77,6 +78,7 @@ const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user
       day === new Date().getDate() && currentMonth === new Date().getMonth() && currentYear === new Date().getFullYear()
     const dayName = new Date(currentYear, currentMonth, day).toLocaleDateString("fr-FR", { weekday: "long" })
 
+    
     return (
 
       // deplacement section
@@ -365,22 +367,28 @@ const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user
                   {/* deplacement input section  */}
                   <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start mb-3 sm:mb-4 space-y-3 lg:space-y-0">
                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                      <div>
-                        <label
-                          className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
-                          style={{ color: colors.logo_text }}
+                      
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-700">Chantier</label>
+                        <select
+                          value={trip.chantierId != null ? String(trip.chantierId) : ""}
+                          onChange={(e) => {
+                            const value = e.target.value ? parseInt(e.target.value) : null;
+                            updateTripLocal(trip.id, "chantierId", value);
+                            updateTripField(trip.id, "chantierId", value);
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
-                          Destination
-                        </label>
-                        <input
-                          type="text"
-                          value={trip.libelleDestination}
-                          onChange={(e) => updateTripLocal(trip.id, "libelleDestination", e.target.value)}
-                          onBlur={(e) => updateTripField(trip.id, "libelleDestination", e.target.value)}
-                          className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
-                          style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
-                        />
+                          <option value="">Sélectionner un chantier</option>
+                          {chantiers.map((chantier) => (
+                            <option key={chantier.id} value={String(chantier.id)}>
+                              {chantier.codeChantier} - {chantier.designation} ({chantier.ville})
+                              {chantier.typeDeDeplacement?.nom ? ` - ${chantier.typeDeDeplacement.nom}` : ""}
+                            </option>
+                          ))}
+                        </select>
                       </div>
+
                       
                       {user?.possede_voiture_personnelle && (
                         <>
@@ -392,20 +400,20 @@ const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user
                               Taux kilométrique (optionnel)
                             </label>
                             <select
-                              value={trip.tauxKilometriqueRoleId || ""}
+                              value={trip.vehiculeRateRuleId || ""}
                               onChange={(e) => {
-                                const value = e.target.value ? Number.parseInt(e.target.value) : null;
-                                updateTripLocal(trip.id, "tauxKilometriqueRoleId", value);
-                                updateTripField(trip.id, "tauxKilometriqueRoleId", value);
+                                const value = e.target.value ? parseInt(e.target.value) : null;
+                                updateTripLocal(trip.id, "vehiculeRateRuleId", value);
+                                updateTripField(trip.id, "vehiculeRateRuleId", value);
                               }}
                               className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
                               style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
                             >
                               <option value="">Aucun</option>
-                              {Array.isArray(userCarLoans?.rates) &&
-                                userCarLoans.rates.map((carLoan) => (
+                              {Array.isArray(userCarLoans) &&
+                                userCarLoans.map((carLoan) => (
                                   <option key={carLoan.id} value={carLoan.id}>
-                                    {carLoan.libelle} - {carLoan.tarifParKm} MAD
+                                    {carLoan.name}
                                   </option>
                                 ))}
                             </select>
@@ -588,29 +596,39 @@ const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user
                               >
                                 Justificatif
                               </label>
-                              <div className="flex space-x-1">
-                                <input
-                                  type="file"
-                                  accept="image/*,application/pdf"
-                                  onChange={(e) => {
-                                    const file = e.target.files[0]
-                                    if (file) {
-                                      handleExpenseFileUpload(trip.id, expense.id, file)
-                                    }
-                                  }}
-                                  className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 border rounded focus:outline-none focus:ring-2 text-xs"
-                                  style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
-                                />
+                              <div className="flex space-x-1 items-center">
+                                <div className="relative flex-1 overflow-hidden">
+                                  <input
+                                    type="file"
+                                    accept="image/*,application/pdf"
+                                    onChange={(e) => {
+                                      const file = e.target.files[0];
+                                      if (file) {
+                                        handleExpenseFileUpload(trip.id, expense.id, file);
+                                      }
+                                    }}
+                                    className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded focus:outline-none focus:ring-2 text-xs file:mr-2 file:py-1 file:px-2 file:border-0 file:text-xs file:bg-gray-100 file:rounded file:cursor-pointer"
+                                    style={{
+                                      borderColor: colors.secondary,
+                                      "--tw-ring-color": colors.primary,
+                                      whiteSpace: "nowrap",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis"
+                                    }}
+                                  />
+                                </div>
+
                                 {expense.cheminJustificatif && (
                                   <button
                                     onClick={() => clearExpenseFile(trip.id, expense.id)}
-                                    className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                    className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded transition-colors flex-shrink-0"
                                     title="Supprimer le fichier"
                                   >
                                     <X className="w-3 h-3" />
                                   </button>
                                 )}
                               </div>
+
                               {expense.cheminJustificatif && (
                                 <div className="text-xs text-green-600 mt-1">✓ {expense.cheminJustificatif}</div>
                               )}
@@ -631,13 +649,13 @@ const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user
                             </div>
                           </div>
                         ))}
+                      </div>
+                    )}
                         <div className="text-right pt-2 border-t" style={{ borderColor: colors.secondary }}>
                           <span className="font-bold text-sm sm:text-base lg:text-lg" style={{ color: colors.primary }}>
                             Total: {getTripTotal(trip).toFixed(2)} MAD
                           </span>
                         </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               ))}

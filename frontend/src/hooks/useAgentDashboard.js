@@ -21,6 +21,7 @@ export const useAgentDashboard = (currentUserId) => {
     trips: true,
     missionRates: true,
   })
+  const [chantiers, setChantiers] = useState([])
   
 
   const currentYear = currentDate.getFullYear()
@@ -53,7 +54,8 @@ export const useAgentDashboard = (currentUserId) => {
     userMissionRates,
     userCarLoans,
     expenseTypes,
-    travelTypes
+    travelTypes,
+    chantiers
   });
 
   const exportMonthlyExcel = () => {
@@ -70,9 +72,9 @@ export const useAgentDashboard = (currentUserId) => {
       const headers = getAuthHeaders();
       setLoadingStates(prev => ({ ...prev, types: true, missionRates: true }));
 
-      console.log("Fetching travel types and expense types...");
+      console.log("Fetching travel types, expense types, and chantiers...");
 
-      const [travelResponse, expenseResponse] = await Promise.all([
+      const [travelResponse, expenseResponse, chantiersResponse] = await Promise.all([
         apiClient.get(`/travel-types`, { headers }).catch(err => {
           console.warn("Travel types endpoint failed:", err.response?.status);
           return { data: [] };
@@ -81,17 +83,19 @@ export const useAgentDashboard = (currentUserId) => {
           console.warn("Expense types endpoint failed:", err.response?.status);
           return { data: [] };
         }),
+        apiClient.get(`/chantiers`, { headers }).catch(err => {
+          console.warn("Chantiers endpoint failed:", err.response?.status);
+          return { data: [] };
+        }),
       ]);
 
       const travelTypesData = travelResponse.data || [];
       const expenseTypesData = expenseResponse.data || [];
-
-      // console.log("Travel types received:", travelTypesData);
-      // console.log("Expense types received:", expenseTypesData);
-
+      const chantiersData = chantiersResponse.data || [];
 
       setTravelTypes(travelTypesData);
       setExpenseTypes(expenseTypesData);
+      setChantiers(chantiersData);
       setLoadingStates(prev => ({ ...prev, types: false }));
 
       // Fetch mission rates
@@ -100,9 +104,12 @@ export const useAgentDashboard = (currentUserId) => {
       console.log("User mission rates received:", missionRes.data);
       setUserMissionRates(missionRes.data || []);
 
+  const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user");
+  const user = userDataRaw ? JSON.parse(userDataRaw) : null;
+
       // Fetch kilometer rates
       console.log("Fetching user kilometer rates...");
-      const kilometerRes = await apiClient.get(`/taux-kilometrique/user`, { headers });
+      const kilometerRes = await apiClient.get(`/vehicule-rates/user/${user.id}`, { headers });
       console.log("User kilometer rates received:", kilometerRes.data);
       setUserCarLoans(kilometerRes.data || []);
 
@@ -112,6 +119,7 @@ export const useAgentDashboard = (currentUserId) => {
       setLoadingStates(prev => ({ ...prev, types: false, missionRates: false }));
       setTravelTypes([{ id: 1, nom: "Déplacement standard" }]);
       setExpenseTypes([{ id: 1, nom: "Frais de transport" }]);
+      setChantiers([]);
       setUserMissionRates([]);
       setUserCarLoans([]);
     }
@@ -192,94 +200,92 @@ export const useAgentDashboard = (currentUserId) => {
     setExpandedDays(newExpanded)
   }
 
-  // trip crud logic
-  const addTrip = async (date) => {
+ const addTrip = async (date) => {
     if (isUpdating) return;
-
+    const defaultC = chantiers[0];
+    if (!defaultC) {
+      alert("Les chantiers ne sont pas chargés.");
+      return;
+    }
+    setIsUpdating(true);
     try {
-      setIsUpdating(true);
-      const defaultTravelType = travelTypes[0];
-      const tripExists = trips.some(trip => trip.date === date);
-
-      if (tripExists) {
-        alert("Un déplacement a déjà été enregistré pour cette date.");
-        return;
-      }
-
-      if (!defaultTravelType || !defaultTravelType.id) {
-        console.error("No valid travel type available");
-        alert("Les types de déplacement ne sont pas encore chargés. Veuillez attendre ou rafraîchir la page.");
-        return;
-      }
-
       const newTrip = {
-        typeDeDeplacementId: defaultTravelType.id,
-        date: date,
-        libelleDestination: "Destination à définir",
-        distanceKm: "0",
-        codefiles: "",
-        tauxKilometriqueRoleId: null,
-        depenses: [],
+        date,
+        chantierId: defaultC.id,
+        typeDeDeplacementId: defaultC.typeDeDeplacementId,
+        libelleDestination: defaultC.designation,
+        codeChantier: defaultC.codeChantier,
+        distanceKm: 0,
+        vehiculeRateRuleId: null,
+        depenses: []
       };
-
       const headers = getAuthHeaders();
-      const response = await apiClient.post(`/deplacements`, newTrip, { headers });
-      setTrips(prevTrips => [...prevTrips, response.data]);
-      setExpandedDays(new Set([...expandedDays, Number.parseInt(date.split("-")[2])]));
-    } catch (error) {
-      console.error("❌ Failed to add trip:", error);
-      if (error.response && error.response.data) {
-        console.error("Server response:", error.response.data);
-        alert(`Erreur: ${error.response.data.error || "Erreur lors de la création du déplacement"}`);
-      } else {
-        alert("Erreur lors de la création du déplacement. Veuillez réessayer.");
-      }
+      const { data } = await apiClient.post("/deplacements", newTrip, { headers });
+      setTrips((t) => [...t, data]);
+    } catch (err) {
+      console.error("❌ Failed to add trip:", err.response?.data || err);
+      alert("Erreur lors de la création du déplacement");
     } finally {
       setIsUpdating(false);
     }
   };
 
+  // Local state update
+  const updateTripLocal = (tripId, field, value) => {
+    setTrips((prev) =>
+      prev.map((t) => (t.id === tripId ? { ...t, [field]: value } : t))
+    );
+  };
+
+  // Persist update to server
   const updateTripField = async (tripId, field, value) => {
     if (isUpdating) return;
+    setIsUpdating(true);
+
+    const trip = trips.find((t) => t.id === tripId);
+    if (!trip) {
+      setIsUpdating(false);
+      return;
+    }
+
+    // Build payload from existing trip
+    const payload = {
+      date: trip.date,
+      libelleDestination: trip.libelleDestination,
+      codeChantier: trip.codeChantier,
+      typeDeDeplacementId: trip.typeDeDeplacementId,
+      chantierId: trip.chantierId,
+      distanceKm: trip.distanceKm,
+      vehiculeRateRuleId: trip.vehiculeRateRuleId,
+      depenses: trip.depenses
+    };
+
+    // Override the one field (and its dependents)
+    if (field === "chantierId") {
+      const c = chantiers.find((c) => c.id === value);
+      if (c) {
+        payload.chantierId = c.id;
+        payload.typeDeDeplacementId = c.typeDeDeplacementId;
+        payload.libelleDestination = c.designation;
+        payload.codeChantier = c.codeChantier;
+      }
+    } else if (field === "vehiculeRateRuleId") {
+      payload.vehiculeRateRuleId = value;
+    } else {
+      payload[field] = value;
+    }
 
     try {
-      setIsUpdating(true);
-      const trip = trips.find(t => t.id === tripId);
-      if (!trip) return;
-
-      const allowedFields = [
-        "libelleDestination",
-        "typeDeDeplacementId",
-        "date",
-        "distanceKm",
-        "codeChantier",
-        "tauxKilometriqueRoleId",
-        "depenses",
-      ];
-
-      const updatedTrip = {};
-      allowedFields.forEach(key => {
-        if (key in trip) updatedTrip[key] = trip[key];
-      });
-
-      updatedTrip[field] = value;
-
       const headers = getAuthHeaders();
-      const response = await apiClient.put(`/deplacements/${tripId}`, updatedTrip, { headers });
-
-      setTrips(prevTrips => prevTrips.map(t => t.id === tripId ? response.data : t));
-    } catch (error) {
-      console.error("Failed to update trip:", error);
+      const { data } = await apiClient.put(`/deplacements/${tripId}`, payload, { headers });
+      setTrips((prev) => prev.map((t) => (t.id === tripId ? data : t)));
+    } catch (err) {
+      console.error("Failed to update trip:", err.response?.data || err);
+      alert("Erreur lors de la mise à jour du déplacement");
     } finally {
       setIsUpdating(false);
     }
   };
-
-  const updateTripLocal = (tripId, field, value) => {
-    setTrips(prevTrips => prevTrips.map(trip => 
-      trip.id === tripId ? { ...trip, [field]: value } : trip
-    ))
-  }
 
   const deleteTrip = async (tripId) => {
     if (isUpdating) return
@@ -501,20 +507,68 @@ export const useAgentDashboard = (currentUserId) => {
 
 
   const getTotalExpenses = (depenses) => {
-    if (!Array.isArray(depenses)) return 0
-    return depenses.reduce((total, expense) => total + (Number.parseFloat(expense.montant) || 0), 0)
-  }
+  if (!Array.isArray(depenses)) return 0
+  return depenses.reduce((total, expense) => total + (Number.parseFloat(expense.montant) || 0), 0)
+}
 
-  const getTripTotal = (trip) => {
+// Helper function to get cumulative distance for a specific rate rule up to a certain date
+const getCumulativeDistanceForRule = (ruleId, upToDate) => {
+  if (!ruleId) return 0;
+  
+  const monthStart = new Date(currentYear, currentMonth, 1);
+  const targetDate = new Date(upToDate);
+  
+  return trips
+    .filter(trip => {
+      const tripDate = new Date(trip.date);
+      return trip.vehiculeRateRuleId === ruleId && 
+             tripDate >= monthStart && 
+             tripDate < targetDate; // Before the current trip
+    })
+    .reduce((total, trip) => total + (parseFloat(trip.distanceKm) || 0), 0);
+}
+
+const getTripTotal = (trip) => {
   const expensesTotal = getTotalExpenses(trip.depenses);
-  const travelTypeRate = userMissionRates.find(rate => rate.typeDeDeplacementId === trip.typeDeDeplacementId);
-  const travelTypeAmount = travelTypeRate ? Number.parseFloat(travelTypeRate.tarifParJour) || 0 : 0;
+
+  const travelTypeRate = userMissionRates.find(
+    rate => rate.typeDeDeplacementId === trip.typeDeDeplacementId
+  );
+  const travelTypeAmount = travelTypeRate ? parseFloat(travelTypeRate.tarifParJour) || 0 : 0;
 
   let distanceCost = 0;
-  if (trip.tauxKilometriqueRoleId && trip.distanceKm) {
-    const kilometerRate = userCarLoans.rates?.find(rate => rate.id === trip.tauxKilometriqueRoleId);
-    if (kilometerRate) {
-      distanceCost = (Number.parseFloat(trip.distanceKm) || 0) * (Number.parseFloat(kilometerRate.tarifParKm) || 0);
+
+  if (trip.vehiculeRateRuleId && trip.distanceKm) {
+    const rule = userCarLoans.find(r => r.id === trip.vehiculeRateRuleId);
+    const tripKm = parseFloat(trip.distanceKm) || 0;
+
+    if (rule) {
+      if (rule.conditionType === "ALL") {
+        distanceCost = tripKm * rule.rateBeforeThreshold;
+      } else if (rule.conditionType === "THRESHOLD") {
+        const threshold = rule.thresholdKm || 0;
+        const before = rule.rateBeforeThreshold;
+        const after = rule.rateAfterThreshold || before;
+
+        // Get cumulative distance for this rule up to this trip's date
+        const monthlyDistanceSoFarForThisRule = getCumulativeDistanceForRule(trip.vehiculeRateRuleId, trip.date);
+        
+        const kmBeforeTrip = monthlyDistanceSoFarForThisRule;
+        const kmAfterTrip = kmBeforeTrip + tripKm;
+
+        if (kmAfterTrip <= threshold) {
+          // Whole trip is under threshold
+          distanceCost = tripKm * before;
+        } else if (kmBeforeTrip >= threshold) {
+          // Threshold already surpassed before this trip
+          distanceCost = tripKm * after;
+        } else {
+          // Part before threshold, part after
+          const kmAtBeforeRate = threshold - kmBeforeTrip;
+          const kmAtAfterRate = tripKm - kmAtBeforeRate;
+          distanceCost = (kmAtBeforeRate * before) + (kmAtAfterRate * after);
+        }
+      }
     }
   }
 
@@ -522,14 +576,12 @@ export const useAgentDashboard = (currentUserId) => {
 };
 
 
-  // Get trips for a specific day
+// Keep your existing functions unchanged
   const getTripsForDay = (day) => {
     const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`
     return trips.filter(trip => trip.date === dateStr)
   }
 
-
-  // Monthly calculations
   const getMonthlyTrips = () => {
     const monthStart = new Date(currentYear, currentMonth, 1)
     const monthEnd = new Date(currentYear, currentMonth + 1, 0)
@@ -540,8 +592,49 @@ export const useAgentDashboard = (currentUserId) => {
   }
 
   const getMonthlyTotal = () => {
-    return getMonthlyTrips().reduce((total, trip) => total + getTripTotal(trip), 0)
-  }
+    const monthlyTrips = getMonthlyTrips();
+
+    // Group trips by their selected vehicle rate rule
+    const groupedByRate = {};
+    for (const trip of monthlyTrips) {
+      const ruleId = trip.vehiculeRateRuleId;
+      if (!groupedByRate[ruleId]) groupedByRate[ruleId] = [];
+      groupedByRate[ruleId].push(trip);
+    }
+
+    let totalDistanceCost = 0;
+
+    for (const ruleId in groupedByRate) {
+      const tripsForRule = groupedByRate[ruleId];
+      const distanceSum = tripsForRule.reduce((sum, t) => sum + (parseFloat(t.distanceKm) || 0), 0);
+      const rule = userCarLoans?.find(r => r.id === parseInt(ruleId));
+
+      if (!rule || distanceSum === 0) continue;
+
+      if (rule.conditionType === "ALL") {
+        totalDistanceCost += distanceSum * rule.rateBeforeThreshold;
+      } else if (rule.conditionType === "THRESHOLD") {
+        const threshold = rule.thresholdKm || 0;
+        const before = rule.rateBeforeThreshold;
+        const after = rule.rateAfterThreshold || before;
+
+        if (distanceSum <= threshold) {
+          totalDistanceCost += distanceSum * before;
+        } else {
+          totalDistanceCost += (threshold * before) + ((distanceSum - threshold) * after);
+        }
+      }
+    }
+
+    const expensesTotal = monthlyTrips.reduce((sum, trip) => sum + getTotalExpenses(trip.depenses), 0);
+
+    const missionRatesTotal = monthlyTrips.reduce((sum, trip) => {
+      const rate = userMissionRates.find(r => r.typeDeDeplacementId === trip.typeDeDeplacementId);
+      return sum + (rate ? parseFloat(rate.tarifParJour) || 0 : 0);
+    }, 0);
+
+    return totalDistanceCost + expensesTotal + missionRatesTotal;
+  };
 
   const getMonthlyDistanceTotal = () => {
     return getMonthlyTrips().reduce((total, trip) => total + (parseFloat(trip.distanceKm) || 0), 0)
@@ -556,7 +649,7 @@ export const useAgentDashboard = (currentUserId) => {
   }
 
   const isDataReady = () => {
-    return !loadingStates.types && !loadingStates.trips && travelTypes.length > 0 && expenseTypes.length > 0
+    return !loadingStates.types && !loadingStates.trips && travelTypes.length > 0 && expenseTypes.length > 0 && chantiers.length > 0
   }
 
 
@@ -584,16 +677,16 @@ export const useAgentDashboard = (currentUserId) => {
       
       const emailBody = `Bonjour,
 
-                        Veuillez trouver ci-joint mon rapport de déplacements pour le mois de ${monthName} ${currentYear}.
+Veuillez trouver ci-joint mon rapport de déplacements pour le mois de ${monthName} ${currentYear}.
 
-                        Résumé du mois :
-                        - Nombre de déplacements : ${getMonthlyTrips().length}
-                        - Distance totale : ${getMonthlyDistanceTotal().toFixed(2)} km
-                        - Nombre de dépenses : ${getMonthlyExpensesCount()}
-                        - Montant total : ${getMonthlyTotal().toFixed(2)} MAD
+Résumé du mois :
+- Nombre de déplacements : ${getMonthlyTrips().length}
+- Distance totale : ${getMonthlyDistanceTotal().toFixed(2)} km
+- Nombre de dépenses : ${getMonthlyExpensesCount()}
+- Montant total : ${getMonthlyTotal().toFixed(2)} MAD
 
-                        Cordialement,
-                        ${userName}`;
+Cordialement,
+${userName}`;
 
       const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
       window.open(mailtoLink);
@@ -666,6 +759,7 @@ export const useAgentDashboard = (currentUserId) => {
     currentMonth,
     isUpdating,
     loadingStates,
+    chantiers,
 
     // State setters
     setShowYearPicker,

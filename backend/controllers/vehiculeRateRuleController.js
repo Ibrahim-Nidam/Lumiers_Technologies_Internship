@@ -5,7 +5,7 @@ exports.getAllRatesByUser = async (req, res) => {
   try {
     const userId = req.params.userId;
     const rules = await VehiculeRateRule.findAll({
-      where: { userId }
+      where: { userId, active: true }
     });
     res.json(rules);
   } catch (error) {
