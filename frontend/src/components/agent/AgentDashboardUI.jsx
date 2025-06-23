@@ -2,26 +2,12 @@
 
 import { useState } from "react"
 import { colors } from "../../colors"
-import {
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  Trash2,
-  FileSpreadsheet,
-  MapPin,
-  ChevronDown,
-  ChevronUp,
-  Calendar,
-  X,
-  Check,
-  Download, Mail
-} from "lucide-react"
+import {ChevronLeft,ChevronRight,Plus,Trash2,FileSpreadsheet,MapPin,ChevronDown,ChevronUp,Calendar,X,Check,Download, Mail} from "lucide-react"
 const AgentDashboardUI = ({
   // State
   expenseTypes,
   userMissionRates,
   expandedDays,
-  showCodeChantier,
   showYearPicker,
   showAddExpenseType,
   currentYear,
@@ -46,7 +32,6 @@ const AgentDashboardUI = ({
   updateTripField,
   updateTripLocal,
   deleteTrip,
-  toggleCodeChantier,
 
   // Expense CRUD
   addExpense,
@@ -72,20 +57,7 @@ const AgentDashboardUI = ({
 const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user");
   const user = userDataRaw ? JSON.parse(userDataRaw) : null;
   const years = Array.from({ length: 3 }, (_, i) => new Date().getFullYear() - i)
-  const monthNames = [
-    "Janvier",
-    "Février",
-    "Mars",
-    "Avril",
-    "Mai",
-    "Juin",
-    "Juillet",
-    "Août",
-    "Septembre",
-    "Octobre",
-    "Novembre",
-    "Décembre",
-  ]
+  const monthNames = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre",]
 
   const handleAddExpenseType = (tripId) => {
     const typeName = newExpenseTypeName[tripId]
@@ -106,15 +78,18 @@ const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user
     const dayName = new Date(currentYear, currentMonth, day).toLocaleDateString("fr-FR", { weekday: "long" })
 
     return (
+
+      // deplacement section
       <div
         key={day}
         className={`border-b ${isToday ? "ring-2 ring-blue-500 ring-inset" : ""}`}
         style={{ borderColor: colors.secondary }}
       >
+
+    {/* Day Header */}
         <div
           className={`p-2 sm:p-3 md:p-4 hover:bg-gray-50 transition-colors cursor-pointer ${hasTrips ? "" : "opacity-60"} ${isToday ? "bg-blue-50" : ""}`}
-          onClick={() => hasTrips && toggleDayExpansion(day)}
-        >
+          onClick={() => hasTrips && toggleDayExpansion(day)}>
           <div className="flex items-start justify-between">
             <div className="flex items-start space-x-2 sm:space-x-3 md:space-x-4 flex-1 min-w-0">
               <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 flex-shrink-0">
@@ -161,6 +136,7 @@ const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
+                          
                           {user?.possede_voiture_personnelle && userMissionRates.length > 0 && (
                             <span className="text-xs font-medium" style={{ color: colors.logo_text }}>
                               {dayTrips
@@ -370,6 +346,8 @@ const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user
             </div>
           </div>
         </div>
+
+
         {isExpanded && hasTrips && (
           <div
             className="px-2 sm:px-3 md:px-4 pb-2 sm:pb-3 md:pb-4"
@@ -382,6 +360,9 @@ const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user
                   className="bg-white rounded-lg border p-2 sm:p-3 md:p-4"
                   style={{ borderColor: colors.secondary }}
                 >
+
+
+                  {/* deplacement input section  */}
                   <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start mb-3 sm:mb-4 space-y-3 lg:space-y-0">
                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                       <div>
@@ -400,118 +381,56 @@ const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user
                           style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
                         />
                       </div>
-                      <div>
-                      <label
-                        className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
-                        style={{ color: colors.logo_text }}
-                      >
-                        Type de déplacement
-                      </label>
-
-                      <select
-                        value={trip.typeDeDeplacementId || ""}
-                        onChange={(e) => {
-                          const value = e.target.value ? Number.parseInt(e.target.value) : null;
-                          updateTripLocal(trip.id, "typeDeDeplacementId", value);
-                          updateTripField(trip.id, "typeDeDeplacementId", value);
-                        }}
-                        className={`w-full px-2 sm:px-3 py-1.5 sm:py-2 border-2 rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm ${
-                          !trip.typeDeDeplacementId
-                            ? "border-red-500 ring-red-400"  // Highlight if nothing selected
-                            : "border-gray-300 ring-primary" // Normal style if selected
-                        }`}
-                        style={{
-                          "--tw-ring-color": colors.primary,
-                        }}
-                      >
-                        <option value="">Sélectionner un type</option>
-                        {userMissionRates.map((rate) => (
-                          <option key={rate.id} value={rate.typeDeDeplacementId}>
-                            {rate.typeDeDeplacement?.nom} - {rate.tarifParJour} MAD
-                          </option>
-                        ))}
-                      </select>
-
-                      </div>
+                      
+                      {user?.possede_voiture_personnelle && (
                         <>
-                          {user?.possede_voiture_personnelle && (
-                            <>
-                              <div>
-                                <label
-                                  className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
-                                  style={{ color: colors.logo_text }}
-                                >
-                                  Taux kilométrique (optionnel)
-                                </label>
-                                <select
-                                  value={trip.tauxKilometriqueRoleId || ""}
-                                  onChange={(e) => {
-                                    const value = e.target.value ? Number.parseInt(e.target.value) : null;
-                                    updateTripLocal(trip.id, "tauxKilometriqueRoleId", value);
-                                    updateTripField(trip.id, "tauxKilometriqueRoleId", value);
-                                  }}
-                                  className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
-                                  style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
-                                >
-                                  <option value="">Aucun</option>
-                                  {Array.isArray(userCarLoans?.rates) &&
-                                    userCarLoans.rates.map((carLoan) => (
-                                      <option key={carLoan.id} value={carLoan.id}>
-                                        {carLoan.libelle} - {carLoan.tarifParKm} MAD
-                                      </option>
-                                    ))}
-                                </select>
-                              </div>
-                              <div>
-                                <label
-                                  className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
-                                  style={{ color: colors.logo_text }}
-                                >
-                                  Distance (km)
-                                </label>
-                                <input
-                                  type="number"
-                                  step="0.1"
-                                  value={trip.distanceKm ?? ""}
-                                  onChange={(e) => updateTripLocal(trip.id, "distanceKm", e.target.value)}
-                                  onBlur={(e) => updateTripField(trip.id, "distanceKm", e.target.value)}
-                                  className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
-                                  style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
-                                />
-                              </div>
-                            </>
-                          )}
-                              {(showCodeChantier[trip.id] || trip.codeChantier) && (
-                              <div className="mb-3 sm:mb-4 w-100">
-                                <label
-                                  className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
-                                  style={{ color: colors.logo_text }}
-                                >
-                                  Code Chantier (optionnel)
-                                </label>
-                                <input
-                                  type="text"
-                                  value={trip.codeChantier}
-                                  onChange={(e) => updateTripLocal(trip.id, "codeChantier", e.target.value)}
-                                  onBlur={(e) => updateTripField(trip.id, "codeChantier", e.target.value)}
-                                  className="sm:w-1/2 lg:w-1/3 px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
-                                  style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
-                                  placeholder="Ex: CH-2025-001"
-                                />
-                              </div>
-                            )}
+                          <div>
+                            <label
+                              className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
+                              style={{ color: colors.logo_text }}
+                            >
+                              Taux kilométrique (optionnel)
+                            </label>
+                            <select
+                              value={trip.tauxKilometriqueRoleId || ""}
+                              onChange={(e) => {
+                                const value = e.target.value ? Number.parseInt(e.target.value) : null;
+                                updateTripLocal(trip.id, "tauxKilometriqueRoleId", value);
+                                updateTripField(trip.id, "tauxKilometriqueRoleId", value);
+                              }}
+                              className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
+                              style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
+                            >
+                              <option value="">Aucun</option>
+                              {Array.isArray(userCarLoans?.rates) &&
+                                userCarLoans.rates.map((carLoan) => (
+                                  <option key={carLoan.id} value={carLoan.id}>
+                                    {carLoan.libelle} - {carLoan.tarifParKm} MAD
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label
+                              className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
+                              style={{ color: colors.logo_text }}
+                            >
+                              Distance (km)
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={trip.distanceKm ?? ""}
+                              onChange={(e) => updateTripLocal(trip.id, "distanceKm", e.target.value)}
+                              onBlur={(e) => updateTripField(trip.id, "distanceKm", e.target.value)}
+                              className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
+                              style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
+                            />
+                          </div>
                         </>
+                      )}
                     </div>
                     <div className="flex items-center space-x-2 lg:ml-4">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleCodeChantier(trip.id)
-                        }}
-                        className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm bg-red-50 text-red-700 hover:bg-red-100 rounded-lg transition-colors border border-red-200"
-                      >
-                        {showCodeChantier[trip.id] || trip.codeChantier ? "- Masquer Code Chantier" : "+ Code Chantier"}
-                      </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
@@ -526,11 +445,17 @@ const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user
                       </button>
                     </div>
                   </div>
+
+
+
+                  {/* Expense Section  */}
                   <div className="border-t pt-3 sm:pt-4" style={{ borderColor: colors.secondary }}>
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 sm:mb-4 space-y-2 sm:space-y-0">
                       <h4 className="text-sm sm:text-base font-medium" style={{ color: colors.logo_text }}>
                         Dépenses ({trip.depenses.length})
                       </h4>
+
+                      {/* add expense type */}
                       <div className="flex space-x-2">
                         <button
                           onClick={(e) => {
@@ -589,6 +514,7 @@ const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user
                       </div>
                     )}
 
+                    {/* depense table */}
                     {trip.depenses.length === 0 ? (
                       <p className="text-xs sm:text-sm text-center py-3 sm:py-4" style={{ color: colors.secondary }}>
                         Aucune dépense
@@ -597,13 +523,15 @@ const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user
                       <div className="space-y-2 sm:space-y-3">
                         {/* Header Row for Larger Screens */}
                         <div
-                          className="hidden lg:grid lg:grid-cols-2 underline lg:grid-cols-4 gap-2 sm:gap-3 p-2 sm:p-3 font-medium text-xs sm:text-sm"
+                          className="hidden lg:grid underline lg:grid-cols-4 gap-2 sm:gap-3 p-2 sm:p-3 font-medium text-xs sm:text-sm"
                           style={{ color: colors.logo_text }}
                         >
                           <div>Type</div>
                           <div>Montant</div>
                           <div>Justificatif</div>
                         </div>
+
+
                         {/* Expense Rows */}
                         {trip.depenses.map((expense) => (
                           <div
@@ -720,6 +648,9 @@ const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user
     )
   }
 
+
+
+  // page header
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white shadow-sm border-b">
@@ -734,40 +665,44 @@ const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user
               </p>
             </div>
             <div className="flex items-center space-x-2">
-  <button
-    onClick={exportMonthlyExcel}
-    className="flex items-center cursor-pointer space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
-    style={{ borderColor: colors.primary, color: colors.primary }}
-  >
-    <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-    <span className="hidden sm:inline">Exporter Excel</span>
-    <span className="sm:hidden">Excel</span>
-  </button>
-  
-  <button
-    onClick={exportMonthlyPDF}
-    className="flex items-center cursor-pointer space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
-    style={{ borderColor: colors.primary, color: colors.primary }}
-  >
-    <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-    <span className="hidden sm:inline">Exporter PDF</span>
-    <span className="sm:hidden">PDF</span>
-  </button>
-  
-  {/* New Send Email Button */}
-  <button
-    onClick={showEmailFormatSelection}
-    className="flex items-center cursor-pointer space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
-    style={{ borderColor: colors.primary, color: colors.primary }}
-  >
-    <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-    <span className="hidden sm:inline">Envoyer par Email</span>
-    <span className="sm:hidden">Email</span>
-  </button>
-</div>
+              <button
+                onClick={exportMonthlyExcel}
+                className="flex items-center cursor-pointer space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
+                style={{ borderColor: colors.primary, color: colors.primary }}
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Exporter Excel</span>
+                <span className="sm:hidden">Excel</span>
+              </button>
+              
+              <button
+                onClick={exportMonthlyPDF}
+                className="flex items-center cursor-pointer space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
+                style={{ borderColor: colors.primary, color: colors.primary }}
+              >
+                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Exporter PDF</span>
+                <span className="sm:hidden">PDF</span>
+              </button>
+              
+              {/* New Send Email Button */}
+              <button
+                onClick={showEmailFormatSelection}
+                className="flex items-center cursor-pointer space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
+                style={{ borderColor: colors.primary, color: colors.primary }}
+              >
+                <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Envoyer par Email</span>
+                <span className="sm:hidden">Email</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+
+
+      {/* calendar section */}
       <div className="bg-white border-b">
             <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
