@@ -2,6 +2,7 @@
 
 import { useAgentDashboard } from "../../hooks/useAgentDashboard"
 import AgentDashboardUI from "../agent/AgentDashboardUI"
+import { useParams } from "react-router-dom";
 
 /**
  * The main dashboard component for agents.
@@ -13,7 +14,10 @@ import AgentDashboardUI from "../agent/AgentDashboardUI"
  * @returns {JSX.Element} The rendered AgentDashboardUI component.
  */
 export default function AgentDashboard({ currentUserId }) {
-  const dashboardProps = useAgentDashboard(currentUserId)
+  const params = useParams();
+  const userId = currentUserId || parseInt(params.userId);
 
-  return <AgentDashboardUI {...dashboardProps} />
+  const dashboardProps = useAgentDashboard(userId);
+
+  return <AgentDashboardUI {...dashboardProps} />;
 }

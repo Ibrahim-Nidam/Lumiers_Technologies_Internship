@@ -2,11 +2,60 @@
 
 import { useState } from "react"
 import { colors } from "../../colors"
-import {ChevronLeft,ChevronRight,Plus,Trash2,FileSpreadsheet,MapPin,ChevronDown,ChevronUp,Calendar,X,Check,Download, Mail} from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus, Trash2, FileSpreadsheet, MapPin, ChevronDown, ChevronUp, Calendar, X, Check, Download, Mail } from "lucide-react"
+
+// Utility function to get user info by ID
+const getUserInfo = (userId, allUsers) => {
+  if (!userId || !allUsers) return null;
+  const user = allUsers.find(u => u.id === userId);
+  return user ? { name: user.name, avatar: user.avatar } : null;
+};
+
+
+
+// Component for displaying modification tags
+const ModificationTag = ({ createdBy, modifiedBy, currentUserId, allUsers }) => {
+  const createdByUser = getUserInfo(createdBy, allUsers);
+  const modifiedByUser = getUserInfo(modifiedBy, allUsers);
+  
+  // Don't show tag if current user created and never modified
+  if (createdBy === currentUserId && !modifiedBy) return null;
+  
+  // Show if manager created for user
+  if (createdBy && createdBy !== currentUserId) {
+    return (
+      <div className="flex items-center space-x-1 mb-2">
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          <span className="w-4 h-4 rounded-full bg-blue-200 flex items-center justify-center text-[10px] font-bold mr-1">
+            {createdByUser?.avatar || 'M'}
+          </span>
+          Créé par {createdByUser?.name || 'Manager'}
+        </span>
+      </div>
+    );
+  }
+  
+  // Show if modified by someone else
+  if (modifiedBy && modifiedBy !== currentUserId) {
+    return (
+      <div className="flex items-center space-x-1 mb-2">
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+          <span className="w-4 h-4 rounded-full bg-orange-200 flex items-center justify-center text-[10px] font-bold mr-1">
+            {modifiedByUser?.avatar || 'M'}
+          </span>
+          Modifié par {modifiedByUser?.name || 'Manager'}
+        </span>
+      </div>
+    );
+  }
+  
+  return null;
+};
+
 const AgentDashboardUI = ({
   // State
   expenseTypes,
-  userMissionRates,
+  // userMissionRates,
   expandedDays,
   showYearPicker,
   showAddExpenseType,
@@ -15,6 +64,7 @@ const AgentDashboardUI = ({
   isUpdating,
   userCarLoans,
   chantiers,
+  allUsers,
 
   // State setters
   setShowYearPicker,
@@ -26,8 +76,8 @@ const AgentDashboardUI = ({
   goToToday,
   goToYearMonth,
   toggleDayExpansion,
-// sendEmailWithReport,
   showEmailFormatSelection,
+
   // Trip CRUD
   addTrip,
   updateTripField,
@@ -54,44 +104,48 @@ const AgentDashboardUI = ({
   exportMonthlyPDF,
   exportMonthlyExcel,
 }) => {
-  const [newExpenseTypeName, setNewExpenseTypeName] = useState({})
+  const [newExpenseTypeName, setNewExpenseTypeName] = useState({});
   const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user");
   const user = userDataRaw ? JSON.parse(userDataRaw) : null;
-  const years = Array.from({ length: 3 }, (_, i) => new Date().getFullYear() - i)
-  const monthNames = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre",]
+  const currentUserId = user?.id;
+  const years = Array.from({ length: 3 }, (_, i) => new Date().getFullYear() - i);
+  const monthNames = [
+    "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+    "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
+  ];
 
   const handleAddExpenseType = (tripId) => {
-    const typeName = newExpenseTypeName[tripId]
+    const typeName = newExpenseTypeName[tripId];
     if (typeName && typeName.trim()) {
-      addExpenseType(tripId, typeName.trim())
-      setNewExpenseTypeName((prev) => ({ ...prev, [tripId]: "" }))
+      addExpenseType(tripId, typeName.trim());
+      setNewExpenseTypeName((prev) => ({ ...prev, [tripId]: "" }));
     }
-  }
+  };
 
   const renderDayRow = (day) => {
-    const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`
-    const dayTrips = getTripsForDay(day)
-    const dayTotal = dayTrips.reduce((total, trip) => total + getTripTotal(trip), 0)
-    const hasTrips = dayTrips.length > 0
-    const isExpanded = expandedDays.has(day)
+    const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+    const dayTrips = getTripsForDay(day);
+    const dayTotal = dayTrips.reduce((total, trip) => total + getTripTotal(trip), 0);
+    const hasTrips = dayTrips.length > 0;
+    const isExpanded = expandedDays.has(day);
     const isToday =
-      day === new Date().getDate() && currentMonth === new Date().getMonth() && currentYear === new Date().getFullYear()
-    const dayName = new Date(currentYear, currentMonth, day).toLocaleDateString("fr-FR", { weekday: "long" })
+      day === new Date().getDate() &&
+      currentMonth === new Date().getMonth() &&
+      currentYear === new Date().getFullYear();
+    const dayName = new Date(currentYear, currentMonth, day).toLocaleDateString("fr-FR", { weekday: "long" });
 
-    
+
     return (
-
-      // deplacement section
       <div
         key={day}
         className={`border-b ${isToday ? "ring-2 ring-blue-500 ring-inset" : ""}`}
         style={{ borderColor: colors.secondary }}
       >
-
-    {/* Day Header */}
+        {/* Day Header */}
         <div
           className={`p-2 sm:p-3 md:p-4 hover:bg-gray-50 transition-colors cursor-pointer ${hasTrips ? "" : "opacity-60"} ${isToday ? "bg-blue-50" : ""}`}
-          onClick={() => hasTrips && toggleDayExpansion(day)}>
+          onClick={() => hasTrips && toggleDayExpansion(day)}
+        >
           <div className="flex items-start justify-between">
             <div className="flex items-start space-x-2 sm:space-x-3 md:space-x-4 flex-1 min-w-0">
               <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 flex-shrink-0">
@@ -130,31 +184,27 @@ const AgentDashboardUI = ({
                       <div className="flex items-center space-x-1.5">
                         <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: colors.secondary }} />
                         <span className="text-xs truncate" style={{ color: colors.logo_text }}>
-                          {dayTrips
-                            .map((trip) => trip.libelleDestination)
-                            .filter(Boolean)
-                            .join(", ") || "Non définie"}
+                          {dayTrips.map(trip => {
+                            const chantier = chantiers.find(c => c.id === trip.chantierId);
+                            return trip.libelleDestination || chantier?.designation || "Non définie";
+                          }).join(", ")}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          
-                          {user?.possede_voiture_personnelle && userMissionRates.length > 0 && (
-                            <span className="text-xs font-medium" style={{ color: colors.logo_text }}>
-                              {dayTrips
-                                .reduce((total, trip) => total + (Number.parseFloat(trip.distanceKm) || 0), 0)
-                                .toFixed(0)}{" "}
-                              km
-                            </span>
-                          )}
+                          <span className="text-xs font-medium" style={{ color: colors.logo_text }}>
+                            {dayTrips.reduce((total, trip) => total + (Number.parseFloat(trip.distanceKm) || 0), 0).toFixed(0)} km
+                          </span>
+                          <span className="text-xs font-medium" style={{ color: colors.primary }}>
+                            {dayTotal} MAD
+                          </span>
                           {(() => {
-                            const allExpenses = dayTrips.flatMap((trip) => trip.depenses)
-                            const justifiedExpenses = allExpenses.filter((expense) => expense.cheminJustificatif)
-                            const totalExpenses = allExpenses.length
-                            if (totalExpenses === 0) return null
-                            const isFullyJustified = justifiedExpenses.length === totalExpenses
-                            const hasPartialJustification =
-                              justifiedExpenses.length > 0 && justifiedExpenses.length < totalExpenses
+                            const allExpenses = dayTrips.flatMap((trip) => trip.depenses);
+                            const justifiedExpenses = allExpenses.filter((expense) => expense.cheminJustificatif);
+                            const totalExpenses = allExpenses.length;
+                            if (totalExpenses === 0) return null;
+                            const isFullyJustified = justifiedExpenses.length === totalExpenses;
+                            const hasPartialJustification = justifiedExpenses.length > 0 && justifiedExpenses.length < totalExpenses;
                             return (
                               <span
                                 className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${isFullyJustified ? "bg-green-100 text-green-800" : hasPartialJustification ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}
@@ -162,19 +212,12 @@ const AgentDashboardUI = ({
                                 {isFullyJustified
                                   ? "✓"
                                   : hasPartialJustification
-                                    ? `${justifiedExpenses.length}/${totalExpenses}`
-                                    : "✗"}
+                                  ? `${justifiedExpenses.length}/${totalExpenses}`
+                                  : "✗"}
                               </span>
-                            )
+                            );
                           })()}
                         </div>
-                        {dayTotal > 0 && (
-                          <div className="text-right">
-                            <div className="text-xs font-bold" style={{ color: colors.primary }}>
-                              {dayTotal.toFixed(0)} MAD
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -189,39 +232,34 @@ const AgentDashboardUI = ({
                           className="text-xs px-2 py-1 rounded-full"
                           style={{ backgroundColor: colors.secondary + "20", color: colors.logo_text }}
                         >
-                          {dayTrips.reduce((total, trip) => total + trip.depenses.length, 0)} dépense
-                          {dayTrips.reduce((total, trip) => total + trip.depenses.length, 0) > 1 ? "s" : ""}
+                          {dayTrips.reduce((total, trip) => total + trip.depenses.length, 0)} dépense{dayTrips.reduce((total, trip) => total + trip.depenses.length, 0) > 1 ? "s" : ""}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3 flex-1 min-w-0">
                           <div className="flex items-center space-x-2">
                             <MapPin className="w-3.5 h-3.5" style={{ color: colors.secondary }} />
-                            <span className="text-sm truncate" style={{ color: colors.logo_text }}>
-                              {dayTrips
-                                .map((trip) => trip.libelleDestination)
-                                .filter(Boolean)
-                                .join(", ") || "Destinations non définies"}
-                            </span>
+                            <span className="text-sm" style={{ color: colors.logo_text }}>
+                          {dayTrips.map(trip => {
+                            const chantier = chantiers.find(c => c.id === trip.chantierId);
+                            return trip.libelleDestination || chantier?.designation || "Destination non définie";
+                          }).join(", ")}
+                        </span>
                           </div>
-                          {user?.possede_voiture_personnelle && userMissionRates.length > 0 && (
-                            <span className="text-sm font-medium flex-shrink-0" style={{ color: colors.logo_text }}>
-                              {dayTrips
-                                .reduce((total, trip) => total + (Number.parseFloat(trip.distanceKm) || 0), 0)
-                                .toFixed(0)}{" "}
-                              km
-                            </span>
-                          )}
-
+                          <span className="text-sm font-medium flex-shrink-0" style={{ color: colors.logo_text }}>
+                            {dayTrips.reduce((total, trip) => total + (Number.parseFloat(trip.distanceKm) || 0), 0).toFixed(0)} km
+                          </span>
+                          <span className="text-sm font-medium flex-shrink-0" style={{ color: colors.primary }}>
+                            {dayTotal} MAD
+                          </span>
                         </div>
                         {(() => {
-                          const allExpenses = dayTrips.flatMap((trip) => trip.depenses)
-                          const justifiedExpenses = allExpenses.filter((expense) => expense.cheminJustificatif)
-                          const totalExpenses = allExpenses.length
-                          if (totalExpenses === 0) return null
-                          const isFullyJustified = justifiedExpenses.length === totalExpenses
-                          const hasPartialJustification =
-                            justifiedExpenses.length > 0 && justifiedExpenses.length < totalExpenses
+                          const allExpenses = dayTrips.flatMap((trip) => trip.depenses);
+                          const justifiedExpenses = allExpenses.filter((expense) => expense.cheminJustificatif);
+                          const totalExpenses = allExpenses.length;
+                          if (totalExpenses === 0) return null;
+                          const isFullyJustified = justifiedExpenses.length === totalExpenses;
+                          const hasPartialJustification = justifiedExpenses.length > 0 && justifiedExpenses.length < totalExpenses;
                           return (
                             <span
                               className={`text-xs px-2 py-1 rounded-full font-medium ${isFullyJustified ? "bg-green-100 text-green-800" : hasPartialJustification ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}
@@ -229,10 +267,10 @@ const AgentDashboardUI = ({
                               {isFullyJustified
                                 ? "Justifié"
                                 : hasPartialJustification
-                                  ? `${justifiedExpenses.length}/${totalExpenses}`
-                                  : "Non justifié"}
+                                ? `${justifiedExpenses.length}/${totalExpenses}`
+                                : "Non justifié"}
                             </span>
-                          )
+                          );
                         })()}
                       </div>
                     </div>
@@ -248,38 +286,32 @@ const AgentDashboardUI = ({
                           className="text-sm px-2 py-1 rounded-full"
                           style={{ backgroundColor: colors.secondary + "20", color: colors.logo_text }}
                         >
-                          {dayTrips.reduce((total, trip) => total + trip.depenses.length, 0)} dépense
-                          {dayTrips.reduce((total, trip) => total + trip.depenses.length, 0) > 1 ? "s" : ""}
+                          {dayTrips.reduce((total, trip) => total + trip.depenses.length, 0)} dépense{dayTrips.reduce((total, trip) => total + trip.depenses.length, 0) > 1 ? "s" : ""}
                         </span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <MapPin className="w-4 h-4" style={{ color: colors.secondary }} />
                         <span className="text-sm" style={{ color: colors.logo_text }}>
-                          {dayTrips
-                            .map((trip) => trip.libelleDestination)
-                            .filter(Boolean)
-                            .join(", ") || "Destinations non définies"}
+                          {dayTrips.map(trip => {
+                            const chantier = chantiers.find(c => c.id === trip.chantierId);
+                            return trip.libelleDestination || chantier?.designation || "Destination non définie";
+                          }).join(", ")}
                         </span>
                       </div>
-                      {user?.possede_voiture_personnelle && userMissionRates.length > 0 && (
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm font-medium" style={{ color: colors.logo_text }}>
-                            {dayTrips
-                              .reduce((total, trip) => total + (Number.parseFloat(trip.distanceKm) || 0), 0)
-                              .toFixed(0)}{" "}
-                            km
-                          </span>
-                        </div>
-                      )}
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium" style={{ color: colors.logo_text }}>
+                          {dayTrips.reduce((total, trip) => total + (Number.parseFloat(trip.distanceKm) || 0), 0).toFixed(0)} km
+                        </span>
+                      </div>
+                      
                       <div className="flex items-center space-x-2">
                         {(() => {
-                          const allExpenses = dayTrips.flatMap((trip) => trip.depenses)
-                          const justifiedExpenses = allExpenses.filter((expense) => expense.cheminJustificatif)
-                          const totalExpenses = allExpenses.length
-                          if (totalExpenses === 0) return null
-                          const isFullyJustified = justifiedExpenses.length === totalExpenses
-                          const hasPartialJustification =
-                            justifiedExpenses.length > 0 && justifiedExpenses.length < totalExpenses
+                          const allExpenses = dayTrips.flatMap((trip) => trip.depenses);
+                          const justifiedExpenses = allExpenses.filter((expense) => expense.cheminJustificatif);
+                          const totalExpenses = allExpenses.length;
+                          if (totalExpenses === 0) return null;
+                          const isFullyJustified = justifiedExpenses.length === totalExpenses;
+                          const hasPartialJustification = justifiedExpenses.length > 0 && justifiedExpenses.length < totalExpenses;
                           return (
                             <span
                               className={`text-xs px-2 py-1 rounded-full font-medium ${isFullyJustified ? "bg-green-100 text-green-800" : hasPartialJustification ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}
@@ -287,12 +319,12 @@ const AgentDashboardUI = ({
                               {isFullyJustified
                                 ? "Justifié"
                                 : hasPartialJustification
-                                  ? `${justifiedExpenses.length}/${totalExpenses} justifié${justifiedExpenses.length > 1 ? "s" : ""}`
-                                  : "Non justifié"}
+                                ? `${justifiedExpenses.length}/${totalExpenses} justifié${justifiedExpenses.length > 1 ? "s" : ""}`
+                                : "Non justifié"}
                             </span>
-                          )
+                          );
                         })()}
-                      </div>
+                      </div> 
                     </div>
                   </div>
                 </div>
@@ -317,9 +349,9 @@ const AgentDashboardUI = ({
               )}
               <button
                 onClick={(e) => {
-                  e.stopPropagation()
+                  e.stopPropagation();
                   if (!isUpdating) {
-                    addTrip(dateStr)
+                    addTrip(dateStr);
                   }
                 }}
                 disabled={hasTrips || isUpdating}
@@ -332,8 +364,8 @@ const AgentDashboardUI = ({
               {hasTrips && (
                 <button
                   onClick={(e) => {
-                    e.stopPropagation()
-                    toggleDayExpansion(day)
+                    e.stopPropagation();
+                    toggleDayExpansion(day);
                   }}
                   className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
                   style={{ color: colors.logo_text }}
@@ -349,7 +381,6 @@ const AgentDashboardUI = ({
           </div>
         </div>
 
-
         {isExpanded && hasTrips && (
           <div
             className="px-2 sm:px-3 md:px-4 pb-2 sm:pb-3 md:pb-4"
@@ -362,12 +393,17 @@ const AgentDashboardUI = ({
                   className="bg-white rounded-lg border p-2 sm:p-3 md:p-4"
                   style={{ borderColor: colors.secondary }}
                 >
+                  {/* Modification Tag for Trip */}
+                  <ModificationTag
+                    createdBy={trip.createdBy}
+                    modifiedBy={trip.modifiedBy}
+                    currentUserId={currentUserId}
+                    allUsers={allUsers}
+                  />
 
-
-                  {/* deplacement input section  */}
+                  {/* Trip Input Section */}
                   <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start mb-3 sm:mb-4 space-y-3 lg:space-y-0">
                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                      
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-700">Chantier</label>
                         <select
@@ -388,8 +424,6 @@ const AgentDashboardUI = ({
                           ))}
                         </select>
                       </div>
-
-                      
                       {user?.possede_voiture_personnelle && (
                         <>
                           <div>
@@ -441,9 +475,9 @@ const AgentDashboardUI = ({
                     <div className="flex items-center space-x-2 lg:ml-4">
                       <button
                         onClick={(e) => {
-                          e.stopPropagation()
+                          e.stopPropagation();
                           if (!isUpdating) {
-                            deleteTrip(trip.id)
+                            deleteTrip(trip.id);
                           }
                         }}
                         disabled={isUpdating}
@@ -454,21 +488,17 @@ const AgentDashboardUI = ({
                     </div>
                   </div>
 
-
-
-                  {/* Expense Section  */}
+                  {/* Expense Section */}
                   <div className="border-t pt-3 sm:pt-4" style={{ borderColor: colors.secondary }}>
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 sm:mb-4 space-y-2 sm:space-y-0">
                       <h4 className="text-sm sm:text-base font-medium" style={{ color: colors.logo_text }}>
                         Dépenses ({trip.depenses.length})
                       </h4>
-
-                      {/* add expense type */}
                       <div className="flex space-x-2">
                         <button
                           onClick={(e) => {
-                            e.stopPropagation()
-                            setShowAddExpenseType((prev) => ({ ...prev, [trip.id]: !prev[trip.id] }))
+                            e.stopPropagation();
+                            setShowAddExpenseType((prev) => ({ ...prev, [trip.id]: !prev[trip.id] }));
                           }}
                           className="flex items-center justify-center space-x-2 px-3 py-1.5 sm:py-2 text-xs sm:text-sm rounded-lg font-medium border hover:bg-gray-50 transition-colors w-full sm:w-auto"
                           style={{ borderColor: colors.secondary, color: colors.logo_text }}
@@ -478,9 +508,9 @@ const AgentDashboardUI = ({
                         </button>
                         <button
                           onClick={(e) => {
-                            e.stopPropagation()
+                            e.stopPropagation();
                             if (!isUpdating) {
-                              addExpense(trip.id)
+                              addExpense(trip.id);
                             }
                           }}
                           disabled={isUpdating}
@@ -522,14 +552,12 @@ const AgentDashboardUI = ({
                       </div>
                     )}
 
-                    {/* depense table */}
                     {trip.depenses.length === 0 ? (
                       <p className="text-xs sm:text-sm text-center py-3 sm:py-4" style={{ color: colors.secondary }}>
                         Aucune dépense
                       </p>
                     ) : (
                       <div className="space-y-2 sm:space-y-3">
-                        {/* Header Row for Larger Screens */}
                         <div
                           className="hidden lg:grid underline lg:grid-cols-4 gap-2 sm:gap-3 p-2 sm:p-3 font-medium text-xs sm:text-sm"
                           style={{ color: colors.logo_text }}
@@ -538,15 +566,22 @@ const AgentDashboardUI = ({
                           <div>Montant</div>
                           <div>Justificatif</div>
                         </div>
-
-
-                        {/* Expense Rows */}
                         {trip.depenses.map((expense) => (
                           <div
                             key={expense.id}
                             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 p-2 sm:p-3 rounded"
                             style={{ backgroundColor: colors.secondary + "10" }}
                           >
+                            {/* Modification Tag for Expense */}
+                            <div className="lg:col-span-4 mb-2">
+                              <ModificationTag
+                                createdBy={expense.createdBy}
+                                modifiedBy={expense.modifiedBy}
+                                currentUserId={currentUserId}
+                                allUsers={allUsers}
+                              />
+                            </div>
+
                             <div>
                               <label
                                 className="block text-xs font-medium mb-1 sm:hidden"
@@ -557,9 +592,9 @@ const AgentDashboardUI = ({
                               <select
                                 value={expense.typeDepenseId}
                                 onChange={(e) => {
-                                  const value = Number.parseInt(e.target.value)
-                                  updateExpenseLocal(trip.id, expense.id, "typeDepenseId", value)
-                                  updateExpenseField(trip.id, expense.id, "typeDepenseId", value)
+                                  const value = Number.parseInt(e.target.value);
+                                  updateExpenseLocal(trip.id, expense.id, "typeDepenseId", value);
+                                  updateExpenseField(trip.id, expense.id, "typeDepenseId", value);
                                 }}
                                 className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded focus:outline-none focus:ring-2 text-xs sm:text-sm"
                                 style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
@@ -617,7 +652,6 @@ const AgentDashboardUI = ({
                                     }}
                                   />
                                 </div>
-
                                 {expense.cheminJustificatif && (
                                   <button
                                     onClick={() => clearExpenseFile(trip.id, expense.id)}
@@ -628,7 +662,6 @@ const AgentDashboardUI = ({
                                   </button>
                                 )}
                               </div>
-
                               {expense.cheminJustificatif && (
                                 <div className="text-xs text-green-600 mt-1">✓ {expense.cheminJustificatif}</div>
                               )}
@@ -636,9 +669,9 @@ const AgentDashboardUI = ({
                             <div className="flex justify-center">
                               <button
                                 onClick={(e) => {
-                                  e.stopPropagation()
+                                  e.stopPropagation();
                                   if (!isUpdating) {
-                                    deleteExpense(trip.id, expense.id)
+                                    deleteExpense(trip.id, expense.id);
                                   }
                                 }}
                                 disabled={isUpdating}
@@ -651,11 +684,11 @@ const AgentDashboardUI = ({
                         ))}
                       </div>
                     )}
-                        <div className="text-right pt-2 border-t" style={{ borderColor: colors.secondary }}>
-                          <span className="font-bold text-sm sm:text-base lg:text-lg" style={{ color: colors.primary }}>
-                            Total: {getTripTotal(trip).toFixed(2)} MAD
-                          </span>
-                        </div>
+                    <div className="text-right pt-2 border-t" style={{ borderColor: colors.secondary }}>
+                      <span className="font-bold text-sm sm:text-base lg:text-lg" style={{ color: colors.primary }}>
+                        Total: {getTripTotal(trip).toFixed(2)} MAD
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -663,12 +696,9 @@ const AgentDashboardUI = ({
           </div>
         )}
       </div>
-    )
-  }
+    );
+  };
 
-
-
-  // page header
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white shadow-sm border-b">
@@ -692,7 +722,6 @@ const AgentDashboardUI = ({
                 <span className="hidden sm:inline">Exporter Excel</span>
                 <span className="sm:hidden">Excel</span>
               </button>
-              
               <button
                 onClick={exportMonthlyPDF}
                 className="flex items-center cursor-pointer space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
@@ -702,8 +731,6 @@ const AgentDashboardUI = ({
                 <span className="hidden sm:inline">Exporter PDF</span>
                 <span className="sm:hidden">PDF</span>
               </button>
-              
-              {/* New Send Email Button */}
               <button
                 onClick={showEmailFormatSelection}
                 className="flex items-center cursor-pointer space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
@@ -718,93 +745,86 @@ const AgentDashboardUI = ({
         </div>
       </div>
 
-
-
-      {/* calendar section */}
       <div className="bg-white border-b">
-            <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
-                    <div className="flex items-center justify-center sm:justify-start space-x-3 sm:space-x-4">
-                        <button
-                            onClick={goToPreviousMonth}
-                            className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                            style={{ color: colors.logo_text }}
-                        >
-                            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-                        </button>
-                        <div className="relative">
-                            <button
-                                onClick={() => setShowYearPicker(!showYearPicker)}
-                                className="flex items-center space-x-1 text-base sm:text-lg md:text-xl font-bold hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors"
-                                style={{ color: colors.logo_text }}
-                            >
-                                <span>
-                                    {new Date(currentYear, currentMonth).toLocaleDateString("fr-FR", {
-                                        month: "long",
-                                        year: "numeric",
-                                    })}
-                                </span>
-                                <Calendar className="w-4 h-4 sm:w-5 sm:h-5 opacity-70" />
-                            </button>
-                            {showYearPicker && (
-                                <div className="absolute z-10 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 p-3 w-64 sm:w-72">
-                                    <div className="grid grid-cols-1 gap-2">
-                                        {years.map((year) => (
-                                            <div key={year} className="mb-2">
-                                                <h3 className="text-sm font-semibold mb-1 px-2" style={{ color: colors.logo_text }}>
-                                                    {year}
-                                                </h3>
-                                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-1">
-                                                    {monthNames.map((month, index) => (
-                                                        <button
-                                                            key={`${year}-${index}`}
-                                                            onClick={() => goToYearMonth(year, index)}
-                                                            className={`text-xs p-1.5 rounded-md hover:bg-gray-100 transition-colors ${year === currentYear && index === currentMonth ? "bg-blue-100 text-blue-800 font-medium" : "text-gray-700"}`}
-                                                        >
-                                                            {month.substring(0, 3)}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
+        <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
+            <div className="flex items-center justify-center sm:justify-start space-x-3 sm:space-x-4">
+              <button
+                onClick={goToPreviousMonth}
+                className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                style={{ color: colors.logo_text }}
+              >
+                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowYearPicker(!showYearPicker)}
+                  className="flex items-center space-x-1 text-base sm:text-lg md:text-xl font-bold hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors"
+                  style={{ color: colors.logo_text }}
+                >
+                  <span>
+                    {new Date(currentYear, currentMonth).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
+                  </span>
+                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5 opacity-70" />
+                </button>
+                {showYearPicker && (
+                  <div className="absolute z-10 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 p-3 w-64 sm:w-72">
+                    <div className="grid grid-cols-1 gap-2">
+                      {years.map((year) => (
+                        <div key={year} className="mb-2">
+                          <h3 className="text-sm font-semibold mb-1 px-2" style={{ color: colors.logo_text }}>
+                            {year}
+                          </h3>
+                          <div className="grid grid-cols-3 sm:grid-cols-4 gap-1">
+                            {monthNames.map((month, index) => (
+                              <button
+                                key={`${year}-${index}`}
+                                onClick={() => goToYearMonth(year, index)}
+                                className={`text-xs p-1.5 rounded-md hover:bg-gray-100 transition-colors ${year === currentYear && index === currentMonth ? "bg-blue-100 text-blue-800 font-medium" : "text-gray-700"}`}
+                              >
+                                {month.substring(0, 3)}
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                        <button
-                            onClick={goToNextMonth}
-                            className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                            style={{ color: colors.logo_text }}
-                        >
-                            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
-                        </button>
-                        <button
-                            onClick={goToToday}
-                            className="px-2 sm:px-3 py-1 text-xs sm:text-sm border rounded-lg hover:bg-gray-50 transition-colors"
-                            style={{ borderColor: colors.secondary, color: colors.logo_text }}
-                        >
-                            Aujourd'hui
-                        </button>
+                      ))}
                     </div>
-                    <div className="flex items-center justify-center sm:justify-end space-x-3 sm:space-x-4 md:space-x-6">
-                        <div className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
-                            <span className="font-medium">{getMonthlyTrips().length}</span> déplacement
-                            {getMonthlyTrips().length > 1 ? "s" : ""}
-                        </div>
-                        <div className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
-                            <span className="font-medium">{getMonthlyExpensesCount()}</span> dépense
-                            {getMonthlyExpensesCount() > 1 ? "s" : ""}
-                        </div>
-                        <div className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
-                            <span className="font-medium">{getMonthlyDistanceTotal().toFixed(1)}</span> km
-                        </div>
-                        <div className="text-sm sm:text-base md:text-lg font-bold" style={{ color: colors.primary }}>
-                            {getMonthlyTotal().toFixed(2)} MAD
-                        </div>
-                    </div>
-                </div>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={goToNextMonth}
+                className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                style={{ color: colors.logo_text }}
+              >
+                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+              <button
+                onClick={goToToday}
+                className="px-2 sm:px-3 py-1 text-xs sm:text-sm border rounded-lg hover:bg-gray-50 transition-colors"
+                style={{ borderColor: colors.secondary, color: colors.logo_text }}
+              >
+                Aujourd'hui
+              </button>
             </div>
+            <div className="flex items-center justify-center sm:justify-end space-x-3 sm:space-x-4 md:space-x-6">
+              <div className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
+                <span className="font-medium">{getMonthlyTrips().length}</span> déplacement{getMonthlyTrips().length > 1 ? "s" : ""}
+              </div>
+              <div className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
+                <span className="font-medium">{getMonthlyExpensesCount()}</span> dépense{getMonthlyExpensesCount() > 1 ? "s" : ""}
+              </div>
+              <div className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
+                <span className="font-medium">{getMonthlyDistanceTotal().toFixed(1)}</span> km
+              </div>
+              <div className="text-sm sm:text-base md:text-lg font-bold" style={{ color: colors.primary }}>
+                {getMonthlyTotal().toFixed(2)} MAD
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
+
       <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-6 py-3 sm:py-4 md:py-8">
         <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
           <div className="divide-y" style={{ borderColor: colors.secondary }}>
@@ -840,7 +860,7 @@ const AgentDashboardUI = ({
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default AgentDashboardUI
+export default AgentDashboardUI;

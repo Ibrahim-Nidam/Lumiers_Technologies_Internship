@@ -27,10 +27,24 @@ export const useAgentDashboard = (currentUserId) => {
   const currentYear = currentDate.getFullYear()
   const currentMonth = currentDate.getMonth()
 
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem("token") || sessionStorage.getItem("token")
-    return token ? { Authorization: `Bearer ${token}` } : {}
-  }
+  const getEffectiveUserId = () => {
+    return currentUserId || getUserData()?.id;
+  };
+
+   const getAuthHeaders = () => {
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    
+    // Add user context if accessing another user's data
+    const effectiveUserId = getEffectiveUserId();
+    const currentUserData = getUserData();
+    
+    if (effectiveUserId && currentUserData?.id !== effectiveUserId) {
+      headers['X-Target-User-Id'] = effectiveUserId;
+    }
+    
+    return headers;
+  };
   
 
   const getUserData = () => {
@@ -46,17 +60,30 @@ export const useAgentDashboard = (currentUserId) => {
     return {};
   }
 
-  const prepareDashboardData = () => ({
-    trips: getMonthlyTrips(),
-    userInfo: {
-      fullName: getUserData()?.nom_complete || getUserData()?.name || 'N/A',
-    },
-    userMissionRates,
-    userCarLoans,
-    expenseTypes,
-    travelTypes,
-    chantiers
-  });
+  const prepareDashboardData = () => {
+    const effectiveUserId = getEffectiveUserId();
+    const currentUserData = getUserData();
+    
+    // If viewing another user's data, you might need to fetch their info
+    // For now, we'll use the current user's info or indicate it's another user
+    const isViewingOtherUser = currentUserData?.id !== effectiveUserId;
+    
+    return {
+      trips: getMonthlyTrips(),
+      userInfo: {
+        fullName: isViewingOtherUser 
+          ? `Utilisateur ${effectiveUserId}` // You might want to fetch actual user name
+          : (currentUserData?.nom_complete || currentUserData?.name || 'N/A'),
+        isViewingOtherUser,
+        targetUserId: effectiveUserId
+      },
+      userMissionRates,
+      userCarLoans,
+      expenseTypes,
+      travelTypes,
+      chantiers
+    };
+  };
 
   const exportMonthlyExcel = () => {
     return handleExcelExport(currentYear, currentMonth, prepareDashboardData());
@@ -67,107 +94,126 @@ export const useAgentDashboard = (currentUserId) => {
   };
 
   useEffect(() => {
-  const fetchTypes = async () => {
-    try {
-      const headers = getAuthHeaders();
-      setLoadingStates(prev => ({ ...prev, types: true, missionRates: true }));
+    const fetchTypes = async () => {
+      try {
+        const headers = getAuthHeaders();
+        const effectiveUserId = getEffectiveUserId();
+        
+        if (!effectiveUserId) {
+          console.warn("No user ID available for fetching data");
+          return;
+        }
 
-      console.log("Fetching travel types, expense types, and chantiers...");
+        setLoadingStates(prev => ({ ...prev, types: true, missionRates: true }));
 
-      const [travelResponse, expenseResponse, chantiersResponse] = await Promise.all([
-        apiClient.get(`/travel-types`, { headers }).catch(err => {
-          console.warn("Travel types endpoint failed:", err.response?.status);
-          return { data: [] };
-        }),
-        apiClient.get(`/expense-types`, { headers }).catch(err => {
-          console.warn("Expense types endpoint failed:", err.response?.status);
-          return { data: [] };
-        }),
-        apiClient.get(`/chantiers`, { headers }).catch(err => {
-          console.warn("Chantiers endpoint failed:", err.response?.status);
-          return { data: [] };
-        }),
-      ]);
 
-      const travelTypesData = travelResponse.data || [];
-      const expenseTypesData = expenseResponse.data || [];
-      const chantiersData = chantiersResponse.data || [];
+        const [travelResponse, expenseResponse, chantiersResponse] = await Promise.all([
+          apiClient.get(`/travel-types`, { headers }).catch(err => {
+            console.warn("Travel types endpoint failed:", err.response?.status);
+            return { data: [] };
+          }),
+          apiClient.get(`/expense-types`, { headers }).catch(err => {
+            console.warn("Expense types endpoint failed:", err.response?.status);
+            return { data: [] };
+          }),
+          apiClient.get(`/chantiers`, { headers }).catch(err => {
+            console.warn("Chantiers endpoint failed:", err.response?.status);
+            return { data: [] };
+          }),
+        ]);
 
-      setTravelTypes(travelTypesData);
-      setExpenseTypes(expenseTypesData);
-      setChantiers(chantiersData);
-      setLoadingStates(prev => ({ ...prev, types: false }));
+        const travelTypesData = travelResponse.data || [];
+        const expenseTypesData = expenseResponse.data || [];
+        const chantiersData = chantiersResponse.data || [];
 
-      // Fetch mission rates
-      console.log("Fetching user mission rates...");
-      const missionRes = await apiClient.get(`/taux-deplacement/user`, { headers });
-      console.log("User mission rates received:", missionRes.data);
-      setUserMissionRates(missionRes.data || []);
+        setTravelTypes(travelTypesData);
+        setExpenseTypes(expenseTypesData);
+        setChantiers(chantiersData);
+        setLoadingStates(prev => ({ ...prev, types: false }));
 
-  const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user");
-  const user = userDataRaw ? JSON.parse(userDataRaw) : null;
+        // Fetch mission rates for the effective user
+        const missionRes = await apiClient.get(`/taux-deplacement/user/${effectiveUserId}`, { headers });
+        setUserMissionRates(missionRes.data || []);
 
-      // Fetch kilometer rates
-      console.log("Fetching user kilometer rates...");
-      const kilometerRes = await apiClient.get(`/vehicule-rates/user/${user.id}`, { headers });
-      console.log("User kilometer rates received:", kilometerRes.data);
-      setUserCarLoans(kilometerRes.data || []);
+        // Fetch kilometer rates for the effective user
+        const kilometerRes = await apiClient.get(`/vehicule-rates/user/${effectiveUserId}`, { headers });
+        setUserCarLoans(kilometerRes.data || []);
 
-      setLoadingStates(prev => ({ ...prev, missionRates: false }));
-    } catch (error) {
-      console.error("Failed to fetch types or rates:", error.response?.status, error.response?.data || error.message);
-      setLoadingStates(prev => ({ ...prev, types: false, missionRates: false }));
-      setTravelTypes([{ id: 1, nom: "Déplacement standard" }]);
-      setExpenseTypes([{ id: 1, nom: "Frais de transport" }]);
-      setChantiers([]);
-      setUserMissionRates([]);
-      setUserCarLoans([]);
-    }
-  };
+        setLoadingStates(prev => ({ ...prev, missionRates: false }));
+      } catch (error) {
+        console.error("Failed to fetch types or rates:", error.response?.status, error.response?.data || error.message);
+        setLoadingStates(prev => ({ ...prev, types: false, missionRates: false }));
+        setTravelTypes([{ id: 1, nom: "Déplacement standard" }]);
+        setExpenseTypes([{ id: 1, nom: "Frais de transport" }]);
+        setChantiers([]);
+        setUserMissionRates([]);
+        setUserCarLoans([]);
+      }
+    };
 
-  fetchTypes();
-}, [currentUserId]);
+    fetchTypes();
+  }, [currentUserId]);
 
 
   useEffect(() => {
-    const fetchTrips = async () => {
-      try {
-        setLoadingStates(prev => ({ ...prev, trips: true }))
-
-        const token = localStorage.getItem("token") || sessionStorage.getItem("token")
-
-        if (!token) {
-          console.warn("No authentication token found. Cannot fetch trips.")
-          setTrips([])
-          setLoadingStates(prev => ({ ...prev, trips: false }))
-          return
-        }
-
-        const response = await apiClient.get(`/deplacements`, {
-          params: { month: `${currentYear}-${(currentMonth + 1).toString().padStart(2, "0")}` },
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          timeout: 10000,
-        })
-
-        setTrips(response.data || [])
-      } catch (error) {
-        console.error("❌ Failed to fetch trips:", error)
-        if (error.response) {
-          console.error("Server error:", error.response.status, error.response.data)
-        } else if (error.request) {
-          console.error("No response from server:", error.request)
-        }
-        setTrips([])
-      } finally {
-        setLoadingStates(prev => ({ ...prev, trips: false }))
+  const fetchTrips = async () => {
+    try {
+      setLoadingStates(prev => ({ ...prev, trips: true }));
+      const effectiveUserId = getEffectiveUserId();
+      
+      if (!effectiveUserId) {
+        console.warn("No user ID available for fetching trips");
+        setTrips([]);
+        setLoadingStates(prev => ({ ...prev, trips: false }));
+        return;
       }
-    }
 
-    fetchTrips()
-  }, [currentYear, currentMonth])
+      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+
+      if (!token) {
+        console.warn("No authentication token found. Cannot fetch trips.");
+        setTrips([]);
+        setLoadingStates(prev => ({ ...prev, trips: false }));
+        return;
+      }
+
+      const headers = getAuthHeaders();
+      
+      const response = await apiClient.get(`/deplacements/user/${effectiveUserId}`, {
+        params: { month: `${currentYear}-${(currentMonth + 1).toString().padStart(2, "0")}` },
+        headers: {
+          ...headers,
+          "Content-Type": "application/json",
+        },
+        timeout: 10000,
+      });
+
+      // Handle both response formats
+      let tripsData;
+      if (response.data && response.data.deplacements) {
+        // Manager view format - extract the trips array
+        tripsData = response.data.deplacements;
+      } else {
+        // Regular user format - response.data is already the trips array
+        tripsData = response.data;
+      }
+
+      setTrips(Array.isArray(tripsData) ? tripsData : []);
+    } catch (error) {
+      console.error("❌ Failed to fetch trips:", error);
+      if (error.response) {
+        console.error("Server error:", error.response.status, error.response.data);
+      } else if (error.request) {
+        console.error("No response from server:", error.request);
+      }
+      setTrips([]);
+    } finally {
+      setLoadingStates(prev => ({ ...prev, trips: false }));
+    }
+  };
+
+  fetchTrips();
+}, [currentYear, currentMonth, currentUserId]);
 
   const goToPreviousMonth = () => {
     setCurrentDate(new Date(currentYear, currentMonth - 1, 1))
@@ -201,34 +247,48 @@ export const useAgentDashboard = (currentUserId) => {
   }
 
  const addTrip = async (date) => {
-    if (isUpdating) return;
-    const defaultC = chantiers[0];
-    if (!defaultC) {
-      alert("Les chantiers ne sont pas chargés.");
-      return;
-    }
-    setIsUpdating(true);
-    try {
-      const newTrip = {
-        date,
-        chantierId: defaultC.id,
-        typeDeDeplacementId: defaultC.typeDeDeplacementId,
-        libelleDestination: defaultC.designation,
-        codeChantier: defaultC.codeChantier,
-        distanceKm: 0,
-        vehiculeRateRuleId: null,
-        depenses: []
-      };
-      const headers = getAuthHeaders();
-      const { data } = await apiClient.post("/deplacements", newTrip, { headers });
-      setTrips((t) => [...t, data]);
-    } catch (err) {
-      console.error("❌ Failed to add trip:", err.response?.data || err);
-      alert("Erreur lors de la création du déplacement");
-    } finally {
-      setIsUpdating(false);
-    }
-  };
+  if (isUpdating) return;
+  
+  // Check if chantiers are loaded
+  if (!chantiers || chantiers.length === 0) {
+    alert("Les chantiers ne sont pas encore chargés. Veuillez attendre quelques secondes et réessayer.");
+    return;
+  }
+
+  // Check if travel types are loaded
+  if (!travelTypes || travelTypes.length === 0) {
+    alert("Les types de déplacement ne sont pas encore chargés. Veuillez attendre quelques secondes et réessayer.");
+    return;
+  }
+
+  const defaultC = chantiers[0];
+  const defaultTravelType = travelTypes[0];
+
+  setIsUpdating(true);
+  try {
+    const newTrip = {
+      date,
+      chantierId: defaultC.id,
+      typeDeDeplacementId: defaultC.typeDeDeplacementId || defaultTravelType.id,
+      libelleDestination: defaultC.designation || defaultC.nom || "Destination par défaut",
+      codeChantier: defaultC.codeChantier || defaultC.code || "",
+      distanceKm: 0,
+      vehiculeRateRuleId: null,
+      depenses: []
+    };
+
+    
+    const headers = getAuthHeaders();
+    const { data } = await apiClient.post("/deplacements", newTrip, { headers });
+    
+    setTrips((t) => [...t, data]);
+  } catch (err) {
+    console.error("❌ Failed to add trip:", err.response?.data || err);
+    alert(`Erreur lors de la création du déplacement: ${err.response?.data?.message || err.message}`);
+  } finally {
+    setIsUpdating(false);
+  }
+};
 
   // Local state update
   const updateTripLocal = (tripId, field, value) => {
@@ -255,7 +315,7 @@ export const useAgentDashboard = (currentUserId) => {
       codeChantier: trip.codeChantier,
       typeDeDeplacementId: trip.typeDeDeplacementId,
       chantierId: trip.chantierId,
-      distanceKm: trip.distanceKm,
+      distanceKm: trip.distanceKm || 0,
       vehiculeRateRuleId: trip.vehiculeRateRuleId,
       depenses: trip.depenses
     };
@@ -271,6 +331,10 @@ export const useAgentDashboard = (currentUserId) => {
       }
     } else if (field === "vehiculeRateRuleId") {
       payload.vehiculeRateRuleId = value;
+    } else if (field === "distanceKm") {
+      // Convert to number and default to 0 if invalid
+      const parsed = parseFloat(value);
+      payload.distanceKm = isNaN(parsed) ? 0 : parsed;
     } else {
       payload[field] = value;
     }

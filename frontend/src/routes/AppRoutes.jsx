@@ -79,6 +79,7 @@ export default function AppRoutes() {
             <Route path="chantier" element={<Chantier />} />
             {/* Add more manager routes as needed */}
           </Route>
+            <Route path="/agentDashboard/:userId" element={<AgentDashboard />} />
 
           <Route path="/profile-settings" element={<ProfileSettings />} />
           <Route path="/daily-returns" element={<DailyReturnsPage />} />

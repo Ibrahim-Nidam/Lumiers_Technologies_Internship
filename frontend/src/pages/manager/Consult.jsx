@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Calendar, Search, Filter, Download } from "lucide-react";
-import { FaFileExcel, FaFilePdf, FaFileArchive, FaDownload } from 'react-icons/fa';
+import { FaFileExcel, FaFilePdf, FaFileArchive, FaDownload, FaEdit } from 'react-icons/fa';
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 import apiClient from "../../utils/axiosConfig";
 import { saveAs } from "file-saver"; 
 import { colors } from "../../colors";
-
 
 export default function Consult() {
   const today = new Date();
@@ -16,6 +16,8 @@ export default function Consult() {
   const [summaries, setSummaries] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showOnlyWithData, setShowOnlyWithData] = useState(false);
+
+  const navigate = useNavigate(); // Initialize useNavigate
 
   const getSummaryForUser = (userId) => {
     return summaries.find(s => s.userId === userId) || {
@@ -35,7 +37,6 @@ export default function Consult() {
     const cy = today.getFullYear();
     setYears([cy, cy - 1, cy - 2]);
 
-    // Your existing API calls
     apiClient.get("/users/")
       .then(res => setUsers(res.data))
       .catch(err => console.error(err));
@@ -102,7 +103,6 @@ export default function Consult() {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" 
       });
       saveAs(blob, filename);
-
     } catch (err) {
       console.error("Monthly recap export failed", err);
     }
@@ -131,7 +131,6 @@ export default function Consult() {
       });
 
       let filename;
-      
       if (type === "both") {
         const contentDisposition = response.headers['content-disposition'];
         if (contentDisposition) {
@@ -140,7 +139,6 @@ export default function Consult() {
             filename = filenameMatch[1].replace(/['"]/g, '');
           }
         }
-        
         if (!filename) {
           const user = users.find(u => u.id === userId);
           const monthDate = new Date(currentYear, currentMonth);
@@ -153,7 +151,6 @@ export default function Consult() {
         const frenchMonth = monthDate.toLocaleDateString('fr-FR', { month: 'long' });
         const user = users.find(u => u.id === userId);
         const safeName = user?.name?.replace(/\s+/g, '_') || `user${userId}`;
-        
         if (type === "excel") {
           filename = `Note_de_frais_${safeName}_${frenchMonth}_${currentYear}.xlsx`;
         } else if (type === "pdf") {
@@ -172,10 +169,13 @@ export default function Consult() {
 
       const blob = new Blob([response.data], { type: mime });
       saveAs(blob, filename);
-
     } catch (err) {
       console.error("Export failed", err);
     }
+  };
+
+  const navigateToEditPage = (userId) => {
+    navigate(`/agentDashboard/${userId}`); // Navigate to AgentDashboard with userId
   };
 
   const filteredUsers = users.filter(user => {
@@ -191,7 +191,6 @@ export default function Consult() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
-        
         {/* Header Section */}
         <div className="mb-8">
           <div className="text-center mb-6">
@@ -206,8 +205,6 @@ export default function Consult() {
           {/* Month Navigation */}
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              
-              {/* Month Selector */}
               <div className="flex items-center justify-center lg:justify-start gap-4">
                 <button 
                   onClick={goToPreviousMonth}
@@ -216,7 +213,6 @@ export default function Consult() {
                 >
                   <ChevronLeft className="w-6 h-6" />
                 </button>
-                
                 <div className="relative">
                   <button 
                     onClick={() => setShowYearPicker(!showYearPicker)}
@@ -226,7 +222,6 @@ export default function Consult() {
                     <Calendar className="w-5 h-5" />
                     <span className="text-xl font-semibold capitalize">{formattedHeader}</span>
                   </button>
-                  
                   {showYearPicker && (
                     <div className="absolute z-20 top-full mt-2 left-1/2 transform -translate-x-1/2 bg-white rounded-2xl shadow-2xl border border-gray-200 p-6 w-80">
                       {years.map(year => (
@@ -256,7 +251,6 @@ export default function Consult() {
                     </div>
                   )}
                 </div>
-                
                 <button 
                   onClick={goToNextMonth}
                   className="p-3 rounded-xl hover:bg-gray-100 transition-all duration-200 hover:scale-105"
@@ -265,8 +259,6 @@ export default function Consult() {
                   <ChevronRight className="w-6 h-6" />
                 </button>
               </div>
-
-              {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row items-center gap-3">
                 <button 
                   onClick={goToToday}
@@ -279,7 +271,6 @@ export default function Consult() {
                 >
                   Aujourd'hui
                 </button>
-                
                 <button 
                   onClick={handleMonthlyRecap}
                   className="flex items-center gap-3 px-6 py-3 rounded-xl text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
@@ -307,7 +298,6 @@ export default function Consult() {
                 </div>
               </div>
             </div>
-
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300">
               <div className="flex items-center justify-between">
                 <div>
@@ -321,7 +311,6 @@ export default function Consult() {
                 </div>
               </div>
             </div>
-
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300">
               <div className="flex items-center justify-between">
                 <div>
@@ -354,7 +343,6 @@ export default function Consult() {
                   }}
                 />
               </div>
-              
               <div className="flex items-center gap-3">
                 <Filter className="w-5 h-5 text-gray-400" />
                 <label className="flex items-center gap-3 cursor-pointer">
@@ -382,10 +370,9 @@ export default function Consult() {
             
             return (
               <div
-                  key={user.id}
-                  className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col justify-between min-h-80"
-                >
-
+                key={user.id}
+                className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col justify-between min-h-80"
+              >
                 {/* User Header */}
                 <div className="p-4 border-b border-gray-100 flex-shrink-0">
                   <div className="flex items-center gap-3">
@@ -396,9 +383,19 @@ export default function Consult() {
                       {user.name.split(' ').map(n => n.charAt(0)).join('').toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-bold truncate" style={{ color: colors.logo_text }}>
-                        {user.name}
-                      </h3>
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-bold truncate" style={{ color: colors.logo_text }}>
+                          {user.name}
+                        </h3>
+                        <button
+                          onClick={() => navigateToEditPage(user.id)}
+                          className="ml-2 p-2 rounded-full hover:bg-gray-100 text-gray-500 hover:text-blue-600 transition-all"
+                          title="Modifier les déplacements"
+                        >
+                          <FaEdit className="w-4 h-4 cursor-pointer" />
+                        </button>
+                      </div>
+
                       <p className="text-gray-500 text-xs">
                         {hasData ? "Utilisateur actif" : "Aucune activité"}
                       </p>
@@ -421,7 +418,6 @@ export default function Consult() {
                           {summary.totalDistance.toLocaleString()} km
                         </span>
                       </div>
-
                       <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                         <div className="flex items-center gap-2">
                           <div className="w-6 h-6 bg-green-500 rounded-md flex items-center justify-center">
@@ -433,7 +429,6 @@ export default function Consult() {
                           {summary.totalTripCost.toFixed(2)} DH
                         </span>
                       </div>
-
                       <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
                         <div className="flex items-center gap-2">
                           <div className="w-6 h-6 bg-purple-500 rounded-md flex items-center justify-center">
@@ -471,7 +466,6 @@ export default function Consult() {
                       <FaFileExcel className="w-4 h-4" />
                       <span className="text-xs font-medium">Excel</span>
                     </button>
-                    
                     <button
                       onClick={() => handleExport(user.id, "pdf")}
                       className="flex flex-col items-center gap-1 p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all duration-200 hover:scale-105"
@@ -479,7 +473,6 @@ export default function Consult() {
                       <FaFilePdf className="w-4 h-4" />
                       <span className="text-xs font-medium">PDF</span>
                     </button>
-                    
                     <button
                       onClick={() => handleExport(user.id, "both")}
                       className="flex flex-col items-center gap-1 p-2 text-white rounded-lg transition-all duration-200 hover:scale-105"

@@ -47,8 +47,9 @@ exports.remove = async (req, res) => {
 
 exports.getUserMissionRates = async (req, res) => {
   try {
-    const userId = req.user.userId;
-
+    // Get userId from route params, not from req.user
+    const userId = req.params.userId;
+    
     // Get user including their role(s)
     const user = await User.findByPk(userId, {
       include: {
@@ -62,8 +63,7 @@ exports.getUserMissionRates = async (req, res) => {
       return res.status(404).json({ message: "User or user role not found" });
     }
 
-    // Assuming user.role is a single role (if many-to-one),
-    // or adjust if it's an array for many-to-many relationship
+    // Handle both single role and array of roles
     const roleId = Array.isArray(user.role) ? user.role[0].id : user.role.id;
 
     // Fetch mission rates for this role
