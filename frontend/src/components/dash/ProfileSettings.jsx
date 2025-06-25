@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import apiClient from "../../utils/axiosConfig"; // ← your configured axios instance
 import { colors } from "../../colors";
 
 export default function ProfileSettings() {
@@ -9,7 +9,7 @@ export default function ProfileSettings() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
-  const [messageSection, setMessageSection] = useState(""); // New state to track which section has the error
+  const [messageSection, setMessageSection] = useState("");
 
   const [formData, setFormData] = useState({
     nomComplete: "",
@@ -20,39 +20,9 @@ export default function ProfileSettings() {
     possedeVoiturePersonnelle: false,
   });
 
-  // Now each carLoan object also has a 'status' property (string)
-  // const [carLoans, setCarLoans] = useState([
-  //   { libelle: "", tarifParKm: "", status: "Nouveau" },
-  // ]);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Helper function to load car loans data
-  // const loadCarLoansData = async () => {
-  //   try {
-  //     const loansRes = await axios.get(
-  //       "http://localhost:3001/api/users/me/carloans"
-  //     );
-  //     const loansData = loansRes.data;
-
-  //     // Populate carLoans, including their status
-  //     if (Array.isArray(loansData) && loansData.length > 0) {
-  //       setCarLoans(
-  //         loansData.map((loan) => ({
-  //           libelle: loan.libelle || "",
-  //           tarifParKm:
-  //             loan.tarifParKm != null ? loan.tarifParKm.toString() : "",
-  //           status: loan.status || "—",
-  //         }))
-  //       );
-  //     } else {
-  //       setCarLoans([{ libelle: "", tarifParKm: "", status: "Nouveau" }]);
-  //     }
-  //   } catch (error) {
-  //     console.error("loadCarLoansData ERROR →", error);
-  //     throw error; // Re-throw to be handled by caller
-  //   }
-  // };
-
+  // Load user data on mount
   useEffect(() => {
     const token =
       localStorage.getItem("token") || sessionStorage.getItem("token");
@@ -60,15 +30,13 @@ export default function ProfileSettings() {
       navigate("/login");
       return;
     }
-    axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    // set the token on apiClient
+    apiClient.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
     const loadData = async () => {
       try {
-        // 1) GET /api/users/me
-        const userRes = await axios.get("http://localhost:3001/api/users/me");
-        const userData = userRes.data;
+        const { data: userData } = await apiClient.get("/users/me");
 
-        // Populate formData
         setFormData({
           nomComplete: userData.nomComplete || "",
           courriel: userData.courriel || "",
@@ -78,9 +46,6 @@ export default function ProfileSettings() {
           possedeVoiturePersonnelle:
             userData.possedeVoiturePersonnelle || false,
         });
-
-        // 2) Load car loans data
-        // await loadCarLoansData();
       } catch (error) {
         console.error("loadData ERROR →", error);
         if (error.response?.status !== 401) {
@@ -113,93 +78,34 @@ export default function ProfileSettings() {
     }
   };
 
-  // const handleCarLoanChange = (index, field, value) => {
-  //   const updated = [...carLoans];
-  //   updated[index][field] = value;
-  //   setCarLoans(updated);
-  //   if (message) {
-  //     setMessage("");
-  //     setMessageType("");
-  //     setMessageSection("");
-  //   }
-  // };
-
-  // const addCarLoan = () => {
-  //   setCarLoans([
-  //     ...carLoans,
-  //     { libelle: "", tarifParKm: "", status: "Nouveau" },
-  //   ]);
-  // };
-
-  // const removeCarLoan = async (index) => {
-  //   if (carLoans.length <= 1) return;
-
-  //   const carLoanToDelete = carLoans[index];
-    
-  //   // If it's a new car loan (not saved to DB yet), just remove from state
-  //   if (carLoanToDelete.status === "Nouveau" || !carLoanToDelete.libelle.trim()) {
-  //     setCarLoans(carLoans.filter((_, i) => i !== index));
-  //     return;
-  //   }
-
-  //   // If it exists in DB, delete it via the new DELETE endpoint
-  //   try {
-  //     setSaving(true);
-      
-  //     // Use the new DELETE endpoint
-  //     await axios.delete(
-  //       `http://localhost:3001/api/users/me/carloans/${encodeURIComponent(carLoanToDelete.libelle.trim())}`
-  //     );
-      
-  //     // Refresh the data to get updated list
-  //     await loadCarLoansData();
-      
-  //     setMessage("Taux de déplacement supprimé avec succès !");
-  //     setMessageType("success");
-  //     setMessageSection("taux");
-  //   } catch (error) {
-  //     console.error("removeCarLoan ERROR →", error);
-  //     setMessage(
-  //       error.response?.data?.message ||
-  //       error.message ||
-  //       "Erreur lors de la suppression."
-  //     );
-  //     setMessageType("error");
-  //     setMessageSection("taux");
-  //   } finally {
-  //     setSaving(false);
-  //   }
-  // };
-
   const validateForm = () => {
-    // Clear any existing messages
     setMessage("");
     setMessageType("");
     setMessageSection("");
 
-    // Validate personal information
     if (!formData.nomComplete.trim()) {
       setMessage("Le nom complet est requis");
       setMessageType("error");
       setMessageSection("personal");
       return false;
     }
-    if (!formData.courriel.trim() || !formData.courriel.includes("@")) {
+    if (!formData.courriel.includes("@")) {
       setMessage("Une adresse email valide est requise");
       setMessageType("error");
       setMessageSection("personal");
       return false;
     }
-
-    if (!formData.cartNational.trim() || formData.cartNational.length < 5) {
-      setMessage("La Carte Nationale (CNIE) est requise et doit contenir au moins 5 caractères.");
+    if (
+      !formData.cartNational.trim() ||
+      formData.cartNational.trim().length < 5
+    ) {
+      setMessage(
+        "La Carte Nationale (CNIE) est requise et doit contenir au moins 5 caractères."
+      );
       setMessageType("error");
       setMessageSection("personal");
       return false;
     }
-
-
-    // Validate password
     if (
       formData.motDePasse &&
       formData.motDePasse !== formData.confirmPassword
@@ -215,28 +121,6 @@ export default function ProfileSettings() {
       setMessageSection("password");
       return false;
     }
-
-    // Validate car loans
-    // if (formData.possedeVoiturePersonnelle) {
-    //   const validCarLoans = carLoans.filter(
-    //     (loan) => loan.libelle.trim() || loan.tarifParKm
-    //   );
-    //   for (let loan of validCarLoans) {
-    //     if (!loan.libelle.trim()) {
-    //       setMessage("Le libellé ne peut pas être vide");
-    //       setMessageType("error");
-    //       setMessageSection("taux");
-    //       return false;
-    //     }
-    //     if (!loan.tarifParKm || parseFloat(loan.tarifParKm) <= 1) {
-    //       setMessage("Le tarif par km doit être supérieur à 1");
-    //       setMessageType("error");
-    //       setMessageSection("taux");
-    //       return false;
-    //     }
-    //   }
-    // }
-
     return true;
   };
 
@@ -249,41 +133,19 @@ export default function ProfileSettings() {
     setMessageSection("");
 
     try {
-      // 1) PUT /api/users/me
-      const userPayload = {
+      const payload = {
         nomComplete: formData.nomComplete.trim(),
         courriel: formData.courriel.trim(),
-        possedeVoiturePersonnelle: formData.possedeVoiturePersonnelle,
         cartNational: formData.cartNational.trim(),
+        possedeVoiturePersonnelle: formData.possedeVoiturePersonnelle,
         ...(formData.motDePasse ? { motDePasse: formData.motDePasse } : {}),
       };
 
-      await axios.put("http://localhost:3001/api/users/me", userPayload);
-
-      // 2) If "possedeVoiturePersonnelle" is true, update car loans
-      // if (formData.possedeVoiturePersonnelle) {
-      //   const payloadLoans = carLoans
-      //     .filter((loan) => loan.libelle.trim() || loan.tarifParKm)
-      //     .map((loan) => ({
-      //       libelle: loan.libelle.trim(),
-      //       tarifParKm: parseFloat(loan.tarifParKm),
-      //       // Note: we don't send status back; it's read-only
-      //     }));
-
-      //     await axios.put(
-      //     "http://localhost:3001/api/users/me/carloans",
-      //     payloadLoans
-      //   );
-
-      //   // 🔥 KEY FIX: Refresh car loans data after update to get latest status
-      //   await loadCarLoansData();
-      // }
-      // Note: We don't delete all car loans when unchecking the box anymore
-      // The car loans will remain in the database but won't be displayed
+      await apiClient.put("/users/me", payload);
 
       setMessage("Profil mis à jour avec succès !");
       setMessageType("success");
-      setMessageSection("general"); // Success message appears at the top
+      setMessageSection("general");
       setFormData((prev) => ({
         ...prev,
         motDePasse: "",
@@ -300,19 +162,16 @@ export default function ProfileSettings() {
         setMessageType("error");
         setMessageSection("general");
       }
-      // 401 will be handled by your global interceptor
     } finally {
       setSaving(false);
     }
   };
 
-  // Helper component for displaying messages
   const MessageDisplay = ({ section }) => {
     if (!message || messageSection !== section) return null;
-
     return (
       <div
-        className={`mb-4 sm:mb-6 p-3 sm:p-4 rounded-md ${
+        className={`mb-4 p-3 rounded-md ${
           messageType === "success"
             ? "bg-green-50 border border-green-200 text-green-700"
             : "bg-red-50 border border-red-200 text-red-700"
@@ -351,7 +210,7 @@ export default function ProfileSettings() {
             )}
           </div>
           <div className="ml-3 flex-1">
-            <p className="text-sm sm:text-base">{message}</p>
+            <p className="text-sm">{message}</p>
           </div>
           <button
             onClick={() => {
@@ -359,21 +218,9 @@ export default function ProfileSettings() {
               setMessageType("");
               setMessageSection("");
             }}
-            className="ml-auto text-gray-400 hover:text-gray-600 flex-shrink-0"
+            className="ml-auto text-gray-400 hover:text-gray-600"
           >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            ×
           </button>
         </div>
       </div>
@@ -382,12 +229,9 @@ export default function ProfileSettings() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto p-4 sm:p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
-            <p className="text-gray-600">Chargement...</p>
-          </div>
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
         </div>
       </div>
     );

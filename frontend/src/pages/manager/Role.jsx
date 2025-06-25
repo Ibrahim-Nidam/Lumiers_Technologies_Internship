@@ -1,17 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, X, Trash2, Pencil, Check, Users, Settings } from "lucide-react";
+import { Plus, X, Trash2, Pencil, Check, Users} from "lucide-react";
 import apiClient from "../../utils/axiosConfig";
 import ConfirmDialog from "../../components/ConfirmDialog";
+import {colors} from "../../colors";
 
-const colors = {
-  primary: '#a52148',
-  secondary: '#b9bfcf',
-  black: '#000000',
-  white: '#ffffff',
-  logo_text: '#585e5c',
-};
 
 export default function RoleManager() {
   const [roles, setRoles] = useState([]);
@@ -19,6 +13,7 @@ export default function RoleManager() {
   const [editingId, setEditingId] = useState(null);
   const [editingValue, setEditingValue] = useState("");
   const [confirm, setConfirm] = useState({ open: false, id: null });
+  const [activeCardId, setActiveCardId] = useState(null);
 
   useEffect(() => {
     const fetchRoles = async () => {
@@ -31,6 +26,31 @@ export default function RoleManager() {
     };
     fetchRoles();
   }, []);
+
+  // Handle click outside to cancel edit mode
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (editingId !== null) {
+        // Check if the click is outside any role card or input
+        const roleCards = document.querySelectorAll('[data-role-card]');
+        const isClickOutside = !Array.from(roleCards).some(card => 
+          card.contains(event.target)
+        );
+        
+        if (isClickOutside) {
+          handleEditCancel();
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [editingId]);
 
   const handleCreate = async () => {
     const nom = newRole.trim().toLowerCase();
@@ -52,6 +72,7 @@ export default function RoleManager() {
       setRoles(roles.map((r) => (r.id === id ? res.data : r)));
       setEditingId(null);
       setEditingValue("");
+      setActiveCardId(null);
     } catch (err) {
       console.error(err);
     }
@@ -62,9 +83,27 @@ export default function RoleManager() {
       await apiClient.delete(`/roles/${id}`);
       setRoles(roles.filter((r) => r.id !== id));
       setConfirm({ open: false, id: null });
+      setActiveCardId(null);
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handleCardClick = (roleId) => {
+    if (editingId === roleId) return;
+    setActiveCardId(activeCardId === roleId ? null : roleId);
+  };
+
+  const handleEditStart = (role) => {
+    setEditingId(role.id);
+    setEditingValue(role.nom);
+    setActiveCardId(null);
+  };
+
+  const handleEditCancel = () => {
+    setEditingId(null);
+    setEditingValue("");
+    setActiveCardId(null);
   };
 
   return (
@@ -134,25 +173,34 @@ export default function RoleManager() {
                 {roles.map((role) => (
                   <div
                     key={role.id}
-                    className="group bg-white rounded-xl shadow-md border border-gray-200 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+                    data-role-card
+                    className="group bg-white rounded-xl shadow-md border border-gray-200 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+                    onClick={() => handleCardClick(role.id)}
                   >
                     <div className="flex items-center justify-between mb-4">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: `${colors.primary}15` }}>
                         <Users className="w-5 h-5" style={{ color: colors.primary }} />
                       </div>
-                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className={`flex gap-2 transition-opacity ${
+                        activeCardId === role.id 
+                          ? 'opacity-100' 
+                          : 'opacity-0 group-hover:opacity-100'
+                      }`}>
                         {editingId === role.id ? (
                           <>
                             <button
-                              onClick={() => handleUpdate(role.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleUpdate(role.id);
+                              }}
                               className="p-2 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
                             >
                               <Check className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => {
-                                setEditingId(null);
-                                setEditingValue("");
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditCancel();
                               }}
                               className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
                             >
@@ -162,16 +210,19 @@ export default function RoleManager() {
                         ) : (
                           <>
                             <button
-                              onClick={() => {
-                                setEditingId(role.id);
-                                setEditingValue(role.nom);
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditStart(role);
                               }}
                               className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
                             >
                               <Pencil className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => setConfirm({ open: true, id: role.id })}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirm({ open: true, id: role.id });
+                              }}
                               className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -187,6 +238,7 @@ export default function RoleManager() {
                           value={editingValue}
                           onChange={(e) => setEditingValue(e.target.value)}
                           onKeyDown={(e) => e.key === "Enter" && handleUpdate(role.id)}
+                          onClick={(e) => e.stopPropagation()}
                           className="w-full px-3 py-2 text-center border-2 rounded-lg focus:outline-none text-lg font-semibold"
                           style={{ borderColor: colors.primary }}
                           autoFocus

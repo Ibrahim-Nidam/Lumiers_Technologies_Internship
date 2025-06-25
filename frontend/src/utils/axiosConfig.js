@@ -1,50 +1,49 @@
+// src/apiClient.js
 import axios from 'axios';
 
-// Create axios instance
+// Determine appropriate baseURL:
+const getBaseURL = () => {
+  const hostname = window.location.hostname;
+  const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+
+  return isLocalhost
+    ? 'http://localhost:3001/api'
+    : `${window.location.origin}/api`;
+};
+
+// Create axios instance with dynamic baseURL
 const apiClient = axios.create({
-  baseURL: 'http://localhost:3001/api',
+  baseURL: getBaseURL(),
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-/**
- * Retrieves the authentication token from either local or session storage.
- * @returns {string | null} The token if found, otherwise null.
- */
-const getToken = () => {
-  return localStorage.getItem('token') || sessionStorage.getItem('token');
-};
+// Attach auth token automatically
+const getToken = () =>
+  localStorage.getItem('token') || sessionStorage.getItem('token');
 
-// Request interceptor to automatically add token to every request
 apiClient.interceptors.request.use(
-  (config) => {
+  config => {
     const token = getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  error => Promise.reject(error)
 );
 
-// Response interceptor to handle auth errors
+// Handle auth failures globally
 apiClient.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  (error) => {
+  response => response,
+  error => {
     if (error.response?.status === 401) {
-      // Token is invalid or expired
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       sessionStorage.removeItem('token');
       sessionStorage.removeItem('user');
-      
-      // Redirect to login
       window.location.href = '/login';
+    } else if (!error.response) {
+      console.error('🛑 Network error:', error.message);
     }
     return Promise.reject(error);
   }

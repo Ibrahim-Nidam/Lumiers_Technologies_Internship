@@ -52,14 +52,13 @@ const Header = () => {
     navigate("/");
   };
 
-/**
- * Determines the dashboard path based on the user's role.
- * 
- * @param {object} user - The user object containing role information.
- * @returns {string} The path to the appropriate dashboard based on the user's role.
- *                    Returns "/profile-settings" if user or user role is not provided.
- */
-
+  /**
+   * Determines the dashboard path based on the user's role.
+   *
+   * @param {object} user - The user object containing role information.
+   * @returns {string} The path to the appropriate dashboard based on the user's role.
+   *                   Returns "/profile-settings" if user or user role is not provided.
+   */
   const getDashboardPath = (user) => {
     if (!user || !user.role) return "/profile-settings";
     switch (user.role) {
@@ -96,30 +95,6 @@ const Header = () => {
           </div>
 
           <nav className="hidden md:flex items-center space-x-8">
-            {/* <Link
-              to="/about"
-              className={`text-slate-700 hover:text-slate-900 font-medium text-sm transition-colors duration-200 relative group ${
-                isActive("/about") ? "border-b-2 border-primary" : ""
-              }`}
-            >
-              À propos
-            </Link>
-            <Link
-              to="/features"
-              className={`text-slate-700 hover:text-slate-900 font-medium text-sm transition-colors duration-200 relative group ${
-                isActive("/features") ? "border-b-2 border-primary" : ""
-              }`}
-            >
-              Fonctionnalités
-            </Link>
-            <Link
-              to="/contact"
-              className={`text-slate-700 hover:text-slate-900 font-medium text-sm transition-colors duration-200 relative group ${
-                isActive("/contact") ? "border-b-2 border-primary" : ""
-              }`}
-            >
-              Contact
-            </Link> */}
             {isLoggedIn && (
               <Link
                 to={dashboardPath}
@@ -134,7 +109,7 @@ const Header = () => {
             {(userData?.role === "manager" || userData?.role === "supermanager") && (
               <Link
                 to="/agentDashboard"
-                className={`ml-4 text-slate-700 hover:text-slate-900 font-medium text-sm transition-colors duration-200 relative group ${
+                className={` text-slate-700 hover:text-slate-900 font-medium text-sm transition-colors duration-200 relative group ${
                   isActive("/agentDashboard") ? "border-b-2 border-primary" : ""
                 }`}
               >
@@ -175,8 +150,8 @@ const Header = () => {
                 to="/get-started"
                 className="ml-4 px-6 py-2.5 rounded text-white font-semibold text-sm transition-all duration-200 hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{
-                  backgroundColor: colors.primary,
-                  "--tw-ring-color": `${colors.primary}40`,
+                    backgroundColor: colors.primary,
+                    "--tw-ring-color": `${colors.primary}40`,
                 }}
               >
                 Commencer
@@ -245,34 +220,7 @@ const Header = () => {
             </div>
           )}
 
-          <Link
-            to="/about"
-            className={`block px-4 py-3 text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-md font-medium text-sm transition-colors duration-200 ${
-              isActive("/about") ? "bg-slate-100 border-l-4 border-primary" : ""
-            }`}
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            À propos
-          </Link>
-          <Link
-            to="/features"
-            className={`block px-4 py-3 text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-md font-medium text-sm transition-colors duration-200 ${
-              isActive("/features") ? "bg-slate-100 border-l-4 border-primary" : ""
-            }`}
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            Fonctionnalités
-          </Link>
-          <Link
-            to="/contact"
-            className={`block px-4 py-3 text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-md font-medium text-sm transition-colors duration-200 ${
-              isActive("/contact") ? "bg-slate-100 border-l-4 border-primary" : ""
-            }`}
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            Contact
-          </Link>
-
+          {/* Dashboard link */}
           {isLoggedIn && (
             <Link
               to={dashboardPath}
@@ -285,6 +233,20 @@ const Header = () => {
             </Link>
           )}
 
+          {/* Displacement dashboard link for managers and supermanagers */}
+          {isLoggedIn && (userData?.role === "manager" || userData?.role === "supermanager") && (
+            <Link
+              to="/agentDashboard"
+              className={`block px-4 py-3 text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-md font-medium text-sm transition-colors duration-200 ${
+                isActive("/agentDashboard") ? "bg-slate-100 border-l-4 border-primary" : ""
+              }`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Tableau de déplacement
+            </Link>
+          )}
+
+          {/* Logout or Commencer button */}
           <div className="pt-2">
             {isLoggedIn ? (
               <button

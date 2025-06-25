@@ -1,4 +1,6 @@
 const { Op } = require('sequelize');
+const os = require('os');
+const { v4: uuidv4 } = require('uuid');
 const {
   User, Deplacement, Depense, Role,
   TauxMissionRole, VehiculeRateRule, TypeDeDeplacement, Chantier
@@ -25,7 +27,14 @@ async function getDashboardData(userId, year, month) {
   const userInfo = await User.findByPk(userId, {
     include: [{ model: Role, as: 'role' }]
   });
-  
+
+  if (!userInfo) {
+    throw new Error(`User with id ${userId} not found`);
+  }
+  if (!userInfo.roleId) {
+    throw new Error(`User with id ${userId} does not have a role assigned`);
+  }
+
   const trips = await Deplacement.findAll({
     where: { userId, date: { [Op.between]: [start, end] } },
     include: [
@@ -35,12 +44,10 @@ async function getDashboardData(userId, year, month) {
     ]
   });
 
-  // Get rates based on user's role
   const roleMissionRates = await TauxMissionRole.findAll({ 
     where: { roleId: userInfo.roleId } 
   });
   
-  // Get user's vehicule rate rules
   const userVehiculeRateRules = await VehiculeRateRule.findAll({ 
     where: { userId: userInfo.id, active: true } 
   });
@@ -55,41 +62,63 @@ function getTotalExpenses(depenses) {
 }
 
 // NEW: Helper function to calculate kilometric cost based on vehicule rate rule
-function calculateKilometricCost(trip, userVehiculeRateRules) {
-  const distance = parseFloat(trip.distanceKm) || 0;
-  if (distance <= 0) return 0;
-
-  let applicableRule = null;
-
-  // Priority 1: If trip has a specific vehicule rate rule assigned
-  if (trip.vehiculeRateRuleId && trip.vehiculeRateRule) {
-    applicableRule = trip.vehiculeRateRule;
-  } 
-  // Priority 2: Find from user's active rules
-  else if (userVehiculeRateRules && userVehiculeRateRules.length > 0) {
-    // For now, take the first active rule - you can implement priority logic here
-    applicableRule = userVehiculeRateRules[0];
+function calculateTotalKilometricCost(trips, userVehiculeRateRules) {
+  // Group trips by their selected vehicle rate rule
+  const groupedByRate = {};
+  
+  for (const trip of trips) {
+    let ruleId = trip.vehiculeRateRuleId;
+    
+    // If trip doesn't have a specific rule, use the first available user rule
+    if (!ruleId && userVehiculeRateRules && userVehiculeRateRules.length > 0) {
+      ruleId = userVehiculeRateRules[0].id;
+    }
+    
+    if (!ruleId) continue; // Skip trips without applicable rules
+    
+    if (!groupedByRate[ruleId]) groupedByRate[ruleId] = [];
+    groupedByRate[ruleId].push(trip);
   }
 
-  if (!applicableRule) return 0;
-
-  // Calculate cost based on rule type
-  if (applicableRule.conditionType === 'ALL') {
-    return distance * applicableRule.rateBeforeThreshold;
-  } 
-  else if (applicableRule.conditionType === 'THRESHOLD') {
-    const threshold = applicableRule.thresholdKm || 0;
-    const rateBefore = applicableRule.rateBeforeThreshold || 0;
-    const rateAfter = applicableRule.rateAfterThreshold || 0;
-
-    if (distance <= threshold) {
-      return distance * rateBefore;
-    } else {
-      return (threshold * rateBefore) + ((distance - threshold) * rateAfter);
+  let totalDistanceCost = 0;
+  
+  for (const ruleId in groupedByRate) {
+    const tripsForRule = groupedByRate[ruleId];
+    const distanceSum = tripsForRule.reduce((sum, trip) => sum + (parseFloat(trip.distanceKm) || 0), 0);
+    
+    // Find the applicable rule
+    let rule = null;
+    // First check if any trip has the rule loaded via include
+    for (const trip of tripsForRule) {
+      if (trip.vehiculeRateRuleId === parseInt(ruleId) && trip.vehiculeRateRule) {
+        rule = trip.vehiculeRateRule;
+        break;
+      }
+    }
+    // If not found, check user's rules
+    if (!rule && userVehiculeRateRules) {
+      rule = userVehiculeRateRules.find(r => r.id === parseInt(ruleId));
+    }
+    
+    if (!rule || distanceSum === 0) continue;
+    
+    // Calculate cost based on rule type using total distance for this rule
+    if (rule.conditionType === "ALL") {
+      totalDistanceCost += distanceSum * rule.rateBeforeThreshold;
+    } else if (rule.conditionType === "THRESHOLD") {
+      const threshold = rule.thresholdKm || 0;
+      const before = rule.rateBeforeThreshold;
+      const after = rule.rateAfterThreshold || before;
+      
+      if (distanceSum <= threshold) {
+        totalDistanceCost += distanceSum * before;
+      } else {
+        totalDistanceCost += (threshold * before) + ((distanceSum - threshold) * after);
+      }
     }
   }
-
-  return 0;
+  
+  return totalDistanceCost;
 }
 
 exports.generateMonthlyRecap = async (req, res) => {
@@ -123,32 +152,23 @@ exports.generateMonthlyRecap = async (req, res) => {
       { header: 'Total Jours de Déplacement', key: 'totalTripDays', width: 20 }
     ];
 
-    // Add columns for each travel type (days)
-    const typeColumns = [];
-    travelTypes.forEach(type => {
-      typeColumns.push({
-        header: `${type.nom} (Jours)`,
-        key: `days_${type.id}`,
-        width: 18
-      });
-    });
+    const typeColumns = travelTypes.map(type => ({
+      header: `${type.nom} (Jours)`,
+      key: `days_${type.id}`,
+      width: 18
+    }));
 
-    // Add columns for each travel type (rates)
-    const rateColumns = [];
-    travelTypes.forEach(type => {
-      rateColumns.push({
-        header: `Taux ${type.nom} (DH)`,
-        key: `rate_${type.id}`,
-        width: 18
-      });
-    });
+    const rateColumns = travelTypes.map(type => ({
+      header: `Taux ${type.nom} (DH)`,
+      key: `rate_${type.id}`,
+      width: 18
+    }));
 
     const endColumns = [
       { header: 'Distance Parcourue (KM)', key: 'totalDistance', width: 22 },
       { header: 'Total Général (DH)', key: 'grandTotal', width: 18 }
     ];
 
-    // Combine all columns
     worksheet.columns = [...baseColumns, ...typeColumns, ...rateColumns, ...endColumns];
 
     // Style the header row
@@ -163,7 +183,6 @@ exports.generateMonthlyRecap = async (req, res) => {
 
     // Process each user
     for (const user of users) {
-      // Get user's trips for the month
       const [trips, roleMissionRates, userVehiculeRateRules] = await Promise.all([
         Deplacement.findAll({
           where: {
@@ -181,6 +200,9 @@ exports.generateMonthlyRecap = async (req, res) => {
         VehiculeRateRule.findAll({ where: { userId: user.id, active: true } })
       ]);
 
+      // Calculate total kilometric cost
+      const totalKilometricCost = calculateTotalKilometricCost(trips, userVehiculeRateRules);
+
       // Initialize user data
       const userData = {
         fullName: user.nomComplete,
@@ -189,80 +211,55 @@ exports.generateMonthlyRecap = async (req, res) => {
         grandTotal: 0
       };
 
-      // Initialize type-specific data
       const typeDays = {};
       const typeRates = {};
-
       travelTypes.forEach(type => {
         typeDays[type.id] = 0;
         typeRates[type.id] = 0;
       });
 
-      // First pass: count days and get rates
+      let totalOtherCosts = 0;
+
+      // Process trips for other costs and data
       for (const trip of trips) {
         const typeId = trip.typeDeDeplacementId;
-        
-        // Count days by type
+
         if (typeDays[typeId] !== undefined) {
           typeDays[typeId]++;
         }
 
-        // Get role's rate for this travel type (only set once per type)
         if (typeRates[typeId] === 0) {
           const roleRate = roleMissionRates.find(rate => rate.typeDeDeplacementId === typeId);
           typeRates[typeId] = roleRate ? parseFloat(roleRate.tarifParJour) || 0 : 0;
         }
-      }
 
-      // Second pass: calculate costs
-      for (const trip of trips) {
-        const typeId = trip.typeDeDeplacementId;
-
-        // Calculate distance
-        userData.totalDistance += parseFloat(trip.distanceKm) || 0;
-
-        // Calculate costs for this trip
-        let tripTotal = 0;
-
-        // Add expenses
         const expensesTotal = getTotalExpenses(trip.depenses);
-        tripTotal += expensesTotal;
+        const travelTypeAmount = typeRates[typeId];
+        totalOtherCosts += expensesTotal + travelTypeAmount;
 
-        // Add daily mission rate (only if this type has days)
-        if (typeDays[typeId] > 0) {
-          tripTotal += typeRates[typeId];
-        }
-
-        // Add kilometric cost using new vehicule rate rule system
-        const kilometricCost = calculateKilometricCost(trip, userVehiculeRateRules);
-        tripTotal += kilometricCost;
-
-        userData.grandTotal += tripTotal;
+        userData.totalDistance += parseFloat(trip.distanceKm) || 0;
       }
+
+      // Set grand total
+      userData.grandTotal = totalOtherCosts + totalKilometricCost;
 
       // Prepare row data
       const rowData = { ...userData };
-
-      // Add type-specific data to row
       travelTypes.forEach(type => {
         rowData[`days_${type.id}`] = typeDays[type.id];
         rowData[`rate_${type.id}`] = typeDays[type.id] > 0 ? typeRates[type.id].toFixed(2) : '0.00';
       });
 
-      // Format numbers
       rowData.totalDistance = userData.totalDistance.toFixed(2);
       rowData.grandTotal = userData.grandTotal.toFixed(2);
 
-      // Add row to worksheet
       worksheet.addRow(rowData);
     }
 
     // Style data rows
     worksheet.eachRow((row, rowNumber) => {
-      if (rowNumber > 1) { // Skip header row
+      if (rowNumber > 1) {
         row.alignment = { horizontal: 'center', vertical: 'middle' };
-        
-        // Alternate row colors
         if (rowNumber % 2 === 0) {
           row.fill = {
             type: 'pattern',
@@ -273,9 +270,8 @@ exports.generateMonthlyRecap = async (req, res) => {
       }
     });
 
-    // Add borders to all cells
-    worksheet.eachRow((row) => {
-      row.eachCell((cell) => {
+    worksheet.eachRow(row => {
+      row.eachCell(cell => {
         cell.border = {
           top: { style: 'thin' },
           bottom: { style: 'thin' },
@@ -291,7 +287,6 @@ exports.generateMonthlyRecap = async (req, res) => {
     summaryRow.getCell(1).value = 'TOTAL GÉNÉRAL';
     summaryRow.getCell(1).font = { bold: true };
 
-    // Calculate totals for summary
     let totalAllTrips = 0;
     let totalAllDistance = 0;
     let totalAllAmount = 0;
@@ -321,10 +316,8 @@ exports.generateMonthlyRecap = async (req, res) => {
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
-    // Write workbook to response
     await workbook.xlsx.write(res);
     res.end();
-
   } catch (error) {
     console.error('Error generating monthly recap:', error);
     res.status(500).json({ error: 'Failed to generate monthly recap' });
@@ -368,11 +361,10 @@ exports.getUserAggregates = async (req, res) => {
         let justified = 0;
         let unjustified = 0;
 
-        // For each trip
+        // Calculate expenses and mission rates for each trip
         for (const trip of deplacements) {
           totalDistance += parseFloat(trip.distanceKm) || 0;
 
-          // Total cost = expenses + mission rate + kilometric cost
           const expensesTotal = getTotalExpenses(trip.depenses);
 
           const travelTypeRate = roleMissionRates.find(
@@ -380,10 +372,7 @@ exports.getUserAggregates = async (req, res) => {
           );
           const travelTypeAmount = travelTypeRate ? parseFloat(travelTypeRate.tarifParJour) || 0 : 0;
 
-          // Calculate kilometric cost using new system
-          const kilometricCost = calculateKilometricCost(trip, userVehiculeRateRules);
-
-          totalExpenses += expensesTotal + travelTypeAmount + kilometricCost;
+          totalExpenses += expensesTotal + travelTypeAmount;
 
           // Justification count
           for (const expense of trip.depenses) {
@@ -395,6 +384,10 @@ exports.getUserAggregates = async (req, res) => {
             }
           }
         }
+
+        // Calculate total kilometric cost for all trips at once
+        const totalKilometricCost = calculateTotalKilometricCost(deplacements, userVehiculeRateRules);
+        totalExpenses += totalKilometricCost;
 
         return {
           userId: user.id,
@@ -727,9 +720,9 @@ exports.generateExcelReport = async (userId, year, month) => {
     // --- END: Recap Sheet ---
 
     // Write to tmp and return path
-    const tmpDir = path.join(__dirname, '../tmp');
+    const tmpDir = path.join(os.tmpdir(), 'myapp-reports');
     await fs.ensureDir(tmpDir);
-    const outPath = path.join(tmpDir, `report-${userId}-${year}-${month+1}.xlsx`);
+    const outPath = path.join(tmpDir, `report-${userId}-${year}-${month+1}-${uuidv4()}.xlsx`);
     await wb.xlsx.writeFile(outPath);
     return outPath;
 
@@ -925,18 +918,15 @@ exports.generatePDFReport = async (userId, year, month) => {
     };
 
     // 5. Generate and save the PDF file to a temporary directory
-    const tmpDir = path.join(__dirname, '../tmp');
+    const tmpDir = path.join(os.tmpdir(), 'myapp-reports');
     await fs.ensureDir(tmpDir);
-    const outPath = path.join(tmpDir, `report-${userId}-${year}-${month + 1}.pdf`);
+    const outPath = path.join(tmpDir, `report-${userId}-${year}-${month + 1}-${uuidv4()}.pdf`);
 
     const pdfDoc = pdfMake.createPdf(docDefinition);
     await new Promise((resolve, reject) => {
       pdfDoc.getBuffer(buffer => {
         fs.writeFile(outPath, buffer, err => {
-          if (err) {
-            console.error("Error writing PDF to file:", err);
-            return reject(err);
-          }
+          if (err) return reject(err);
           resolve();
         });
       });
@@ -958,10 +948,17 @@ exports.exportExcel = async (req, res, next) => {
     const filePath = await exports.generateExcelReport(userId, +year, +month);
     res.download(filePath, err => {
       if (err) return next(err);
-      fs.unlinkSync(filePath);
+      fs.unlink(filePath, (unlinkErr) => {
+        if (unlinkErr) console.error('Failed to delete file:', unlinkErr);
+      });
     });
   } catch (err) {
-    console.error("❌ exportExcel failed:", err);
+    console.error("Export Excel failed:", err);
+    if (err.message.includes("not found")) {
+      return res.status(404).json({ error: err.message });
+    } else if (err.message.includes("does not have a role")) {
+      return res.status(400).json({ error: err.message });
+    }
     next(err);
   }
 };
@@ -975,10 +972,17 @@ exports.exportPDF = async (req, res, next) => {
     const filePath = await exports.generatePDFReport(userId, +year, +month);
     res.download(filePath, err => {
       if (err) return next(err);
-      fs.unlinkSync(filePath);
+      fs.unlink(filePath, (unlinkErr) => {
+        if (unlinkErr) console.error('Failed to delete file:', unlinkErr);
+      });
     });
   } catch (err) {
-    console.error("❌ exportPDF failed:", err);
+    console.error("Export PDF failed:", err);
+    if (err.message.includes("not found")) {
+      return res.status(404).json({ error: err.message });
+    } else if (err.message.includes("does not have a role")) {
+      return res.status(400).json({ error: err.message });
+    }
     next(err);
   }
 };

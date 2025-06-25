@@ -806,7 +806,6 @@ ${userName}`;
       }
     };
   };
-
   return {
     // State
     trips,

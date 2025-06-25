@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../utils/axiosConfig";
-import { toast } from "sonner";
 
 /**
  * Page to manage mission rates
@@ -33,11 +32,7 @@ export default function MissionRates() {
         setGroupedRates(grouped);
       } catch (err) {
         console.error("Failed to fetch mission rates:", err);
-        if (err.response?.status === 401) {
-          toast.error("Session expirée. Redirection vers la connexion...");
-        } else {
-          toast.error("Échec du chargement des taux");
-        }
+        
       } finally {
         setLoading(false);
       }
@@ -50,7 +45,6 @@ export default function MissionRates() {
  * Updates the status of a mission rate with the given ID
  *
  * @param {number} id - The ID of the mission rate to update
- * @param {"en_attente"|"approuvé "|\ "rejeté "} newStatus - The new status to set
  *
  * @throws {Error} If the API request fails
  */
@@ -72,26 +66,8 @@ export default function MissionRates() {
         return updated;
       });
 
-      toast.success(
-        `Taux ${
-          newStatus === "approuvé"
-            ? "approuvé"
-            : newStatus === "rejeté"
-            ? "rejeté"
-            : "remis en attente"
-        }`
-      );
     } catch (err) {
       console.error("Failed to update rate status:", err);
-      if (err.response?.status === 401) {
-        toast.error("Session expirée. Redirection vers la connexion...");
-      } else if (err.response?.status === 404) {
-        toast.error("Taux non trouvé");
-      } else if (err.response?.status === 400) {
-        toast.error("Données invalides");
-      } else {
-        toast.error("Erreur lors de la mise à jour");
-      }
     }
   };
 

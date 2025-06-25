@@ -4,9 +4,6 @@ import PrivateRoute from "../components/PrivateRoute";
 
 // Public Pages
 import Home from "../pages/Home";
-import About from "../pages/About";
-import Features from "../pages/Features";
-import Contact from "../pages/Contact";
 
 // Dashboards
 import AgentDashboard from "../components/dash/AgentDashboard";
@@ -55,9 +52,6 @@ export default function AppRoutes() {
       <Route element={<Layout />}>
         {/* Public Routes */}
         <Route path="/" element={<Home />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/features" element={<Features />} />
-        <Route path="/contact" element={<Contact />} />
         <Route path="/get-started" element={<Home />} />
 
         {/* Protected Routes */}
@@ -70,8 +64,6 @@ export default function AppRoutes() {
             <Route path="approve-accounts" element={<ApproveAccounts />} />
             <Route path="expense-types" element={<ExpenseTypes />} />
             <Route path="displacement-types" element={<DisplacementTypes />} />
-            {/* <Route path="mission-rates" element={<MissionRates />} /> */}
-            {/* <Route path="car-loan-rates" element={<CarLoanRates />} /> */}
             <Route path="consult" element={<Consult />} />
             <Route path="role" element={<Role />} />
             <Route path="taux-deplacement" element={<TauxDeplacement />} />

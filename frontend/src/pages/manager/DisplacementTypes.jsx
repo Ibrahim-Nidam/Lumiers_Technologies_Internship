@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import apiClient from "../../utils/axiosConfig"; // Import the configured axios instance
 import Message from "../../components/Message";
 import ConfirmDialog from "../../components/ConfirmDialog";
-import { toast } from "sonner";
 
 /**
  * TravelTypes
@@ -43,7 +42,6 @@ export default function TravelTypes() {
       console.error('Fetch travel types error:', error);
       
       if (error.response?.status === 401) {
-        toast.error("Session expirée. Redirection vers la connexion...");
         // The interceptor will handle the redirect
       } else {
         setMessage({ type: "error", text: "Échec du chargement des types." });
@@ -102,7 +100,7 @@ export default function TravelTypes() {
       console.error("Error saving travel type:", error);
       
       if (error.response?.status === 401) {
-        toast.error("Session expirée. Redirection vers la connexion...");
+        //
       } else {
         const errorMsg = error?.response?.data?.error || "Erreur lors de l'enregistrement.";
         setMessage({ type: "error", text: errorMsg });
@@ -140,7 +138,7 @@ export default function TravelTypes() {
       console.error('Delete travel type error:', error);
       
       if (error.response?.status === 401) {
-        toast.error("Session expirée. Redirection vers la connexion...");
+        //
       } else {
         setMessage({ type: "error", text: "Erreur lors de la suppression." });
       }

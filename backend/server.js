@@ -4,7 +4,7 @@ const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
-
+const compression = require('compression');
 const { sequelize } = require("./models");
 const { seedInitialData } = require("./seed-initial-data");
 
@@ -25,6 +25,17 @@ const vehiculeRateRules = require("./routes/vehiculeRateRules");
 
 const app = express();
 
+// ─── Helper Function to Get Uploads Path ───────────────────────────────────
+function getUploadsPath() {
+  if (process.pkg) {
+    // Packaged app: uploads are in deploy/dist/uploads/
+    return path.join(path.dirname(process.execPath), 'dist', 'uploads');
+  } else {
+    // Development: uploads are in backend/uploads/
+    return path.join(__dirname, 'uploads');
+  }
+}
+
 // ─── Helper Function to Get Local IP ───────────────────────────────────
 function getLocalIP() {
   const interfaces = os.networkInterfaces();
@@ -38,15 +49,26 @@ function getLocalIP() {
   return '127.0.0.1';
 }
 
-// ─── Middleware ─────────────────────────────────────────────────────────
+const localIP = getLocalIP();
+const PORT = process.env.PORT || 3001;
+
+// More specific CORS configuration
 const corsOptions = {
-  origin: true, // Allow all origins
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:3001', 
+    `http://${localIP}:${PORT}`,
+    `http://${localIP}:3000`,
+  ],
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 };
 
 app.use(cors(corsOptions));
 app.use(express.json());
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use(compression());
+app.use('/uploads', express.static(getUploadsPath()));
 
 // ─── Bootstrap Function ─────────────────────────────────────────────────
 (async () => {
@@ -94,19 +116,14 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
     console.log(`📁 Serving static files from: ${frontendPath}`);
     
-    // Check if the dist folder exists
     if (fs.existsSync(frontendPath)) {
-      // Serve static files
       app.use(express.static(frontendPath));
       
-      // Handle React Router - catch all non-API routes and serve index.html
       app.use((req, res, next) => {
-        // Skip API routes
         if (req.path.startsWith('/api/')) {
           return next();
         }
         
-        // For all other routes, serve index.html
         const indexPath = path.join(frontendPath, "index.html");
         if (fs.existsSync(indexPath)) {
           res.sendFile(indexPath);
@@ -122,7 +139,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
     // 6) Start server
     const PORT = process.env.PORT || 3001;
-    const HOST = '0.0.0.0'; // Listen on all network interfaces
+    const HOST = '0.0.0.0';
     const localIP = getLocalIP();
 
     app.listen(PORT, HOST, () => {

@@ -9,8 +9,19 @@ const {
   Sequelize,
 } = require("../models");
 const { Op } = Sequelize;
-const fs = require("fs");
-const path = require("path");
+const path = require('path');
+const fs = require('fs-extra');
+
+// Helper function to get uploads path
+function getUploadsPath() {
+  if (process.pkg) {
+    // Packaged app: uploads are in deploy/dist/uploads/
+    return path.join(path.dirname(process.execPath), 'dist', 'uploads');
+  } else {
+    // Development: uploads are in backend/uploads/
+    return path.join(__dirname, '..', 'uploads');
+  }
+}
 
 // Helper to get effective userId (owner of the trip)
 const getEffectiveUserId = (req) => {
@@ -450,7 +461,6 @@ exports.addExpenseJustificatif = async (req, res) => {
   const { tripId, expenseId } = req.params;
   const actingUserId = getActingUserId(req);
   const effectiveUserId = getEffectiveUserId(req);
-  
 
   if (!req.file) {
     console.error("No file on req.file");
@@ -458,15 +468,14 @@ exports.addExpenseJustificatif = async (req, res) => {
   }
 
   try {
-    const uploadPath = path.join(__dirname, "../uploads", req.file.filename);
-    if (!fs.existsSync(uploadPath)) {
-      console.error("Uploaded file not found at:", uploadPath);
-      return res.status(500).json({ error: "File saved but not found." });
-    }
+    // File is already saved to the correct location by multer
+    console.log("File uploaded to:", req.file.path);
+    console.log("File filename:", req.file.filename);
 
     const expense = await Depense.findOne({
       where: { id: expenseId, deplacementId: tripId },
     });
+    
     if (!expense) {
       console.error("Expense not found for trip", tripId, "and expense", expenseId);
       return res.status(404).json({ error: "Expense not found." });
@@ -476,7 +485,6 @@ exports.addExpenseJustificatif = async (req, res) => {
       cheminJustificatif: `/uploads/${req.file.filename}`
     };
 
-    // Only set modifiedBy if someone other than the owner is uploading the file
     if (actingUserId !== effectiveUserId) {
       updateData.modifiedBy = actingUserId;
     }
@@ -503,17 +511,23 @@ exports.removeExpenseJustificatif = async (req, res) => {
     if (!expense) return res.status(404).json({ error: "Expense not found." });
 
     if (expense.cheminJustificatif) {
-      const filePath = path.join(__dirname, "..", expense.cheminJustificatif.replace(/^\//, ""));
-      fs.unlink(filePath, (err) => {
-        if (err && err.code !== "ENOENT") console.error("Failed to delete file:", err);
-      });
+      // Use the same helper function as multer
+      const uploadsPath = getUploadsPath();
+      const filePath = path.join(uploadsPath, path.basename(expense.cheminJustificatif));
+      
+      // Delete the file if it exists
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log("File deleted:", filePath);
+      } else {
+        console.warn("File not found for deletion:", filePath);
+      }
     }
 
     const updateData = {
       cheminJustificatif: null
     };
 
-    // Only set modifiedBy if someone other than the owner is removing the file
     if (actingUserId !== effectiveUserId) {
       updateData.modifiedBy = actingUserId;
     }

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../utils/axiosConfig";
-import { toast } from "sonner";
 
 /**
  * Page to manage car-loan rates
@@ -29,12 +28,6 @@ export default function CarLoanRates() {
         setCarLoanRates(res.data);
       } catch (err) {
         console.error("Failed to fetch car-loan rates:", err);
-        if (err.response?.status === 401) {
-          toast.error("Session expirée. Redirection vers la connexion...");
-          // interceptor will redirect to /login
-        } else {
-          toast.error("Échec du chargement des taux kilométriques");
-        }
       } finally {
         setLoading(false);
       }
@@ -63,25 +56,8 @@ export default function CarLoanRates() {
         prev.map((rate) => (rate.id === id ? res.data : rate))
       );
 
-      // Show a success toast in French
-      if (newStatus === "approuvé") {
-        toast.success("Taux kilométrique approuvé");
-      } else if (newStatus === "rejeté") {
-        toast.success("Taux kilométrique rejeté");
-      } else {
-        toast.success("Taux kilométrique remis en attente");
-      }
     } catch (err) {
       console.error("Failed to update car-loan rate status:", err);
-      if (err.response?.status === 401) {
-        toast.error("Session expirée. Redirection vers la connexion...");
-      } else if (err.response?.status === 404) {
-        toast.error("Taux kilométrique non trouvé");
-      } else if (err.response?.status === 400) {
-        toast.error("Données invalides");
-      } else {
-        toast.error("Erreur lors de la mise à jour");
-      }
     }
   };
 

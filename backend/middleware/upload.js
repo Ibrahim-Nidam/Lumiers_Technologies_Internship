@@ -1,10 +1,29 @@
 const multer = require("multer");
 const path = require("path");
+const fs = require("fs");
 
-// Store files under /uploads with original filename + timestamp
+// Helper function to get uploads path (same as in your main server file)
+function getUploadsPath() {
+  if (process.pkg) {
+    // Packaged app: uploads are in deploy/dist/uploads/
+    return path.join(path.dirname(process.execPath), 'dist', 'uploads');
+  } else {
+    // Development: uploads are in backend/uploads/
+    return path.join(__dirname, "../uploads");
+  }
+}
+
+// Store files under the correct uploads directory with original filename + timestamp
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, "../uploads"));
+    const uploadsPath = getUploadsPath();
+    
+    // Ensure the directory exists
+    if (!fs.existsSync(uploadsPath)) {
+      fs.mkdirSync(uploadsPath, { recursive: true });
+    }
+    
+    cb(null, uploadsPath);
   },
   filename: (req, file, cb) => {
     const ts = Date.now();
