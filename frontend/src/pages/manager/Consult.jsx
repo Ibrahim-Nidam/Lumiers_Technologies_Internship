@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Calendar, Search, Filter, Download } from "lucide-react";
 import { FaFileExcel, FaFilePdf, FaFileArchive, FaDownload, FaEdit } from 'react-icons/fa';
-import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { useNavigate } from "react-router-dom";
 import apiClient from "../../utils/axiosConfig";
-import { saveAs } from "file-saver"; 
+import { saveAs } from "file-saver";
 import { colors } from "../../colors";
 
 export default function Consult() {
@@ -16,11 +16,19 @@ export default function Consult() {
   const [summaries, setSummaries] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showOnlyWithData, setShowOnlyWithData] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate();
 
+  // Improved function to check if user has any data
   const getSummaryForUser = (userId) => {
-    return summaries.find(s => s.userId === userId) || {
+    const summary = summaries.find(s => String(s.userId) === String(userId));
+    // if (summary) {
+    //   console.log(`Summary found for user ${userId}:`, summary);
+    // } else {
+    //   console.log(`No summary found for user ${userId}`);
+    // }
+    return summary || {
       totalDistance: 0,
       totalTripCost: 0,
       justified: 0,
@@ -28,34 +36,88 @@ export default function Consult() {
     };
   };
 
+  // More comprehensive function to check if user has data
+  const userHasData = (userId) => {
+    const summary = getSummaryForUser(userId);
+    const hasData = summary && (
+      summary.totalDistance > 0 || 
+      summary.totalTripCost > 0 || 
+      summary.justified > 0 || 
+      summary.unjustified > 0
+    );
+    // console.log(`User ${userId} has data:`, hasData, summary);
+    return hasData;
+  };
+
   const monthNames = [
     "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
     "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
   ];
 
+  // Set initial years
   useEffect(() => {
     const cy = today.getFullYear();
     setYears([cy, cy - 1, cy - 2]);
-
-    apiClient.get("/users/")
-      .then(res => setUsers(res.data))
-      .catch(err => console.error(err));
   }, []);
 
+  // Fetch users and summaries together with loading state and debugging
   useEffect(() => {
-    const fetchSummary = async () => {
+    const fetchData = async () => {
       try {
-        const res = await apiClient.get("/report/summary", {
-          params: { year: currentYear, month: currentMonth }
-        });
-        setSummaries(res.data);
+        setLoading(true);
+        const [usersRes, summariesRes] = await Promise.all([
+          apiClient.get("/users/"),
+          apiClient.get("/report/summary", {
+            params: { year: currentYear, month: currentMonth }
+          })
+        ]);
+        // console.log("Users fetched:", usersRes.data);
+        // console.log("Summaries fetched:", summariesRes.data);
+        
+        // // Additional debugging
+        // console.log("Users count:", usersRes.data?.length);
+        // console.log("Summaries count:", summariesRes.data?.length);
+        
+        setUsers(usersRes.data || []);
+        setSummaries(summariesRes.data || []);
+        setLoading(false);
       } catch (err) {
-        console.error("Failed to fetch summary:", err);
+        console.error("Failed to fetch data:", err);
+        setUsers([]);
+        setSummaries([]);
+        setLoading(false);
       }
     };
-
-    fetchSummary();
+    fetchData();
   }, [currentYear, currentMonth]);
+
+  // Debug filtered users
+  // useEffect(() => {
+  //   if (users.length > 0) {
+  //     console.log("=== FILTERING DEBUG ===");
+  //     console.log("Total users:", users.length);
+  //     console.log("Search query:", searchQuery);
+  //     console.log("Show only with data:", showOnlyWithData);
+      
+  //     const usersWithData = users.filter(user => userHasData(user.id));
+  //     console.log("Users with data:", usersWithData.length, usersWithData.map(u => ({ id: u.id, name: u.name })));
+      
+  //     const searchFiltered = users.filter(user => 
+  //       user.name.toLowerCase().includes(searchQuery.toLowerCase())
+  //     );
+  //     console.log("After search filter:", searchFiltered.length);
+      
+  //     const finalFiltered = users.filter(user => {
+  //       const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase());
+  //       const hasData = userHasData(user.id);
+  //       const shouldShow = matchesSearch && (!showOnlyWithData || hasData);
+  //       console.log(`User ${user.id} (${user.name}): search=${matchesSearch}, hasData=${hasData}, shouldShow=${shouldShow}`);
+  //       return shouldShow;
+  //     });
+  //     console.log("Final filtered users:", finalFiltered.length);
+  //     console.log("=== END FILTERING DEBUG ===");
+  //   }
+  // }, [users, summaries, searchQuery, showOnlyWithData]);
 
   const goToPreviousMonth = () => {
     let m = currentMonth - 1, y = currentYear;
@@ -88,19 +150,14 @@ export default function Consult() {
   const handleMonthlyRecap = async () => {
     try {
       const response = await apiClient.get("/report/monthly-recap", {
-        params: {
-          year: currentYear,
-          month: currentMonth
-        },
+        params: { year: currentYear, month: currentMonth },
         responseType: "blob"
       });
-
       const monthDate = new Date(currentYear, currentMonth);
       const frenchMonth = monthDate.toLocaleDateString('fr-FR', { month: 'long' });
       const filename = `Recapitulatif_${frenchMonth}_${currentYear}.xlsx`;
-
-      const blob = new Blob([response.data], { 
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" 
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       });
       saveAs(blob, filename);
     } catch (err) {
@@ -111,24 +168,12 @@ export default function Consult() {
   const handleExport = async (userId, type) => {
     try {
       let url;
-      const params = {
-        userId,
-        year: currentYear,
-        month: currentMonth
-      };
+      const params = { userId, year: currentYear, month: currentMonth };
+      if (type === "excel") url = "/report/excel";
+      else if (type === "pdf") url = "/report/pdf";
+      else if (type === "both") url = "/zip";
 
-      if (type === "excel") {
-        url = "/report/excel";
-      } else if (type === "pdf") {
-        url = "/report/pdf";
-      } else if (type === "both") {
-        url = "/zip";
-      }
-
-      const response = await apiClient.get(url, {
-        params,
-        responseType: "blob"
-      });
+      const response = await apiClient.get(url, { params, responseType: "blob" });
 
       let filename;
       if (type === "both") {
@@ -159,13 +204,9 @@ export default function Consult() {
       }
 
       let mime;
-      if (type === "excel") {
-        mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-      } else if (type === "pdf") {
-        mime = "application/pdf";
-      } else {
-        mime = "application/zip";
-      }
+      if (type === "excel") mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+      else if (type === "pdf") mime = "application/pdf";
+      else mime = "application/zip";
 
       const blob = new Blob([response.data], { type: mime });
       saveAs(blob, filename);
@@ -175,18 +216,32 @@ export default function Consult() {
   };
 
   const navigateToEditPage = (userId) => {
-    navigate(`/agentDashboard/${userId}`); // Navigate to AgentDashboard with userId
+    navigate(`/agentDashboard/${userId}`);
   };
 
+  // Improved filtering logic with better debugging
   const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const hasData = getSummaryForUser(user.id).totalDistance > 0;
-    return matchesSearch && (!showOnlyWithData || hasData);
+    const matchesSearch = user.name && user.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const hasData = userHasData(user.id);
+    const result = matchesSearch && (!showOnlyWithData || hasData);
+    
+    // Debug individual user filtering
+    // if (!result && user.name) {
+    //   console.log(`User ${user.name} filtered out: matchesSearch=${matchesSearch}, hasData=${hasData}, showOnlyWithData=${showOnlyWithData}`);
+    // }
+    
+    return result;
   });
 
-  const totalUsersWithData = users.filter(user => getSummaryForUser(user.id).totalDistance > 0).length;
-  const totalDistance = summaries.reduce((sum, s) => sum + s.totalDistance, 0);
-  const totalCost = summaries.reduce((sum, s) => sum + s.totalTripCost, 0);
+  // Calculate statistics more safely
+  const totalUsersWithData = users.filter(user => userHasData(user.id)).length;
+  const totalDistance = summaries.reduce((sum, s) => sum + (s.totalDistance || 0), 0);
+  const totalCost = summaries.reduce((sum, s) => sum + (s.totalTripCost || 0), 0);
+
+  // Show loading state while data is being fetched
+  if (loading) {
+    return <div className="text-center py-16">Chargement...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
@@ -360,13 +415,23 @@ export default function Consult() {
               </div>
             </div>
           </div>
+
+          {/* Debug Information (remove in production) */}
+          {/* <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-yellow-800">
+              <strong>Debug Info:</strong> Total Users: {users.length}, 
+              Users with Data: {totalUsersWithData}, 
+              Filtered Users: {filteredUsers.length}, 
+              Show Only With Data: {showOnlyWithData ? 'Yes' : 'No'}
+            </p>
+          </div> */}
         </div>
 
         {/* Users Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
           {filteredUsers.map(user => {
             const summary = getSummaryForUser(user.id);
-            const hasData = summary && summary.totalDistance > 0;
+            const hasData = userHasData(user.id);
             
             return (
               <div
@@ -380,12 +445,12 @@ export default function Consult() {
                       className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md"
                       style={{ backgroundColor: colors.primary }}
                     >
-                      {user.name.split(' ').map(n => n.charAt(0)).join('').toUpperCase()}
+                      {user.name?.split(' ').map(n => n.charAt(0)).join('').toUpperCase() || '??'}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <h3 className="text-lg font-bold truncate" style={{ color: colors.logo_text }}>
-                          {user.name}
+                          {user.name || 'Unknown User'}
                         </h3>
                         <button
                           onClick={() => navigateToEditPage(user.id)}
@@ -395,7 +460,6 @@ export default function Consult() {
                           <FaEdit className="w-4 h-4 cursor-pointer" />
                         </button>
                       </div>
-
                       <p className="text-gray-500 text-xs">
                         {hasData ? "Utilisateur actif" : "Aucune activité"}
                       </p>
@@ -415,7 +479,7 @@ export default function Consult() {
                           <span className="font-medium text-blue-800 text-sm">Distance</span>
                         </div>
                         <span className="text-blue-900 font-bold text-sm">
-                          {summary.totalDistance.toLocaleString()} km
+                          {(summary.totalDistance || 0).toLocaleString()} km
                         </span>
                       </div>
                       <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
@@ -426,7 +490,7 @@ export default function Consult() {
                           <span className="font-medium text-green-800 text-sm">Frais</span>
                         </div>
                         <span className="text-green-900 font-bold text-sm">
-                          {summary.totalTripCost.toFixed(2)} DH
+                          {(summary.totalTripCost || 0).toFixed(2)} DH
                         </span>
                       </div>
                       <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
@@ -437,7 +501,7 @@ export default function Consult() {
                           <span className="font-medium text-purple-800 text-sm">Justifiées</span>
                         </div>
                         <span className="text-purple-900 font-bold text-sm">
-                          {summary.justified}/{summary.justified + summary.unjustified}
+                          {(summary.justified || 0)}/{(summary.justified || 0) + (summary.unjustified || 0)}
                         </span>
                       </div>
                     </div>
