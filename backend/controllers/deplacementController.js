@@ -51,47 +51,71 @@ exports.getDeplacements = async (req, res) => {
     }
 
     const deplacements = await Deplacement.findAll({
-      where,
-      order: [["date", "ASC"]],
+  where,
+  order: [["date", "ASC"]],
+  include: [
+    {
+      model: Chantier,
+      as: "chantier",
+      required: false,
+      attributes: ["id", "codeChantier", "designation", "ville"],
       include: [
-        {
-          model: Chantier,
-          as: "chantier",
-          required: false,
-          attributes: ["id", "codeChantier", "designation", "ville"],
-          include: [
-            {
-              model: TypeDeDeplacement,
-              as: "typeDeDeplacement",
-              attributes: ["id", "nom"],
-            },
-          ],
-        },
-        {
-          model: VehiculeRateRule,
-          as: "vehiculeRateRule",
-          required: false,
-          attributes: ["id", "name", "conditionType", "rateBeforeThreshold", "rateAfterThreshold", "thresholdKm"],
-        },
-        {
-          model: Depense,
-          as: "depenses",
-          required: false,
-          include: [
-            {
-              model: TypeDepense,
-              as: "typeDepense",
-              attributes: ["id", "nom"],
-            },
-          ],
-        },
         {
           model: TypeDeDeplacement,
           as: "typeDeDeplacement",
           attributes: ["id", "nom"],
         },
       ],
-    });
+    },
+    {
+      model: VehiculeRateRule,
+      as: "vehiculeRateRule",
+      required: false,
+      attributes: ["id", "name", "conditionType", "rateBeforeThreshold", "rateAfterThreshold", "thresholdKm"],
+    },
+    {
+      model: Depense,
+      as: "depenses",
+      required: false,
+      include: [
+        {
+          model: TypeDepense,
+          as: "typeDepense",
+          attributes: ["id", "nom"],
+        },
+        // Add creator for expenses
+        {
+          model: User,
+          as: "creator",
+          attributes: ["id", "nomComplete"],
+        },
+        // Add modifier for expenses
+        {
+          model: User,
+          as: "modifier",
+          attributes: ["id", "nomComplete"],
+        },
+      ],
+    },
+    {
+      model: TypeDeDeplacement,
+      as: "typeDeDeplacement",
+      attributes: ["id", "nom"],
+    },
+    // Add creator for trips
+    {
+      model: User,
+      as: "creator",
+      attributes: ["id", "nomComplete"],
+    },
+    // Add modifier for trips
+    {
+      model: User,
+      as: "modifier",
+      attributes: ["id", "nomComplete"],
+    },
+  ],
+});
 
     let response = deplacements;
     if (req.isManagerAccess) {
@@ -162,12 +186,36 @@ exports.getDeplacementsByUserId = async (req, res) => {
               as: "typeDepense",
               attributes: ["id", "nom"],
             },
+            // Add creator for expenses
+            {
+              model: User,
+              as: "creator",
+              attributes: ["id", "nomComplete"],
+            },
+            // Add modifier for expenses
+            {
+              model: User,
+              as: "modifier",
+              attributes: ["id", "nomComplete"],
+            },
           ],
         },
         {
           model: TypeDeDeplacement,
           as: "typeDeDeplacement",
           attributes: ["id", "nom"],
+        },
+        // Add creator for trips
+        {
+          model: User,
+          as: "creator",
+          attributes: ["id", "nomComplete"],
+        },
+        // Add modifier for trips
+        {
+          model: User,
+          as: "modifier",
+          attributes: ["id", "nomComplete"],
         },
       ],
     });

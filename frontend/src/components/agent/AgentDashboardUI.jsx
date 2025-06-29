@@ -5,11 +5,11 @@ import { colors } from "../../colors"
 import { ChevronLeft, ChevronRight, Plus, Trash2, FileSpreadsheet, MapPin, ChevronDown, ChevronUp, Calendar, X, Check, Download, Mail } from "lucide-react"
 
 // Utility function to get user info by ID
-const getUserInfo = (userId, allUsers) => {
-  if (!userId || !allUsers) return null;
-  const user = allUsers.find(u => u.id === userId);
-  return user ? { name: user.name, avatar: user.avatar } : null;
-};
+// const getUserInfo = (userId, allUsers) => {
+//   if (!userId || !allUsers) return null;
+//   const user = allUsers.find(u => u.id === userId);
+//   return user ? { name: user.name, avatar: user.avatar } : null;
+// };
 
 const MultiDayTripCreator = ({ currentYear, currentMonth, daysWithTrips, chantiers, onClose, onCreateTrips }) => {
   const [selectedDays, setSelectedDays] = useState(new Set());
@@ -136,36 +136,33 @@ const MultiDayTripCreator = ({ currentYear, currentMonth, daysWithTrips, chantie
 
 
 // Component for displaying modification tags
-const ModificationTag = ({ createdBy, modifiedBy, currentUserId, allUsers }) => {
-  const createdByUser = getUserInfo(createdBy, allUsers);
-  const modifiedByUser = getUserInfo(modifiedBy, allUsers);
-  
+const ModificationTag = ({ creator, modifier, currentUserId }) => {
   // Don't show tag if current user created and never modified
-  if (createdBy === currentUserId && !modifiedBy) return null;
+  if (creator?.id === currentUserId && !modifier) return null;
   
   // Show if manager created for user
-  if (createdBy && createdBy !== currentUserId) {
+  if (creator && creator.id !== currentUserId) {
     return (
       <div className="flex items-center space-x-1 mb-2">
         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
           <span className="w-4 h-4 rounded-full bg-blue-200 flex items-center justify-center text-[10px] font-bold mr-1">
-            {createdByUser?.avatar || 'M'}
+            {creator.avatar || 'M'}
           </span>
-          Créé par {createdByUser?.name || 'Manager'}
+          Créé par {creator.nomComplete || 'Manager'}
         </span>
       </div>
     );
   }
   
   // Show if modified by someone else
-  if (modifiedBy && modifiedBy !== currentUserId) {
+  if (modifier && modifier.id !== currentUserId) {
     return (
       <div className="flex items-center space-x-1 mb-2">
         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
           <span className="w-4 h-4 rounded-full bg-orange-200 flex items-center justify-center text-[10px] font-bold mr-1">
-            {modifiedByUser?.avatar || 'M'}
+            {modifier.avatar || 'M'}
           </span>
-          Modifié par {modifiedByUser?.name || 'Manager'}
+          Modifié par {modifier.nomComplete || 'Manager'}
         </span>
       </div>
     );
@@ -186,7 +183,7 @@ const AgentDashboardUI = ({
   isUpdating,
   userCarLoans,
   chantiers,
-  allUsers,
+  // allUsers,
 
   // State setters
   setShowYearPicker,
@@ -528,11 +525,10 @@ const AgentDashboardUI = ({
                 >
                   {/* Modification Tag for Trip */}
                   <ModificationTag
-                    createdBy={trip.createdBy}
-                    modifiedBy={trip.modifiedBy}
-                    currentUserId={currentUserId}
-                    allUsers={allUsers}
-                  />
+  creator={trip.creator}
+  modifier={trip.modifier}
+  currentUserId={currentUserId}
+/>
 
                   {/* Trip Input Section */}
                   <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start mb-3 sm:mb-4 space-y-3 lg:space-y-0">
@@ -708,11 +704,10 @@ const AgentDashboardUI = ({
                             {/* Modification Tag for Expense */}
                             <div className="lg:col-span-4 mb-2">
                               <ModificationTag
-                                createdBy={expense.createdBy}
-                                modifiedBy={expense.modifiedBy}
-                                currentUserId={currentUserId}
-                                allUsers={allUsers}
-                              />
+  creator={expense.creator}
+  modifier={expense.modifier}
+  currentUserId={currentUserId}
+/>
                             </div>
 
                             <div>
