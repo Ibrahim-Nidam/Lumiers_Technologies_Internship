@@ -506,28 +506,37 @@ exports.deleteDeplacement = async (req, res) => {
 
 // ─── FILE UPLOAD/REMOVAL ─────────────────────────────────────────────────────────
 exports.addExpenseJustificatif = async (req, res) => {
+
   const { tripId, expenseId } = req.params;
   const actingUserId = getActingUserId(req);
   const effectiveUserId = getEffectiveUserId(req);
 
+
   if (!req.file) {
-    console.error("No file on req.file");
+    console.error("❌ No file on req.file");
     return res.status(400).json({ error: "No file uploaded." });
   }
 
   try {
-    // File is already saved to the correct location by multer
-    console.log("File uploaded to:", req.file.path);
-    console.log("File filename:", req.file.filename);
+    // Verify the trip belongs to the user
+    const deplacement = await Deplacement.findOne({
+      where: { id: tripId, userId: effectiveUserId }
+    });
+    
+    if (!deplacement) {
+      console.error("❌ Deplacement not found");
+      return res.status(404).json({ error: "Trip not found." });
+    }
 
     const expense = await Depense.findOne({
       where: { id: expenseId, deplacementId: tripId },
     });
     
     if (!expense) {
-      console.error("Expense not found for trip", tripId, "and expense", expenseId);
+      console.error("❌ Expense not found for trip", tripId, "and expense", expenseId);
       return res.status(404).json({ error: "Expense not found." });
     }
+
 
     const updateData = {
       cheminJustificatif: `/uploads/${req.file.filename}`
@@ -566,7 +575,6 @@ exports.removeExpenseJustificatif = async (req, res) => {
       // Delete the file if it exists
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
-        console.log("File deleted:", filePath);
       } else {
         console.warn("File not found for deletion:", filePath);
       }

@@ -3,7 +3,7 @@ const router = express.Router()
 const ctrl = require("../controllers/deplacementController")
 const authMiddleware = require("../middleware/authMiddleware") 
 const managerAccessMiddleware = require("../middleware/managerAccessMiddleware")
-const upload = require("../middleware/upload");
+const {uploadWithErrorHandling} = require("../middleware/upload");
 
 // Apply auth middleware to all routes
 router.use(authMiddleware)
@@ -20,7 +20,7 @@ router.get("/user/:userId", managerAccessMiddleware, ctrl.getDeplacementsByUserI
 // File upload routes (these will also check manager access if needed)
 router.post("/:tripId/depenses/:expenseId/justificatif", 
   managerAccessMiddleware, 
-  upload.single("justificatif"), 
+  uploadWithErrorHandling,  // Use the debug version
   ctrl.addExpenseJustificatif
 );
 router.delete("/:tripId/depenses/:expenseId/justificatif", 

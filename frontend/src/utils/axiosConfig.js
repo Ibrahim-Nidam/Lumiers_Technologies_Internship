@@ -1,4 +1,3 @@
-// src/apiClient.js
 import axios from 'axios';
 
 // Determine appropriate baseURL:
@@ -27,6 +26,13 @@ apiClient.interceptors.request.use(
   config => {
     const token = getToken();
     if (token) config.headers.Authorization = `Bearer ${token}`;
+    
+    // IMPORTANT: Handle FormData uploads
+    // Remove Content-Type header for FormData to let browser set it with boundary
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
+    
     return config;
   },
   error => Promise.reject(error)

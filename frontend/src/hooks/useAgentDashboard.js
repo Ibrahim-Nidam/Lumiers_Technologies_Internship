@@ -236,7 +236,7 @@ export const useAgentDashboard = (currentUserId) => {
     try {
       const headers = getAuthHeaders();
       const { data } = await apiClient.put(`/deplacements/${tripId}`, payload, { headers });
-      setTrips((prev) => prév.map((t) => (t.id === tripId ? data : t)));
+      setTrips((prev) => prev.map((t) => (t.id === tripId ? data : t)));
     } catch (err) {
       console.error("Failed to update trip:", err);
       alert("Erreur lors de la mise à jour du déplacement");
@@ -326,16 +326,44 @@ export const useAgentDashboard = (currentUserId) => {
 
   const handleExpenseFileUpload = async (tripId, expenseId, file) => {
     if (isUpdating) return;
+    
+    
     try {
       setIsUpdating(true);
+      
       const form = new FormData();
       form.append("justificatif", file);
-      const headers = { ...getAuthHeaders(), "Content-Type": "multipart/form-data" };
-      const response = await apiClient.post(`/deplacements/${tripId}/depenses/${expenseId}/justificatif`, form, { headers });
+      
+      const headers = getAuthHeaders();
+      
+      const url = `/deplacements/${tripId}/depenses/${expenseId}/justificatif`;
+      
+      // The axios interceptor will automatically handle FormData and remove Content-Type
+      const response = await apiClient.post(url, form, { headers });
+      
+      
       const updatedExpense = response.data;
-      setTrips(prev => prev.map(t => t.id === tripId ? { ...t, depenses: t.depenses.map(e => e.id === expenseId ? updatedExpense : e) } : t));
+      setTrips(prev => prev.map(t => 
+        t.id === tripId 
+          ? { ...t, depenses: t.depenses.map(e => e.id === expenseId ? updatedExpense : e) } 
+          : t
+      ));
+      
     } catch (error) {
-      console.error("Failed to upload file:", error);
+      console.error("❌ Failed to upload file:", error);
+      
+      if (error.response) {
+        console.error("Response status:", error.response.status);
+        console.error("Response data:", error.response.data);
+        console.error("Response headers:", error.response.headers);
+      } else if (error.request) {
+        console.error("No response received:", error.request);
+      } else {
+        console.error("Request setup error:", error.message);
+      }
+      
+      // Show user-friendly error
+      alert(`Upload failed: ${error.response?.data?.error || error.message}`);
     } finally {
       setIsUpdating(false);
     }
