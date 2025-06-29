@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { Users, Car, Shield, Edit3, Check, X, Search, Filter } from "lucide-react";
 import apiClient from "../../utils/axiosConfig"; // configured axios instance
 import { colors } from "../../colors";
+import { updateStoredCredentials, getStoredUser } from "../../utils/storageUtils";
 
 export default function AccountApproval() {
   const [accounts, setAccounts] = useState([]);
@@ -99,6 +100,17 @@ export default function AccountApproval() {
             : a
         )
       );
+      
+      // Fix: Update stored credentials with correct field names
+      const currentUser = getStoredUser();
+      if (currentUser && currentUser.id === id) {
+        if  (field === "possede_voiture_personnelle" || field === "hasCar" || field === "possedeVoiturePersonnelle") {
+        updateStoredCredentials({ 
+          possede_voiture_personnelle: newValue,
+        });
+      }
+    }
+
       toast.success("Mise à jour réussie");
     } catch (err) {
       console.error('Toggle field error:', err);
@@ -146,6 +158,16 @@ export default function AccountApproval() {
             : a
         )
       );
+
+      // Fix: Update stored credentials for role changes
+      const currentUser = getStoredUser();
+      if (currentUser && currentUser.id === id) {
+        updateStoredCredentials({ 
+          role: updatedRole ? updatedRole.name.toLowerCase() : currentUser.role,
+          roleId: roleId 
+        });
+      }
+
       toast.success("Rôle mis à jour avec succès");
     } catch (err) {
       console.error("Update role error:", err);

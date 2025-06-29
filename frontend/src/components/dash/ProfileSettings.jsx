@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import apiClient from "../../utils/axiosConfig"; // ← your configured axios instance
 import { colors } from "../../colors";
+import { updateStoredCredentials } from "../../utils/storageUtils";
 
 export default function ProfileSettings() {
   const navigate = useNavigate();
@@ -140,6 +141,11 @@ export default function ProfileSettings() {
         possedeVoiturePersonnelle: formData.possedeVoiturePersonnelle,
         ...(formData.motDePasse ? { motDePasse: formData.motDePasse } : {}),
       };
+      updateStoredCredentials({
+      nom_complete: formData.nomComplete.trim(), // Use the field names from your stored user object
+      email: formData.courriel.trim(),
+      possede_voiture_personnelle: formData.possedeVoiturePersonnelle,
+    });
 
       await apiClient.put("/users/me", payload);
 
