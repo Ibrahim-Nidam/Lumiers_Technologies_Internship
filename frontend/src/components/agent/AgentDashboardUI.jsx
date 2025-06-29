@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState,useMemo  } from "react"
 import { colors } from "../../colors"
 import { ChevronLeft, ChevronRight, Plus, Trash2, FileSpreadsheet, MapPin, ChevronDown, ChevronUp, Calendar, X, Check, Download, Mail } from "lucide-react"
 
@@ -9,6 +9,107 @@ const getUserInfo = (userId, allUsers) => {
   if (!userId || !allUsers) return null;
   const user = allUsers.find(u => u.id === userId);
   return user ? { name: user.name, avatar: user.avatar } : null;
+};
+
+const MultiDayTripCreator = ({ currentYear, currentMonth, daysWithTrips, chantiers, onClose, onCreateTrips }) => {
+  const [selectedDays, setSelectedDays] = useState(new Set());
+  const [selectedChantierId, setSelectedChantierId] = useState(null);
+
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
+  const startOffset = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1; // Adjust for Monday start
+
+  const toggleDay = (day) => {
+    if (daysWithTrips.has(day)) return;
+    setSelectedDays(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(day)) {
+        newSet.delete(day);
+      } else {
+        newSet.add(day);
+      }
+      return newSet;
+    });
+  };
+
+  const handleCreate = () => {
+    if (selectedDays.size === 0 || !selectedChantierId) {
+      alert("Veuillez sélectionner au moins un jour et un chantier.");
+      return;
+    }
+    onCreateTrips(Array.from(selectedDays), selectedChantierId);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-4 w-full max-w-2xl">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold" style={{ color: colors.logo_text }}>Ajouter des déplacements multiples</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-2" style={{ color: colors.logo_text }}>Sélectionner un chantier</label>
+          <select
+            value={selectedChantierId || ""}
+            onChange={(e) => setSelectedChantierId(parseInt(e.target.value))}
+            className="w-full px-3 py-2 border rounded"
+            style={{ borderColor: colors.secondary }}
+          >
+            <option value="">Choisir un chantier</option>
+            {chantiers.map(chantier => (
+              <option key={chantier.id} value={chantier.id}>
+                {chantier.codeChantier} - {chantier.designation} ({chantier.ville})
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="mb-4">
+          <h3 className="text-lg font-medium mb-2" style={{ color: colors.logo_text }}>Sélectionner les jours</h3>
+          <div className="grid grid-cols-7 gap-1">
+            {["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"].map(day => (
+              <div key={day} className="text-center text-xs font-medium" style={{ color: colors.secondary }}>{day}</div>
+            ))}
+            {Array.from({ length: startOffset }).map((_, i) => (
+              <div key={`empty-${i}`} className="p-2"></div>
+            ))}
+            {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
+              const hasTrip = daysWithTrips.has(day);
+              const isSelected = selectedDays.has(day);
+              return (
+                <button
+                  key={day}
+                  onClick={() => toggleDay(day)}
+                  disabled={hasTrip}
+                  className={`p-2 text-center rounded ${hasTrip ? "bg-gray-100 text-gray-400 cursor-not-allowed" : isSelected ? "bg-blue-500 text-white" : "bg-gray-50 hover:bg-gray-100"}`}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="flex justify-end space-x-2">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm rounded-lg hover:bg-gray-100"
+            style={{ color: colors.logo_text }}
+          >
+            Annuler
+          </button>
+          <button
+            onClick={handleCreate}
+            disabled={selectedDays.size === 0 || !selectedChantierId}
+            className="px-4 py-2 text-sm text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+            style={{ backgroundColor: colors.primary }}
+          >
+            Créer les déplacements
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 
@@ -105,6 +206,8 @@ const AgentDashboardUI = ({
   exportMonthlyExcel,
 }) => {
   const [newExpenseTypeName, setNewExpenseTypeName] = useState({});
+  const [showMultiDayCreator, setShowMultiDayCreator] = useState(false);
+
   const userDataRaw = localStorage.getItem("user") || sessionStorage.getItem("user");
   const user = userDataRaw ? JSON.parse(userDataRaw) : null;
   const currentUserId = user?.id;
@@ -121,6 +224,15 @@ const AgentDashboardUI = ({
       setNewExpenseTypeName((prev) => ({ ...prev, [tripId]: "" }));
     }
   };
+
+  const daysWithTrips = useMemo(() => {
+  const days = new Set();
+  getMonthlyTrips().forEach(trip => {
+    const date = new Date(trip.date);
+    days.add(date.getDate());
+  });
+  return days;
+}, [getMonthlyTrips]);
 
   const renderDayRow = (day) => {
     const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
@@ -700,167 +812,202 @@ const AgentDashboardUI = ({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
-            <div>
-              <h1 className="text-lg sm:text-xl md:text-2xl font-bold" style={{ color: colors.logo_text }}>
-                Gestion des Déplacements
-              </h1>
-              <p className="text-xs sm:text-sm mt-1" style={{ color: colors.secondary }}>
-                Vue chronologique mensuelle
-              </p>
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={exportMonthlyExcel}
-                className="flex items-center cursor-pointer space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
-                style={{ borderColor: colors.primary, color: colors.primary }}
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Exporter Excel</span>
-                <span className="sm:hidden">Excel</span>
-              </button>
-              <button
-                onClick={exportMonthlyPDF}
-                className="flex items-center cursor-pointer space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
-                style={{ borderColor: colors.primary, color: colors.primary }}
-              >
-                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Exporter PDF</span>
-                <span className="sm:hidden">PDF</span>
-              </button>
-              <button
-                onClick={showEmailFormatSelection}
-                className="flex items-center cursor-pointer space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
-                style={{ borderColor: colors.primary, color: colors.primary }}
-              >
-                <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Envoyer par Email</span>
-                <span className="sm:hidden">Email</span>
-              </button>
-            </div>
+  <div className="min-h-screen bg-gray-50">
+    {/* Header Section: Title and Export Buttons */}
+    <div className="bg-white shadow-sm border-b">
+      <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
+          <div>
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold" style={{ color: colors.logo_text }}>
+              Gestion des Déplacements
+            </h1>
+            <p className="text-xs sm:text-sm mt-1" style={{ color: colors.secondary }}>
+              Vue chronologique mensuelle
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={exportMonthlyExcel}
+              className="flex items-center cursor-pointer space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
+              style={{ borderColor: colors.primary, color: colors.primary }}
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Exporter Excel</span>
+              <span className="sm:hidden">Excel</span>
+            </button>
+            <button
+              onClick={exportMonthlyPDF}
+              className="flex items-center cursor-pointer space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
+              style={{ borderColor: colors.primary, color: colors.primary }}
+            >
+              <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Exporter PDF</span>
+              <span className="sm:hidden">PDF</span>
+            </button>
+            <button
+              onClick={showEmailFormatSelection}
+              className="flex items-center cursor-pointer space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
+              style={{ borderColor: colors.primary, color: colors.primary }}
+            >
+              <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Envoyer par Email</span>
+              <span className="sm:hidden">Email</span>
+            </button>
           </div>
         </div>
       </div>
+    </div>
 
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
-            <div className="flex items-center justify-center sm:justify-start space-x-3 sm:space-x-4">
+    {/* Navigation Header: Month Navigation and Summary */}
+    <div className="bg-white border-b">
+      <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
+          <div className="flex items-center justify-center sm:justify-start space-x-3 sm:space-x-4">
+            <button
+              onClick={goToPreviousMonth}
+              className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              style={{ color: colors.logo_text }}
+            >
+              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+            <div className="relative">
               <button
-                onClick={goToPreviousMonth}
-                className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                onClick={() => setShowYearPicker(!showYearPicker)}
+                className="flex items-center space-x-1 text-base sm:text-lg md:text-xl font-bold hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors"
                 style={{ color: colors.logo_text }}
               >
-                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span>
+                  {new Date(currentYear, currentMonth).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
+                </span>
+                <Calendar className="w-4 h-4 sm:w-5 sm:h-5 opacity-70" />
               </button>
-              <div className="relative">
-                <button
-                  onClick={() => setShowYearPicker(!showYearPicker)}
-                  className="flex items-center space-x-1 text-base sm:text-lg md:text-xl font-bold hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors"
-                  style={{ color: colors.logo_text }}
-                >
-                  <span>
-                    {new Date(currentYear, currentMonth).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
-                  </span>
-                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5 opacity-70" />
-                </button>
-                {showYearPicker && (
-                  <div className="absolute z-10 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 p-3 w-64 sm:w-72">
-                    <div className="grid grid-cols-1 gap-2">
-                      {years.map((year) => (
-                        <div key={year} className="mb-2">
-                          <h3 className="text-sm font-semibold mb-1 px-2" style={{ color: colors.logo_text }}>
-                            {year}
-                          </h3>
-                          <div className="grid grid-cols-3 sm:grid-cols-4 gap-1">
-                            {monthNames.map((month, index) => (
-                              <button
-                                key={`${year}-${index}`}
-                                onClick={() => goToYearMonth(year, index)}
-                                className={`text-xs p-1.5 rounded-md hover:bg-gray-100 transition-colors ${year === currentYear && index === currentMonth ? "bg-blue-100 text-blue-800 font-medium" : "text-gray-700"}`}
-                              >
-                                {month.substring(0, 3)}
-                              </button>
-                            ))}
-                          </div>
+              {showYearPicker && (
+                <div className="absolute z-10 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 p-3 w-64 sm:w-72">
+                  <div className="grid grid-cols-1 gap-2">
+                    {years.map((year) => (
+                      <div key={year} className="mb-2">
+                        <h3 className="text-sm font-semibold mb-1 px-2" style={{ color: colors.logo_text }}>
+                          {year}
+                        </h3>
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-1">
+                          {monthNames.map((month, index) => (
+                            <button
+                              key={`${year}-${index}`}
+                              onClick={() => goToYearMonth(year, index)}
+                              className={`text-xs p-1.5 rounded-md hover:bg-gray-100 transition-colors ${year === currentYear && index === currentMonth ? "bg-blue-100 text-blue-800 font-medium" : "text-gray-700"}`}
+                            >
+                              {month.substring(0, 3)}
+                            </button>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                )}
-              </div>
-              <button
-                onClick={goToNextMonth}
-                className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                style={{ color: colors.logo_text }}
-              >
-                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
-              <button
-                onClick={goToToday}
-                className="px-2 sm:px-3 py-1 text-xs sm:text-sm border rounded-lg hover:bg-gray-50 transition-colors"
-                style={{ borderColor: colors.secondary, color: colors.logo_text }}
-              >
-                Aujourd'hui
-              </button>
+                </div>
+              )}
             </div>
-            <div className="flex items-center justify-center sm:justify-end space-x-3 sm:space-x-4 md:space-x-6">
-              <div className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
-                <span className="font-medium">{getMonthlyTrips().length}</span> déplacement{getMonthlyTrips().length > 1 ? "s" : ""}
-              </div>
-              <div className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
-                <span className="font-medium">{getMonthlyExpensesCount()}</span> dépense{getMonthlyExpensesCount() > 1 ? "s" : ""}
-              </div>
-              <div className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
-                <span className="font-medium">{getMonthlyDistanceTotal().toFixed(1)}</span> km
-              </div>
-              <div className="text-sm sm:text-base md:text-lg font-bold" style={{ color: colors.primary }}>
-                {getMonthlyTotal().toFixed(2)} MAD
-              </div>
-            </div>
+            <button
+              onClick={goToNextMonth}
+              className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              style={{ color: colors.logo_text }}
+            >
+              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+            <button
+              onClick={goToToday}
+              className="px-2 sm:px-3 py-1 text-xs sm:text-sm border rounded-lg hover:bg-gray-50 transition-colors"
+              style={{ borderColor: colors.secondary, color: colors.logo_text }}
+            >
+              Aujourd'hui
+            </button>
+            {/* New Button: Open Multi-Day Trip Creator */}
+            <button
+              onClick={() => setShowMultiDayCreator(true)}
+              className="px-2 sm:px-3 py-1 text-xs sm:text-sm border rounded-lg hover:bg-gray-50 transition-colors"
+              style={{ borderColor: colors.secondary, color: colors.logo_text }}
+            >
+              <Calendar className="w-4 h-4 inline-block mr-1" />
+              Ajouter multiples
+            </button>
           </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-6 py-3 sm:py-4 md:py-8">
-        <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-          <div className="divide-y" style={{ borderColor: colors.secondary }}>
-            {Array.from({ length: getDaysInMonth() }, (_, i) => i + 1).map((day) => renderDayRow(day))}
-          </div>
-        </div>
-        <div className="mt-3 sm:mt-4 md:mt-6 bg-white rounded-lg shadow-sm border p-2 sm:p-3 md:p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-6">
-              <div className="flex items-center space-x-1.5 sm:space-x-2">
-                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full" style={{ backgroundColor: colors.primary }} />
-                <span className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
-                  Jour avec déplacements
-                </span>
-              </div>
-              <div className="flex items-center space-x-1.5 sm:space-x-2">
-                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full border-2 border-blue-500" />
-                <span className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
-                  Aujourd'hui
-                </span>
-              </div>
-              <div className="flex items-center space-x-1.5 sm:space-x-2">
-                <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" style={{ color: colors.secondary }} />
-                <span className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
-                  Cliquer pour développer
-                </span>
-              </div>
+          <div className="flex items-center justify-center sm:justify-end space-x-3 sm:space-x-4 md:space-x-6">
+            <div className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
+              <span className="font-medium">{getMonthlyTrips().length}</span> déplacement{getMonthlyTrips().length > 1 ? "s" : ""}
             </div>
-            <div className="text-xs sm:text-sm text-center sm:text-right" style={{ color: colors.secondary }}>
-              Utilisez + pour ajouter un déplacement
+            <div className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
+              <span className="font-medium">{getMonthlyExpensesCount()}</span> dépense{getMonthlyExpensesCount() > 1 ? "s" : ""}
+            </div>
+            <div className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
+              <span className="font-medium">{getMonthlyDistanceTotal().toFixed(1)}</span> km
+            </div>
+            <div className="text-sm sm:text-base md:text-lg font-bold" style={{ color: colors.primary }}>
+              {getMonthlyTotal().toFixed(2)} MAD
             </div>
           </div>
         </div>
       </div>
     </div>
-  );
+
+    {/* Main Content: Calendar Grid */}
+    <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-6 py-3 sm:py-4 md:py-8">
+      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+        <div className="divide-y" style={{ borderColor: colors.secondary }}>
+          {Array.from({ length: getDaysInMonth() }, (_, i) => i + 1).map((day) => renderDayRow(day))}
+        </div>
+      </div>
+      <div className="mt-3 sm:mt-4 md:mt-6 bg-white rounded-lg shadow-sm border p-2 sm:p-3 md:p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-6">
+            <div className="flex items-center space-x-1.5 sm:space-x-2">
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full" style={{ backgroundColor: colors.primary }} />
+              <span className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
+                Jour avec déplacements
+              </span>
+            </div>
+            <div className="flex items-center space-x-1.5 sm:space-x-2">
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full border-2 border-blue-500" />
+              <span className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
+                Aujourd'hui
+              </span>
+            </div>
+            <div className="flex items-center space-x-1.5 sm:space-x-2">
+              <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" style={{ color: colors.secondary }} />
+              <span className="text-xs sm:text-sm" style={{ color: colors.logo_text }}>
+                Cliquer pour développer
+              </span>
+            </div>
+          </div>
+          <div className="text-xs sm:text-sm text-center sm:text-right" style={{ color: colors.secondary }}>
+            Utilisez + pour ajouter un déplacement
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Multi-Day Trip Creator Modal */}
+    {showMultiDayCreator && (
+      <MultiDayTripCreator
+        currentYear={currentYear}
+        currentMonth={currentMonth}
+        daysWithTrips={daysWithTrips}
+        chantiers={chantiers}
+        onClose={() => setShowMultiDayCreator(false)}
+        onCreateTrips={async (selectedDays, chantierId) => {
+          try {
+            const promises = selectedDays.map((day) => {
+              const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+              return addTrip(dateStr, chantierId);
+            });
+            await Promise.all(promises);
+            setShowMultiDayCreator(false);
+          } catch (error) {
+            console.error("Failed to create trips:", error);
+          }
+        }}
+      />
+    )}
+  </div>
+);
 };
 
 export default AgentDashboardUI;

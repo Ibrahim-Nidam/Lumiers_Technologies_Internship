@@ -12,31 +12,42 @@ exports.register = async (req, res) => {
 
   if (!name || !email || !password || !cnie) {
     return res.status(400).json({
-      error: "name, email, cnie, and password are required.",
+      error: 'name, email, cnie, and password are required.',
     });
   }
 
   try {
-    // Optional: check if CNIE is unique (if required)
+    // Ensure CNIE is unique
     const existingCnie = await User.findOne({ where: { cartNational: cnie } });
     if (existingCnie) {
-      return res.status(400).json({ error: "Ce CNIE est déjà utilisé." });
+      return res.status(400).json({ error: 'Ce CNIE est déjà utilisé.' });
     }
 
+    // Ensure email is unique
     const existingUser = await User.findOne({ where: { courriel: email } });
     if (existingUser) {
-      return res.status(400).json({ error: "Cet email est déjà utilisé." });
+      return res.status(400).json({ error: 'Cet email est déjà utilisé.' });
     }
 
+    // Hash the password
     const hashed = await bcrypt.hash(password, 10);
 
-    // Role detection logic
-    let selectedRoleName = "agent"; // default role
+    // Determine role: first user ever -> manager; other users based on password or default agent
+    const totalUsers = await User.count();
+    let selectedRoleName;
 
-    if (password === "Manager1.") {
-      selectedRoleName = "manager";
+    if (totalUsers === 0) {
+      // If no users exist, make this first user the manager
+      selectedRoleName = 'manager';
+    } 
+    // else if (password === 'Manager1.') {
+    //   selectedRoleName = 'manager';
+    // } 
+    else {
+      selectedRoleName = 'agent';
     }
 
+    // Fetch the role instance
     const roleInstance = await Role.findOne({ where: { nom: selectedRoleName } });
     if (!roleInstance) {
       return res.status(400).json({
@@ -44,26 +55,27 @@ exports.register = async (req, res) => {
       });
     }
 
+    // Create new user
     const newUser = await User.create({
       nomComplete: name,
       courriel: email,
       motDePasseHache: hashed,
       roleId: roleInstance.id,
       possedeVoiturePersonnelle: false,
-      estActif: selectedRoleName === "manager" ? true : false,
+      estActif: selectedRoleName === 'manager',
       cartNational: cnie.toUpperCase(),
       dateCreation: new Date(),
       dateModification: new Date(),
     });
 
     return res.status(201).json({
-      message: "Compte créé avec succès.",
+      message: 'Compte créé avec succès.',
       userId: newUser.id,
     });
   } catch (err) {
-    console.error("Error in register:", err);
+    console.error('Error in register:', err);
     return res.status(500).json({
-      error: "Une erreur est survenue lors de l'inscription.",
+      error: 'Une erreur est survenue lors de l\'inscription.',
     });
   }
 };

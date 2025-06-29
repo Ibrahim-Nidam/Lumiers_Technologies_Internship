@@ -137,7 +137,7 @@ deploy/
 
 ## ⚠️ Notes importantes
 
-* Pour s'inscrire comme **Manager**, entrez `Manager1.` comme mot de passe à l'inscription. Vous pourrez ensuite le modifier depuis votre profil.
+<!-- * Pour s'inscrire comme **Manager**, entrez `Manager1.` comme mot de passe à l'inscription. Vous pourrez ensuite le modifier depuis votre profil. -->
 * L'application est conçue pour fonctionner **en local** sur le réseau interne.
 * Si l'application est lente ou vide : essayez de **rafraîchir la page**, cela peut être causé par le cache ou un chargement lourd de bibliothèques (ex: PDF, Excel).
 

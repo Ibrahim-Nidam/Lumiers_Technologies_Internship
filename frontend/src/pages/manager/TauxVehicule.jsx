@@ -223,13 +223,13 @@ export default function VehiculeRates() {
                   </div>
 
                   {/* Condition Type */}
-                  <div className="lg:col-span-1">
+                  <div className="lg:col-span-1 hidden">
                     <label className="block text-sm font-medium mb-2" style={{ color: colors.logo_text }}>
                       Type de condition
                     </label>
                     <select
                       name="conditionType"
-                      value={form.conditionType}
+                      value="ALL"
                       onChange={handleChange}
                       className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-opacity-50 focus:outline-none transition-colors"
                       disabled={loading}
