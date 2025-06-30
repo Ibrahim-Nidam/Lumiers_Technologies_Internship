@@ -57,16 +57,12 @@ const Header = () => {
    *
    * @param {object} user - The user object containing role information.
    * @returns {string} The path to the appropriate dashboard based on the user's role.
-   *                   Returns "/profile-settings" if user or user role is not provided.
+   * Returns "/profile-settings" if user or user role is not provided.
    */
   const getDashboardPath = (user) => {
     if (!user || !user.role) return "/profile-settings";
     switch (user.role) {
-      case "admin":
-      case "superadmin":
-        return "/adminDashboard";
       case "manager":
-      case "supermanager":
         return "/managerDashboard";
       default:
         return "/agentDashboard";
@@ -106,7 +102,7 @@ const Header = () => {
               </Link>
             )}
 
-            {(userData?.role === "manager" || userData?.role === "supermanager") && (
+            {/* {(userData?.role === "manager" || userData?.role === "supermanager") && (
               <Link
                 to="/agentDashboard"
                 className={` text-slate-700 hover:text-slate-900 font-medium text-sm transition-colors duration-200 relative group ${
@@ -115,7 +111,7 @@ const Header = () => {
               >
                 Tableau de déplacement
               </Link>
-            )}
+            )} */}
 
             {isLoggedIn ? (
               <div className="flex items-center space-x-4">
@@ -234,7 +230,7 @@ const Header = () => {
           )}
 
           {/* Displacement dashboard link for managers and supermanagers */}
-          {isLoggedIn && (userData?.role === "manager" || userData?.role === "supermanager") && (
+          {/* {isLoggedIn && (userData?.role === "manager" || userData?.role === "supermanager") && (
             <Link
               to="/agentDashboard"
               className={`block px-4 py-3 text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-md font-medium text-sm transition-colors duration-200 ${
@@ -244,7 +240,7 @@ const Header = () => {
             >
               Tableau de déplacement
             </Link>
-          )}
+          )} */}
 
           {/* Logout or Commencer button */}
           <div className="pt-2">

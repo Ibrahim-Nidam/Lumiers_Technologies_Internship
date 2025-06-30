@@ -123,172 +123,194 @@ const autoWidthColumns = (worksheet) => {
 * @returns {Promise<void>}
 */
 export const handleExcelExport = async (year, month, dashboardData) => {
- const label = getMonthLabel(year, month);
-  const { trips, userMissionRates, userCarLoans, travelTypes, userInfo } = dashboardData;
-  const { fullName = 'N/A' } = userInfo || {};
+    const label = getMonthLabel(year, month);
+    const { trips, userMissionRates, userCarLoans, travelTypes, userInfo } = dashboardData;
+    const fullName = userInfo?.fullName || 'N/A';
 
- // Build workbook
- const wb = new ExcelJS.Workbook();
-  
-  // --- START: Detailed Trips Sheet ---
-  const wsTrips = wb.addWorksheet('Détail des Trajets');
-  wsTrips.addRow([`Détail des Trajets pour ${fullName} - ${label}`]).font = { size: 16, bold: true };
-  wsTrips.mergeCells('A1:D1');
-  wsTrips.getCell('A1').alignment = { horizontal: 'center' };
-  wsTrips.addRow([]); // Spacer
+    // Calculate totals
+    const calculateTotals = () => {
+        const dailyAllowances = new Map();
+        let totalMisc = 0;
+        let miscCount = 0;
 
-  const tripsHeader = wsTrips.addRow(['Date', 'Chantier', 'Distance (Km)', 'Type de Déplacement']);
-  tripsHeader.eachCell(styleHeaderCell);
+        trips.forEach(trip => {
+            if (Array.isArray(trip.depenses)) {
+                miscCount += trip.depenses.length;
+                trip.depenses.forEach(expense => {
+                    totalMisc += parseFloat(expense.montant) || 0;
+                });
+            }
 
-  trips.forEach(trip => {
-      const travelType = travelTypes.find(t => t.id === trip.typeDeDeplacementId)?.nom || 'N/A';
-      wsTrips.addRow([
-          new Date(trip.date).toLocaleDateString('fr-FR'),
-          // Correctly access the designation from the chantier object
-          trip.chantier?.designation || 'N/A',
-          parseFloat(trip.distanceKm) || 0,
-          travelType,
-      ]);
-  });
-  autoWidthColumns(wsTrips);
-  // --- END: Detailed Trips Sheet ---
+            const mr = userMissionRates.find(r => r.typeDeDeplacementId === trip.typeDeDeplacementId);
+            if (mr) {
+                const rate = parseFloat(mr.tarifParJour) || 0;
+                const name = travelTypes.find(t => t.id === trip.typeDeDeplacementId)?.nom || 'Inconnu';
+                if (!dailyAllowances.has(rate)) dailyAllowances.set(rate, { count: 0, total: 0, name });
+                const cur = dailyAllowances.get(rate);
+                cur.count++;
+                cur.total += rate;
+            }
+        });
 
-  // --- START: Miscellaneous Expenses Sheet ---
-  const wsExpenses = wb.addWorksheet('Dépenses Diverses');
-  wsExpenses.addRow([`Dépenses Diverses pour ${fullName} - ${label}`]).font = { size: 16, bold: true };
-  wsExpenses.mergeCells('A1:C1');
-  wsExpenses.getCell('A1').alignment = { horizontal: 'center' };
-  wsExpenses.addRow([]); // Spacer
+        const mileageCosts = calculateDistanceCostsForExport(trips, userCarLoans);
+        let grandTotal = totalMisc;
+        mileageCosts.forEach(v => grandTotal += v.total);
+        dailyAllowances.forEach(v => grandTotal += v.total);
 
-  const expensesHeader = wsExpenses.addRow(['Date du Trajet', 'Montant (MAD)', 'Justificatif']);
-  expensesHeader.eachCell(styleHeaderCell);
-  
-  let totalMisc = 0;
-  trips.forEach(trip => {
-      if (trip.depenses && trip.depenses.length > 0) {
-          trip.depenses.forEach(expense => {
-              const amount = parseFloat(expense.montant) || 0;
-              const expenseRow = wsExpenses.addRow([
-                  new Date(trip.date).toLocaleDateString('fr-FR'),
-                  amount,
-                  // CORRECTED: Check for 'cheminJustificatif' property existence and truthiness
-                  expense.cheminJustificatif ? 'Oui' : 'Non'
-              ]);
-              // Correctly format the currency cell
-              expenseRow.getCell(2).numFmt = '#,##0.00 "MAD"';
-              totalMisc += amount;
-          });
-      }
-  });
-  // Add total for misc expenses
-  const totalExpensesRow = wsExpenses.addRow(['Total', totalMisc, '']);
-  totalExpensesRow.getCell(1).font = { bold: true };
-  const totalExpensesCell = totalExpensesRow.getCell(2);
-  totalExpensesCell.font = { bold: true };
-  totalExpensesCell.numFmt = '#,##0.00 "MAD"';
+        return { totalMisc, miscCount, mileageCosts, dailyAllowances, grandTotal };
+    };
 
-  autoWidthColumns(wsExpenses);
-  // --- END: Miscellaneous Expenses Sheet ---
+    const totals = calculateTotals();
 
+    // Create workbook and worksheet
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Rapport Complet');
+    let currentRow = 1;
 
- // --- START: Recap Sheet ---
- const calculateTotals = () => {
-  const dailyAllowances = new Map();
-  let miscCount = 0;
+    // Add logo
+    const imgId = wb.addImage({ base64: logo, extension: 'png' });
+    ws.addImage(imgId, { tl: { col: 0, row: 0 }, ext: { width: 120, height: 60 } });
 
-  trips.forEach(trip => {
-   if (Array.isArray(trip.depenses)) {
-    miscCount += trip.depenses.length;
-   }
+    // Add user name
+    ws.mergeCells('D1:E2');
+    ws.getCell('D1').value = `Nom et Prénom : ${fullName}`;
+    ws.getCell('D1').alignment = { horizontal: 'right', vertical: 'middle' };
+    ws.getCell('D1').font = { size: 12 };
 
-   const mr = userMissionRates.find(r => r.typeDeDeplacementId === trip.typeDeDeplacementId);
-   if (mr) {
-    const rate = parseFloat(mr.tarifParJour) || 0;
-    const name = travelTypes.find(t => t.id === trip.typeDeDeplacementId)?.nom || 'Inconnu';
-    if (!dailyAllowances.has(rate)) dailyAllowances.set(rate, { count: 0, total: 0, name });
-    const cur = dailyAllowances.get(rate);
-    cur.count++;
-    cur.total += rate;
-   }
-  });
+    currentRow = 4;
 
-  const mileageCosts = calculateDistanceCostsForExport(trips, userCarLoans);
+    // Add main title
+    ws.mergeCells(`A${currentRow}:E${currentRow}`);
+    ws.getCell(`A${currentRow}`).value = `Note de frais – ${label}`;
+    ws.getCell(`A${currentRow}`).font = { size: 16, bold: true };
+    ws.getCell(`A${currentRow}`).alignment = { horizontal: 'center' };
+    currentRow += 2;
 
-  let grand = totalMisc;
-  mileageCosts.forEach(v => grand += v.total);
-  dailyAllowances.forEach(v => grand += v.total);
+    // Section: DÉTAIL DES TRAJETS
+    ws.getCell(`A${currentRow}`).value = 'DÉTAIL DES TRAJETS';
+    ws.getCell(`A${currentRow}`).font = { size: 14, bold: true };
+    ws.getCell(`A${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+    currentRow += 1;
 
-  return { totalMisc, miscCount, mileageCosts, dailyAllowances, grand };
- };
+    const tripsHeaderRow = ws.getRow(currentRow);
+    tripsHeaderRow.values = ['Date', 'Chantier', 'Distance (Km)', 'Type de Déplacement'];
+    tripsHeaderRow.eachCell(cell => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+    currentRow += 1;
 
- const totals = calculateTotals();
-  
- const wsRecap = wb.addWorksheet('Récapitulatif');
+    trips.forEach(trip => {
+        const travelType = travelTypes.find(t => t.id === trip.typeDeDeplacementId)?.nom || 'N/A';
+        const tripRow = ws.getRow(currentRow);
+        tripRow.values = [
+            new Date(trip.date).toLocaleDateString('fr-FR'),
+            trip.chantier?.designation || 'N/A',
+            parseFloat(trip.distanceKm) || 0,
+            travelType,
+        ];
+        currentRow += 1;
+    });
+    currentRow += 2;
 
- // Header image
- const imgId = wb.addImage({ base64: logo, extension: 'png' });
- wsRecap.addImage(imgId, { tl: { col: 0, row: 0 }, ext: { width: 120, height: 60 } });
- wsRecap.mergeCells('D1:E2');
- wsRecap.getCell('D1').value = `Nom et Prénom : ${fullName}`;
- wsRecap.getCell('D1').alignment = { horizontal: 'right', vertical: 'middle' };
- wsRecap.getCell('D1').font = { size: 12 };
+    // Section: DÉPENSES DIVERSES
+    ws.getCell(`A${currentRow}`).value = 'DÉPENSES DIVERSES';
+    ws.getCell(`A${currentRow}`).font = { size: 14, bold: true };
+    ws.getCell(`A${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+    currentRow += 1;
 
- // Title
- wsRecap.mergeCells('A4:E4');
- wsRecap.getCell('A4').value = `Note de frais – ${label}`;
- wsRecap.getCell('A4').font = { size: 16, bold: true };
- wsRecap.getCell('A4').alignment = { horizontal: 'center' };
-  wsRecap.addRow([]); // Spacer
+    const expensesHeaderRow = ws.getRow(currentRow);
+    expensesHeaderRow.values = ['Date du Trajet', 'Type de Dépense', 'Montant (MAD)', 'Justificatif'];
+    expensesHeaderRow.eachCell(cell => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+    currentRow += 1;
 
- // Table header
- const headerRowRecap = wsRecap.addRow(['Désignation', 'Chantier', 'Quantité', 'Taux / J', 'Montant']);
-  headerRowRecap.eachCell(styleHeaderCell);
+    trips.forEach(trip => {
+        if (trip.depenses && trip.depenses.length > 0) {
+            trip.depenses.forEach(expense => {
+                const amount = parseFloat(expense.montant) || 0;
+                const typeDepense = expense.typeDepense?.nom || 'N/A';
+                const expenseRow = ws.getRow(currentRow);
+                expenseRow.values = [
+                    new Date(trip.date).toLocaleDateString('fr-FR'),
+                    typeDepense,
+                    amount,
+                    expense.cheminJustificatif ? 'Oui' : 'Non'
+                ];
+                expenseRow.getCell(3).numFmt = '#,##0.00 "MAD"';
+                currentRow += 1;
+            });
+        }
+    });
 
- // Misc expenses row
- const miscRow = wsRecap.addRow(['Feuille de depens', '', totals.miscCount, '-', totals.totalMisc]);
-  miscRow.getCell(5).numFmt = '#,##0.00 "MAD"';
-  miscRow.alignment = { horizontal: 'right' };
+    const totalExpensesRow = ws.getRow(currentRow);
+    totalExpensesRow.values = ['Total', '', totals.totalMisc, ''];
+    totalExpensesRow.getCell(1).font = { bold: true };
+    totalExpensesRow.getCell(3).font = { bold: true };
+    totalExpensesRow.getCell(3).numFmt = '#,##0.00 "MAD"';
+    currentRow += 3;
 
- // Daily allowances
- totals.dailyAllowances.forEach(({ count, total, name }, rate) => {
-  const allowanceRow = wsRecap.addRow([`Frais journaliers (${name})`, '', count, rate, total]);
-    allowanceRow.getCell(4).numFmt = '#,##0.00 "MAD"';
-    allowanceRow.getCell(5).numFmt = '#,##0.00 "MAD"';
-    allowanceRow.alignment = { horizontal: 'right' };
- });
+    // Section: RÉCAPITULATIF
+    ws.getCell(`A${currentRow}`).value = 'RÉCAPITULATIF';
+    ws.getCell(`A${currentRow}`).font = { size: 14, bold: true };
+    ws.getCell(`A${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+    currentRow += 1;
 
- // Mileage costs
- totals.mileageCosts.forEach(({ distance, total, rate, conditionType, threshold, rateAfter }, libelle) => {
-  let rateDisplay;
-  if (conditionType === "THRESHOLD" && threshold && rateAfter !== rate) {
-   rateDisplay = `${rate.toFixed(2)}/${rateAfter.toFixed(2)} (seuil: ${threshold}km)`;
-  } else {
-   rateDisplay = rate.toFixed(2);
-  }
-  const mileageRow = wsRecap.addRow([`Frais kilométrique (${libelle})`, '', `${distance.toFixed(2)} Km`, rateDisplay, total]);
-    mileageRow.getCell(5).numFmt = '#,##0.00 "MAD"';
-    mileageRow.alignment = { horizontal: 'right' };
- });
+    const summaryHeaderRow = ws.getRow(currentRow);
+    summaryHeaderRow.values = ['Désignation', 'Chantier', 'Quantité', 'Taux / J', 'Montant'];
+    summaryHeaderRow.eachCell(cell => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+    currentRow += 1;
 
- // Grand total
- const totalRowRecap = wsRecap.addRow(['Total Dépense', '', '', '', totals.grand]);
- wsRecap.mergeCells(`A${totalRowRecap.number}:D${totalRowRecap.number}`);
-  const totalLabelCell = wsRecap.getCell(`A${totalRowRecap.number}`);
-  totalLabelCell.font = { bold: true, size: 12 };
-  totalLabelCell.alignment = { horizontal: 'right' };
+    const miscSummaryRow = ws.getRow(currentRow);
+    miscSummaryRow.values = ['Feuille de depens', '', totals.miscCount, '-', totals.totalMisc];
+    miscSummaryRow.getCell(5).numFmt = '#,##0.00 "MAD"';
+    currentRow += 1;
 
- const grandTotalCell = wsRecap.getCell(`E${totalRowRecap.number}`);
- grandTotalCell.numFmt = '#,##0.00 "MAD"';
- grandTotalCell.font = { bold: true, size: 12 };
- grandTotalCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } }; // Light grey
- grandTotalCell.alignment = { horizontal: 'right' };
+    totals.dailyAllowances.forEach(({ count, total, name }, rate) => {
+        const allowanceRow = ws.getRow(currentRow);
+        allowanceRow.values = [`Frais journaliers (${name})`, '', count, rate, total];
+        allowanceRow.getCell(4).numFmt = '#,##0.00 "MAD"';
+        allowanceRow.getCell(5).numFmt = '#,##0.00 "MAD"';
+        currentRow += 1;
+    });
 
- autoWidthColumns(wsRecap);
-  // --- END: Recap Sheet ---
+    totals.mileageCosts.forEach(({ distance, total, rate, conditionType, threshold, rateAfter }, libelle) => {
+        let rateDisplay = conditionType === "THRESHOLD" && threshold && rateAfter !== rate
+            ? `${rate.toFixed(2)}/${rateAfter.toFixed(2)} (seuil: ${threshold}km)`
+            : rate.toFixed(2);
+        const mileageRow = ws.getRow(currentRow);
+        mileageRow.values = [`Frais kilométrique (${libelle})`, '', `${distance.toFixed(2)} Km`, rateDisplay, total];
+        mileageRow.getCell(5).numFmt = '#,##0.00 "MAD"';
+        currentRow += 1;
+    });
 
- // Write & download
- const buf = await wb.xlsx.writeBuffer();
- saveAs(new Blob([buf]), `Note_de_frais_${fullName}_${year}_${month + 1}.xlsx`);
+    const totalRow = ws.getRow(currentRow);
+    totalRow.values = ['Total Dépense', '', '', '', totals.grandTotal];
+    ws.mergeCells(`A${currentRow}:D${currentRow}`);
+    ws.getCell(`A${currentRow}`).font = { bold: true, size: 12 };
+    ws.getCell(`A${currentRow}`).alignment = { horizontal: 'right' };
+    ws.getCell(`E${currentRow}`).numFmt = '#,##0.00 "MAD"';
+    ws.getCell(`E${currentRow}`).font = { bold: true, size: 12 };
+    ws.getCell(`E${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
+    ws.getCell(`E${currentRow}`).alignment = { horizontal: 'right' };
+
+    // Auto-width columns
+    autoWidthColumns(ws);
+
+    // Write to buffer and save
+    const buf = await wb.xlsx.writeBuffer();
+    saveAs(new Blob([buf]), `Note_de_frais_${fullName}_${year}_${month + 1}.xlsx`);
 };
 
 /**

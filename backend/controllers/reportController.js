@@ -3,7 +3,7 @@ const os = require('os');
 const { v4: uuidv4 } = require('uuid');
 const {
   User, Deplacement, Depense, Role,
-  TauxMissionRole, VehiculeRateRule, TypeDeDeplacement,TypeDepense, Chantier
+  TauxMissionRole, VehiculeRateRule, TypeDeDeplacement, TypeDepense, Chantier
 } = require('../models');
 const ExcelJS   = require('exceljs');
 const pdfMake   = require('pdfmake/build/pdfmake');
@@ -36,22 +36,23 @@ async function getDashboardData(userId, year, month) {
   }
 
   const trips = await Deplacement.findAll({
-  where: { userId, date: { [Op.between]: [start, end] } },
-  include: [
-    { 
-      model: Depense, 
-      as: 'depenses',
-      include: [
-        {
-          model: TypeDepense,
-          as: 'typeDepense' // This should match the association alias you defined in your models
-        }
-      ]
-    },
-    { model: VehiculeRateRule, as: 'vehiculeRateRule' },
-    { model: Chantier, as: 'chantier' }
-  ]
-});
+    where: { userId, date: { [Op.between]: [start, end] } },
+    include: [
+      { 
+        model: Depense, 
+        as: 'depenses',
+        include: [
+          {
+            model: TypeDepense,
+            as: 'typeDepense'
+          }
+        ]
+      },
+      { model: VehiculeRateRule, as: 'vehiculeRateRule' },
+      { model: Chantier, as: 'chantier' }
+    ],
+    order: [['date', 'ASC']] // Added to order trips by date
+  });
 
   const roleMissionRates = await TauxMissionRole.findAll({ 
     where: { roleId: userInfo.roleId } 
@@ -605,7 +606,11 @@ exports.generateExcelReport = async (userId, year, month) => {
       const travelType = travelTypes.find(t => t.id === trip.typeDeDeplacementId)?.nom || 'N/A';
       const tripRow = ws.getRow(currentRow);
       tripRow.values = [
-        new Date(trip.date).toLocaleDateString('fr-FR'),
+        new Date(trip.date).toLocaleDateString('fr-FR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        }),
         trip.chantier?.designation || 'N/A',
         parseFloat(trip.distanceKm) || 0,
         travelType,
@@ -648,7 +653,6 @@ exports.generateExcelReport = async (userId, year, month) => {
       if (trip.depenses && trip.depenses.length > 0) {
         trip.depenses.forEach(expense => {
           const amount = parseFloat(expense.montant) || 0;
-          // Try multiple ways to get the type name
           let typeDepense = 'N/A';
           if (expense.typeDepense && expense.typeDepense.nom) {
             typeDepense = expense.typeDepense.nom;
@@ -661,12 +665,15 @@ exports.generateExcelReport = async (userId, year, month) => {
           
           const expenseRow = ws.getRow(currentRow);
           expenseRow.values = [
-            new Date(trip.date).toLocaleDateString('fr-FR'),
+            new Date(trip.date).toLocaleDateString('fr-FR', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric'
+            }),
             typeDepense,
             amount,
             expense.cheminJustificatif ? 'Oui' : 'Non'
           ];
-          // Format the currency cell
           expenseRow.getCell(3).numFmt = '#,##0.00 "MAD"';
           currentRow += 1;
         });
@@ -987,6 +994,7 @@ exports.generatePDFReport = async (userId, year, month) => {
     throw err;
   }
 };
+
 /**
  * Express handler: stream Excel as attachment
  */
