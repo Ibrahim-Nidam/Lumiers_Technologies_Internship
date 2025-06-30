@@ -5,8 +5,6 @@ import { useNavigate } from "react-router-dom";
 import apiClient from "../../utils/axiosConfig";
 import { saveAs } from "file-saver";
 import { colors } from "../../colors";
-import BackupButton from '../../components/BackupButton';
-import {getStoredUser} from "../../utils/storageUtils";
 
 
 export default function Consult() {
@@ -226,13 +224,10 @@ export default function Consult() {
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name && user.name.toLowerCase().includes(searchQuery.toLowerCase());
     const hasData = userHasData(user.id);
-    const result = matchesSearch && (!showOnlyWithData || hasData);
-    
-    // Debug individual user filtering
-    // if (!result && user.name) {
-    //   console.log(`User ${user.name} filtered out: matchesSearch=${matchesSearch}, hasData=${hasData}, showOnlyWithData=${showOnlyWithData}`);
-    // }
-    
+    const isNotManagerOrAgent = user.role && 
+      user.role.toLowerCase() !== "manager" && 
+      user.role.toLowerCase() !== "agent";
+    const result = matchesSearch && (!showOnlyWithData || hasData) && isNotManagerOrAgent;
     return result;
   });
 
@@ -316,9 +311,6 @@ export default function Consult() {
                 >
                   <ChevronRight className="w-6 h-6" />
                 </button>
-              </div>
-              <div>
-                <BackupButton user={getStoredUser()} />
               </div>
               <div className="flex flex-col sm:flex-row items-center gap-3">
                 <button 

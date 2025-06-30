@@ -1,4 +1,6 @@
 "use client"
+import BackupButton from '../../components/BackupButton';
+import { getStoredUser } from "../../utils/storageUtils";
 
 /**
  * Navigation component for managing and displaying different tabs in the manager dashboard.
@@ -10,7 +12,6 @@
  * @param {Function} props.setActiveTab - Function to update the active tab state.
  * @returns {JSX.Element} The rendered navigation component.
  */
-
 export default function Navigation({ activeTab, setActiveTab }) {
   const tabs = [
     { id: "accounts", label: "Comptes", icon: "👥" },
@@ -23,8 +24,7 @@ export default function Navigation({ activeTab, setActiveTab }) {
     // { id: "mission", label: "Missions", icon: "🎯" },
     // { id: "carloan", label: "Véhicules", icon: "🚗" },
     { id: "manager", label: "Consulter", icon: "🗂️" },
-];
-
+  ];
 
   return (
     <div className="bg-white/80 backdrop-blur-sm rounded shadow-sm border border-gray-100 p-2">
@@ -43,7 +43,8 @@ export default function Navigation({ activeTab, setActiveTab }) {
             <span className="hidden sm:inline">{tab.label}</span>
           </button>
         ))}
+        <BackupButton user={getStoredUser()} />
       </nav>
     </div>
-  )
+  );
 }

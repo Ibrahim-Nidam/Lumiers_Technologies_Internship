@@ -66,7 +66,7 @@ export default function TauxDeplacement() {
     }
   };
 
-  const filteredRoles = roles.filter(role => role.nom?.toLowerCase() !== "agent");
+  const filteredRoles = roles.filter(role => role.nom?.toLowerCase() !== "agent" && role.nom?.toLowerCase() !== "manager");
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
