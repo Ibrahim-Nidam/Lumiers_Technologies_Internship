@@ -5,6 +5,9 @@ import { useNavigate } from "react-router-dom";
 import apiClient from "../../utils/axiosConfig";
 import { saveAs } from "file-saver";
 import { colors } from "../../colors";
+import BackupButton from '../../components/BackupButton';
+import {getStoredUser} from "../../utils/storageUtils";
+
 
 export default function Consult() {
   const today = new Date();
@@ -313,6 +316,9 @@ export default function Consult() {
                 >
                   <ChevronRight className="w-6 h-6" />
                 </button>
+              </div>
+              <div>
+                <BackupButton user={getStoredUser()} />
               </div>
               <div className="flex flex-col sm:flex-row items-center gap-3">
                 <button 
