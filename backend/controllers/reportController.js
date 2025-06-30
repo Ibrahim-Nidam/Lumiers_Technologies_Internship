@@ -3,7 +3,7 @@ const os = require('os');
 const { v4: uuidv4 } = require('uuid');
 const {
   User, Deplacement, Depense, Role,
-  TauxMissionRole, VehiculeRateRule, TypeDeDeplacement, Chantier
+  TauxMissionRole, VehiculeRateRule, TypeDeDeplacement,TypeDepense, Chantier
 } = require('../models');
 const ExcelJS   = require('exceljs');
 const pdfMake   = require('pdfmake/build/pdfmake');
@@ -36,13 +36,22 @@ async function getDashboardData(userId, year, month) {
   }
 
   const trips = await Deplacement.findAll({
-    where: { userId, date: { [Op.between]: [start, end] } },
-    include: [
-      { model: Depense, as: 'depenses' },
-      { model: VehiculeRateRule, as: 'vehiculeRateRule' },
-      { model: Chantier, as: 'chantier' }
-    ]
-  });
+  where: { userId, date: { [Op.between]: [start, end] } },
+  include: [
+    { 
+      model: Depense, 
+      as: 'depenses',
+      include: [
+        {
+          model: TypeDepense,
+          as: 'typeDepense' // This should match the association alias you defined in your models
+        }
+      ]
+    },
+    { model: VehiculeRateRule, as: 'vehiculeRateRule' },
+    { model: Chantier, as: 'chantier' }
+  ]
+});
 
   const roleMissionRates = await TauxMissionRole.findAll({ 
     where: { roleId: userInfo.roleId } 
@@ -135,7 +144,17 @@ exports.generateMonthlyRecap = async (req, res) => {
     // Get all users with their roles
     const users = await User.findAll({
       where: { estActif: true },
-      include: [{ model: Role, as: 'role' }],
+      include: [
+        {
+          model: Role,
+          as: 'role',
+          where: {
+            nom: {
+              [Op.notIn]: ['agent', 'manager']
+            }
+          }
+        }
+      ],
       order: [['nomComplete', 'ASC']]
     });
 
@@ -335,7 +354,15 @@ exports.getUserAggregates = async (req, res) => {
     const endDate = new Date(year, Number(month) + 1, 0);
 
     const users = await User.findAll({
-      include: [{ model: Role, as: 'role' }]
+      include: [
+        {
+          model: Role,
+          as: 'role',
+          where: {
+            nom: { [Op.notIn]: ['agent', 'manager'] }
+          }
+        }
+      ]
     });
 
     const summaries = await Promise.all(
@@ -522,18 +549,42 @@ exports.generateExcelReport = async (userId, year, month) => {
 
     const totals = calculateTotals();
 
-    // Build Excel workbook
+    // Build Excel workbook with single sheet
     const wb = new ExcelJS.Workbook();
-    
-    // --- START: Detailed Trips Sheet ---
-    const wsTrips = wb.addWorksheet('Détail des Trajets');
-    wsTrips.addRow([`Détail des Trajets pour ${fullName} - ${label}`]).font = { size: 16, bold: true };
-    wsTrips.mergeCells('A1:D1');
-    wsTrips.getCell('A1').alignment = { horizontal: 'center' };
-    wsTrips.addRow([]); // Spacer
+    const ws = wb.addWorksheet('Rapport Complet');
 
-    const tripsHeader = wsTrips.addRow(['Date', 'Chantier', 'Distance (Km)', 'Type de Déplacement']);
-    tripsHeader.eachCell(cell => {
+    let currentRow = 1;
+
+    // --- Header with Logo ---
+    const imgId = wb.addImage({ base64: logo, extension: 'png' });
+    ws.addImage(imgId, { tl: { col: 0, row: 0 }, ext: { width: 120, height: 60 } });
+    ws.mergeCells('D1:E2');
+    ws.getCell('D1').value = `Nom et Prénom : ${fullName}`;
+    ws.getCell('D1').alignment = { horizontal: 'right', vertical: 'middle' };
+    ws.getCell('D1').font = { size: 12 };
+
+    currentRow = 4;
+
+    // --- Main Title ---
+    ws.mergeCells(`A${currentRow}:E${currentRow}`);
+    ws.getCell(`A${currentRow}`).value = `Note de frais – ${label}`;
+    ws.getCell(`A${currentRow}`).font = { size: 16, bold: true };
+    ws.getCell(`A${currentRow}`).alignment = { horizontal: 'center' };
+    currentRow += 2; // Add spacer
+
+    // --- SECTION 1: Detailed Trips ---
+    ws.getCell(`A${currentRow}`).value = 'DÉTAIL DES TRAJETS';
+    ws.getCell(`A${currentRow}`).font = { size: 14, bold: true };
+    ws.getCell(`A${currentRow}`).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+    currentRow += 1;
+
+    const tripsHeaderRow = ws.getRow(currentRow);
+    tripsHeaderRow.values = ['Date', 'Chantier', 'Distance (Km)', 'Type de Déplacement'];
+    tripsHeaderRow.eachCell(cell => {
       cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
       cell.fill = {
         type: 'pattern',
@@ -548,39 +599,35 @@ exports.generateExcelReport = async (userId, year, month) => {
       };
       cell.alignment = { vertical: 'middle', horizontal: 'center' };
     });
+    currentRow += 1;
 
     trips.forEach(trip => {
       const travelType = travelTypes.find(t => t.id === trip.typeDeDeplacementId)?.nom || 'N/A';
-      wsTrips.addRow([
+      const tripRow = ws.getRow(currentRow);
+      tripRow.values = [
         new Date(trip.date).toLocaleDateString('fr-FR'),
         trip.chantier?.designation || 'N/A',
         parseFloat(trip.distanceKm) || 0,
         travelType,
-      ]);
+      ];
+      currentRow += 1;
     });
 
-    // Auto-width columns for trips sheet
-    wsTrips.columns.forEach(column => {
-      let maxTextLength = 0;
-      column.eachCell({ includeEmpty: true }, cell => {
-        const textLength = (cell.value || '').toString().length;
-        if (textLength > maxTextLength) {
-          maxTextLength = textLength;
-        }
-      });
-      column.width = maxTextLength < 10 ? 12 : maxTextLength + 4;
-    });
-    // --- END: Detailed Trips Sheet ---
+    currentRow += 2; // Add spacing
 
-    // --- START: Miscellaneous Expenses Sheet ---
-    const wsExpenses = wb.addWorksheet('Dépenses Diverses');
-    wsExpenses.addRow([`Dépenses Diverses pour ${fullName} - ${label}`]).font = { size: 16, bold: true };
-    wsExpenses.mergeCells('A1:C1');
-    wsExpenses.getCell('A1').alignment = { horizontal: 'center' };
-    wsExpenses.addRow([]); // Spacer
+    // --- SECTION 2: Miscellaneous Expenses ---
+    ws.getCell(`A${currentRow}`).value = 'DÉPENSES DIVERSES';
+    ws.getCell(`A${currentRow}`).font = { size: 14, bold: true };
+    ws.getCell(`A${currentRow}`).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+    currentRow += 1;
 
-    const expensesHeader = wsExpenses.addRow(['Date du Trajet', 'Montant (MAD)', 'Justificatif']);
-    expensesHeader.eachCell(cell => {
+    const expensesHeaderRow = ws.getRow(currentRow);
+    expensesHeaderRow.values = ['Date du Trajet', 'Type de Dépense', 'Montant (MAD)', 'Justificatif'];
+    expensesHeaderRow.eachCell(cell => {
       cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
       cell.fill = {
         type: 'pattern',
@@ -595,63 +642,60 @@ exports.generateExcelReport = async (userId, year, month) => {
       };
       cell.alignment = { vertical: 'middle', horizontal: 'center' };
     });
+    currentRow += 1;
     
     trips.forEach(trip => {
       if (trip.depenses && trip.depenses.length > 0) {
         trip.depenses.forEach(expense => {
           const amount = parseFloat(expense.montant) || 0;
-          const expenseRow = wsExpenses.addRow([
+          // Try multiple ways to get the type name
+          let typeDepense = 'N/A';
+          if (expense.typeDepense && expense.typeDepense.nom) {
+            typeDepense = expense.typeDepense.nom;
+          } else if (expense.TypeDepense && expense.TypeDepense.nom) {
+            typeDepense = expense.TypeDepense.nom;
+          } else if (expense.type_depense && expense.type_depense.nom) {
+            typeDepense = expense.type_depense.nom;
+          }
+          console.log('Expense object:', JSON.stringify(expense, null, 2)); // Debug log
+          
+          const expenseRow = ws.getRow(currentRow);
+          expenseRow.values = [
             new Date(trip.date).toLocaleDateString('fr-FR'),
+            typeDepense,
             amount,
             expense.cheminJustificatif ? 'Oui' : 'Non'
-          ]);
+          ];
           // Format the currency cell
-          expenseRow.getCell(2).numFmt = '#,##0.00 "MAD"';
+          expenseRow.getCell(3).numFmt = '#,##0.00 "MAD"';
+          currentRow += 1;
         });
       }
     });
 
     // Add total for misc expenses
-    const totalExpensesRow = wsExpenses.addRow(['Total', totals.totalMisc, '']);
+    const totalExpensesRow = ws.getRow(currentRow);
+    totalExpensesRow.values = ['Total', '', totals.totalMisc, ''];
     totalExpensesRow.getCell(1).font = { bold: true };
-    const totalExpensesCell = totalExpensesRow.getCell(2);
+    const totalExpensesCell = totalExpensesRow.getCell(3);
     totalExpensesCell.font = { bold: true };
     totalExpensesCell.numFmt = '#,##0.00 "MAD"';
+    currentRow += 3; // Add spacing
 
-    // Auto-width columns for expenses sheet
-    wsExpenses.columns.forEach(column => {
-      let maxTextLength = 0;
-      column.eachCell({ includeEmpty: true }, cell => {
-        const textLength = (cell.value || '').toString().length;
-        if (textLength > maxTextLength) {
-          maxTextLength = textLength;
-        }
-      });
-      column.width = maxTextLength < 10 ? 12 : maxTextLength + 4;
-    });
-    // --- END: Miscellaneous Expenses Sheet ---
+    // --- SECTION 3: Récapitulatif (Summary) ---
+    ws.getCell(`A${currentRow}`).value = 'RÉCAPITULATIF';
+    ws.getCell(`A${currentRow}`).font = { size: 14, bold: true };
+    ws.getCell(`A${currentRow}`).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+    currentRow += 1;
 
-    // --- START: Recap Sheet ---
-    const wsRecap = wb.addWorksheet('Récapitulatif');
-
-    // Header image
-    const imgId = wb.addImage({ base64: logo, extension: 'png' });
-    wsRecap.addImage(imgId, { tl: { col: 0, row: 0 }, ext: { width: 120, height: 60 } });
-    wsRecap.mergeCells('D1:E2');
-    wsRecap.getCell('D1').value = `Nom et Prénom : ${fullName}`;
-    wsRecap.getCell('D1').alignment = { horizontal: 'right', vertical: 'middle' };
-    wsRecap.getCell('D1').font = { size: 12 };
-
-    // Title
-    wsRecap.mergeCells('A4:E4');
-    wsRecap.getCell('A4').value = `Note de frais – ${label}`;
-    wsRecap.getCell('A4').font = { size: 16, bold: true };
-    wsRecap.getCell('A4').alignment = { horizontal: 'center' };
-    wsRecap.addRow([]); // Spacer
-
-    // Table header
-    const headerRowRecap = wsRecap.addRow(['Désignation', 'Chantier', 'Quantité', 'Taux / J', 'Montant']);
-    headerRowRecap.eachCell(cell => {
+    // Recap table header
+    const summaryHeaderRow = ws.getRow(currentRow);
+    summaryHeaderRow.values = ['Désignation', 'Chantier', 'Quantité', 'Taux / J', 'Montant'];
+    summaryHeaderRow.eachCell(cell => {
       cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
       cell.fill = {
         type: 'pattern',
@@ -666,21 +710,24 @@ exports.generateExcelReport = async (userId, year, month) => {
       };
       cell.alignment = { vertical: 'middle', horizontal: 'center' };
     });
+    currentRow += 1;
 
     // Misc expenses row
-    const miscRow = wsRecap.addRow(['Feuille de depens', '', totals.miscCount, '-', totals.totalMisc]);
-    miscRow.getCell(5).numFmt = '#,##0.00 "MAD"';
-    miscRow.alignment = { horizontal: 'right' };
+    const miscSummaryRow = ws.getRow(currentRow);
+    miscSummaryRow.values = ['Feuille de depens', '', totals.miscCount, '-', totals.totalMisc];
+    miscSummaryRow.getCell(5).numFmt = '#,##0.00 "MAD"';
+    currentRow += 1;
 
     // Daily allowances
     totals.dailyAllowances.forEach(({ count, total, name }, rate) => {
-      const allowanceRow = wsRecap.addRow([`Frais journaliers (${name})`, '', count, rate, total]);
+      const allowanceRow = ws.getRow(currentRow);
+      allowanceRow.values = [`Frais journaliers (${name})`, '', count, rate, total];
       allowanceRow.getCell(4).numFmt = '#,##0.00 "MAD"';
       allowanceRow.getCell(5).numFmt = '#,##0.00 "MAD"';
-      allowanceRow.alignment = { horizontal: 'right' };
+      currentRow += 1;
     });
 
-    // Mileage costs with updated logic
+    // Mileage costs
     totals.mileageCosts.forEach(({ distance, total, rate, conditionType, threshold, rateAfter }, libelle) => {
       let rateDisplay;
       if (conditionType === "THRESHOLD" && threshold && rateAfter !== rate) {
@@ -688,26 +735,28 @@ exports.generateExcelReport = async (userId, year, month) => {
       } else {
         rateDisplay = rate.toFixed(2);
       }
-      const mileageRow = wsRecap.addRow([`Frais kilométrique (${libelle})`, '', `${distance.toFixed(2)} Km`, rateDisplay, total]);
+      const mileageRow = ws.getRow(currentRow);
+      mileageRow.values = [`Frais kilométrique (${libelle})`, '', `${distance.toFixed(2)} Km`, rateDisplay, total];
       mileageRow.getCell(5).numFmt = '#,##0.00 "MAD"';
-      mileageRow.alignment = { horizontal: 'right' };
+      currentRow += 1;
     });
 
     // Grand total
-    const totalRowRecap = wsRecap.addRow(['Total Dépense', '', '', '', totals.grandTotal]);
-    wsRecap.mergeCells(`A${totalRowRecap.number}:D${totalRowRecap.number}`);
-    const totalLabelCell = wsRecap.getCell(`A${totalRowRecap.number}`);
+    const totalRow = ws.getRow(currentRow);
+    totalRow.values = ['Total Dépense', '', '', '', totals.grandTotal];
+    ws.mergeCells(`A${currentRow}:D${currentRow}`);
+    const totalLabelCell = ws.getCell(`A${currentRow}`);
     totalLabelCell.font = { bold: true, size: 12 };
     totalLabelCell.alignment = { horizontal: 'right' };
 
-    const grandTotalCell = wsRecap.getCell(`E${totalRowRecap.number}`);
+    const grandTotalCell = ws.getCell(`E${currentRow}`);
     grandTotalCell.numFmt = '#,##0.00 "MAD"';
     grandTotalCell.font = { bold: true, size: 12 };
-    grandTotalCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } }; // Light grey
+    grandTotalCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
     grandTotalCell.alignment = { horizontal: 'right' };
 
-    // Auto-width columns for recap sheet
-    wsRecap.columns.forEach(column => {
+    // Auto-width columns
+    ws.columns.forEach(column => {
       let maxTextLength = 0;
       column.eachCell({ includeEmpty: true }, cell => {
         const textLength = (cell.value || '').toString().length;
@@ -717,7 +766,6 @@ exports.generateExcelReport = async (userId, year, month) => {
       });
       column.width = maxTextLength < 10 ? 12 : maxTextLength + 4;
     });
-    // --- END: Recap Sheet ---
 
     // Write to tmp and return path
     const tmpDir = path.join(os.tmpdir(), 'myapp-reports');
