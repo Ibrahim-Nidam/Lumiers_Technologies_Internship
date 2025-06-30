@@ -1,4 +1,50 @@
 const { User, Role } = require("../models");
+const bcrypt = require("bcryptjs");
+
+// Create user controller for POST /api/users
+exports.createUser = async (req, res) => {
+  const { name, email, password, cnie, roleId, hasCar, isActive } = req.body;
+
+  // Check that all fields are present and hasCar/isActive are booleans
+  if (!name || !email || !password || !cnie || !roleId || hasCar === undefined || isActive === undefined) {
+    return res.status(400).json({ error: 'All fields are required.' });
+  }
+
+  try {
+    // Check CNIE uniqueness
+    const existingCnie = await User.findOne({ where: { cartNational: cnie } });
+    if (existingCnie) return res.status(400).json({ error: 'CNIE already used.' });
+
+    // Check email uniqueness
+    const existingUser = await User.findOne({ where: { courriel: email } });
+    if (existingUser) return res.status(400).json({ error: 'Email already used.' });
+
+    // Validate role
+    const role = await Role.findByPk(roleId);
+    if (!role) return res.status(400).json({ error: 'Invalid role.' });
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create new user with provided role and fields
+    const newUser = await User.create({
+      nomComplete: name,
+      courriel: email,
+      motDePasseHache: hashedPassword,
+      roleId: role.id,
+      cartNational: cnie.toUpperCase(),
+      possedeVoiturePersonnelle: hasCar,
+      estActif: isActive,
+      dateCreation: new Date(),
+      dateModification: new Date(),
+    });
+
+    res.status(201).json({ message: "User created successfully.", userId: newUser.id });
+  } catch (err) {
+    console.error("Error creating user:", err);
+    res.status(500).json({ error: "Server error." });
+  }
+};
 
 // GET Non-admin Users
 exports.getNonAdminUsers = async (req, res) => {
