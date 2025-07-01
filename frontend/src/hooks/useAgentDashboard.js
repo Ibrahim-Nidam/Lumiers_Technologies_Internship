@@ -441,16 +441,21 @@ export const useAgentDashboard = (currentUserId) => {
   };
 
   const getTripsForDay = (day) => {
-    const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
-    return trips.filter(trip => trip.date === dateStr);
-  };
+  const targetDate = new Date(currentYear, currentMonth, day);
+  return trips.filter(trip => {
+    const tripDate = new Date(trip.date);
+    return tripDate.getFullYear() === targetDate.getFullYear() &&
+           tripDate.getMonth() === targetDate.getMonth() &&
+           tripDate.getDate() === targetDate.getDate();
+  });
+};
 
   const getMonthlyTrips = () => {
     const monthStart = new Date(currentYear, currentMonth, 1);
-    const monthEnd = new Date(currentYear, currentMonth + 1, 0);
+    const monthEnd = new Date(currentYear, currentMonth + 1, 1);
     return trips.filter(trip => {
       const tripDate = new Date(trip.date);
-      return tripDate >= monthStart && tripDate <= monthEnd;
+      return tripDate >= monthStart && tripDate < monthEnd;
     });
   };
 
@@ -534,6 +539,31 @@ export const useAgentDashboard = (currentUserId) => {
     modal.onclick = (e) => { if (e.target === modal) document.body.removeChild(modal); };
   };
 
+  const isMonthEditable = () => {
+  const today = new Date();
+  const currentYearToday = today.getFullYear();
+  const currentMonthToday = today.getMonth(); // 0-based
+
+  // Check if the selected month is the current month
+  if (currentYear === currentYearToday && currentMonth === currentMonthToday) {
+    return true;
+  }
+
+  // Check if the selected month is the previous month
+  let prevMonth = currentMonthToday - 1;
+  let prevYear = currentYearToday;
+  if (prevMonth < 0) { // Handle year transition (e.g., January -> December of previous year)
+    prevMonth = 11;
+    prevYear -= 1;
+  }
+  console.log(`Previous: Year: ${prevYear}, Month: ${prevMonth}`);
+  if (currentYear === prevYear && currentMonth === prevMonth) {
+    return true;
+  }
+
+  return false;
+};
+
   return {
     trips, travelTypes, expenseTypes, userMissionRates, userCarLoans, currentDate, expandedDays, showCodeChantier,
     showYearPicker, showAddExpenseType, currentYear, currentMonth, isUpdating, loadingStates, chantiers,
@@ -541,6 +571,6 @@ export const useAgentDashboard = (currentUserId) => {
     toggleDayExpansion, sendEmailWithReport, showEmailFormatSelection, addTrip, updateTripField, updateTripLocal,
     deleteTrip, addExpense, addExpenseType, updateExpenseField, updateExpenseLocal, handleExpenseFileUpload,
     clearExpenseFile, deleteExpense, getTotalExpenses, getTripTotal, getTripsForDay, getMonthlyTrips, getMonthlyTotal,
-    getMonthlyDistanceTotal, getMonthlyExpensesCount, getDaysInMonth, exportMonthlyPDF, exportMonthlyExcel, isDataReady
+    getMonthlyDistanceTotal, getMonthlyExpensesCount, getDaysInMonth, exportMonthlyPDF, exportMonthlyExcel, isDataReady, isMonthEditable
   };
 };

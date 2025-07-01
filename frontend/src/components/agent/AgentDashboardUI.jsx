@@ -59,6 +59,7 @@ const MultiDayTripCreator = ({ currentYear, currentMonth, daysWithTrips, chantie
           </label>
           <select
             value={selectedChantierId || ""}
+            
             onChange={(e) => setSelectedChantierId(parseInt(e.target.value))}
             className="w-full px-2 py-1.5 sm:px-3 sm:py-2 border rounded text-xs sm:text-sm"
             style={{ borderColor: colors.secondary }}
@@ -184,6 +185,7 @@ const AgentDashboardUI = ({
   userCarLoans,
   chantiers,
   // allUsers,
+  isMonthEditable,
 
   // State setters
   setShowYearPicker,
@@ -234,7 +236,8 @@ const AgentDashboardUI = ({
     "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
     "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
   ];
-
+  // console.log('ismonthEditable UI', isMonthEditable());
+  // isMonthEditable();
   const handleAddExpenseType = (tripId) => {
     const typeName = newExpenseTypeName[tripId];
     if (typeName && typeName.trim()) {
@@ -484,7 +487,7 @@ const AgentDashboardUI = ({
                     addTrip(dateStr);
                   }
                 }}
-                disabled={hasTrips || isUpdating}
+                disabled={!isMonthEditable() ||hasTrips || isUpdating}
                 className="p-1.5 sm:p-2 rounded-lg transition-colors hover:bg-gray-100 disabled:opacity-50"
                 style={{ color: colors.primary }}
                 title={hasTrips ? "Un déplacement existe déjà pour cette date" : "Ajouter un déplacement"}
@@ -542,6 +545,7 @@ const AgentDashboardUI = ({
                             updateTripLocal(trip.id, "chantierId", value);
                             updateTripField(trip.id, "chantierId", value);
                           }}
+                          disabled={!isMonthEditable()}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="">Sélectionner un chantier</option>
@@ -569,6 +573,7 @@ const AgentDashboardUI = ({
                                 updateTripLocal(trip.id, "vehiculeRateRuleId", value);
                                 updateTripField(trip.id, "vehiculeRateRuleId", value);
                               }}
+                              disabled={!isMonthEditable()}
                               className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
                               style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
                             >
@@ -592,6 +597,7 @@ const AgentDashboardUI = ({
                               type="number"
                               step="0.1"
                               value={trip.distanceKm ?? ""}
+                              disabled={!isMonthEditable()}
                               onChange={(e) => updateTripLocal(trip.id, "distanceKm", e.target.value)}
                               onBlur={(e) => updateTripField(trip.id, "distanceKm", e.target.value)}
                               className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm"
@@ -609,7 +615,7 @@ const AgentDashboardUI = ({
                             deleteTrip(trip.id);
                           }
                         }}
-                        disabled={isUpdating}
+                        disabled={isUpdating || !isMonthEditable()}
                         className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
                       >
                         <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -629,6 +635,7 @@ const AgentDashboardUI = ({
                             e.stopPropagation();
                             setShowAddExpenseType((prev) => ({ ...prev, [trip.id]: !prev[trip.id] }));
                           }}
+                          disabled={!isMonthEditable()}
                           className="flex items-center justify-center space-x-2 px-3 py-1.5 sm:py-2 text-xs sm:text-sm rounded-lg font-medium border hover:bg-gray-50 transition-colors w-full sm:w-auto"
                           style={{ borderColor: colors.secondary, color: colors.logo_text }}
                         >
@@ -642,7 +649,7 @@ const AgentDashboardUI = ({
                               addExpense(trip.id);
                             }
                           }}
-                          disabled={isUpdating}
+                          disabled={!isMonthEditable() || isUpdating}
                           className="flex items-center justify-center space-x-2 px-3 py-1.5 sm:py-2 text-xs sm:text-sm rounded-lg font-medium text-white hover:opacity-90 transition-opacity w-full sm:w-auto disabled:opacity-50"
                           style={{ backgroundColor: colors.primary }}
                         >
@@ -658,6 +665,7 @@ const AgentDashboardUI = ({
                           <input
                             type="text"
                             value={newExpenseTypeName[trip.id] || ""}
+                            disabled={!isMonthEditable()}
                             onChange={(e) => setNewExpenseTypeName((prev) => ({ ...prev, [trip.id]: e.target.value }))}
                             placeholder="Nom du nouveau type de dépense"
                             className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 text-sm"
@@ -724,6 +732,7 @@ const AgentDashboardUI = ({
                                   updateExpenseLocal(trip.id, expense.id, "typeDepenseId", value);
                                   updateExpenseField(trip.id, expense.id, "typeDepenseId", value);
                                 }}
+                                disabled={!isMonthEditable()}
                                 className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded focus:outline-none focus:ring-2 text-xs sm:text-sm"
                                 style={{ borderColor: colors.secondary, "--tw-ring-color": colors.primary }}
                               >
@@ -745,6 +754,7 @@ const AgentDashboardUI = ({
                                 type="number"
                                 step="0.01"
                                 value={expense.montant}
+                                disabled={!isMonthEditable()}
                                 onChange={(e) => updateExpenseLocal(trip.id, expense.id, "montant", e.target.value)}
                                 onBlur={(e) => updateExpenseField(trip.id, expense.id, "montant", e.target.value)}
                                 className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded focus:outline-none focus:ring-2 text-xs sm:text-sm"
@@ -770,6 +780,7 @@ const AgentDashboardUI = ({
                                         handleExpenseFileUpload(trip.id, expense.id, file);
                                       }
                                     }}
+                                    disabled={!isMonthEditable()}
                                     className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border rounded focus:outline-none focus:ring-2 text-xs file:mr-2 file:py-1 file:px-2 file:border-0 file:text-xs file:bg-gray-100 file:rounded file:cursor-pointer"
                                     style={{
                                       borderColor: colors.secondary,
@@ -785,6 +796,7 @@ const AgentDashboardUI = ({
                                     onClick={() => clearExpenseFile(trip.id, expense.id)}
                                     className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded transition-colors flex-shrink-0"
                                     title="Supprimer le fichier"
+                                    disabled={!isMonthEditable()}
                                   >
                                     <X className="w-3 h-3" />
                                   </button>
@@ -802,7 +814,7 @@ const AgentDashboardUI = ({
                                     deleteExpense(trip.id, expense.id);
                                   }
                                 }}
-                                disabled={isUpdating}
+                                disabled={isUpdating || !isMonthEditable()}
                                 className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
                               >
                                 <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -938,6 +950,7 @@ const AgentDashboardUI = ({
             </button>
             <button
               onClick={() => setShowMultiDayCreator(true)}
+              disabled={!isMonthEditable()}
               className="px-2 md:px-3 py-1 text-xs md:text-sm border rounded-lg hover:bg-gray-50 transition-colors"
               style={{ borderColor: colors.secondary, color: colors.logo_text }}
             >
