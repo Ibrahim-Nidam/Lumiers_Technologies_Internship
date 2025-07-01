@@ -6,8 +6,6 @@ exports.getAllRatesByUser = async (req, res) => {
     const userId = req.params.userId;
     const includeInactive = req.query.includeInactive === "true";
 
-    console.log("Fetching rates for user:", userId, "| includeInactive:", includeInactive);
-
     const whereClause = includeInactive
       ? { userId }                     // all rules
       : { userId, active: true };      // only active

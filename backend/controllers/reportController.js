@@ -61,23 +61,23 @@ function getTotalExpenses(depenses) {
     return depenses.reduce((sum, expense) => sum + (parseFloat(expense.montant) || 0), 0);
 }
 
-// NEW: Helper function to calculate kilometric cost based on vehicule rate rule
+/**
+ * FIXED: Helper function to calculate kilometric cost.
+ * This version only calculates costs for trips where a vehicle rate rule was explicitly selected.
+ */
 function calculateTotalKilometricCost(trips, userVehiculeRateRules) {
-    // Group trips by their selected vehicle rate rule
     const groupedByRate = {};
 
     for (const trip of trips) {
-        let ruleId = trip.vehiculeRateRuleId;
-
-        // If trip doesn't have a specific rule, use the first available user rule
-        if (!ruleId && userVehiculeRateRules && userVehiculeRateRules.length > 0) {
-            ruleId = userVehiculeRateRules[0].id;
+        // FIX: Only process trips that have a vehiculeRateRuleId.
+        // This prevents applying a rate when the user didn't choose one.
+        if (trip.vehiculeRateRuleId) {
+            const ruleId = trip.vehiculeRateRuleId;
+            if (!groupedByRate[ruleId]) {
+                groupedByRate[ruleId] = [];
+            }
+            groupedByRate[ruleId].push(trip);
         }
-
-        if (!ruleId) continue; // Skip trips without applicable rules
-
-        if (!groupedByRate[ruleId]) groupedByRate[ruleId] = [];
-        groupedByRate[ruleId].push(trip);
     }
 
     let totalDistanceCost = 0;
@@ -86,23 +86,19 @@ function calculateTotalKilometricCost(trips, userVehiculeRateRules) {
         const tripsForRule = groupedByRate[ruleId];
         const distanceSum = tripsForRule.reduce((sum, trip) => sum + (parseFloat(trip.distanceKm) || 0), 0);
 
-        // Find the applicable rule
+        // Find the applicable rule details
         let rule = null;
-        // First check if any trip has the rule loaded via include
-        for (const trip of tripsForRule) {
-            if (trip.vehiculeRateRuleId === parseInt(ruleId) && trip.vehiculeRateRule) {
-                rule = trip.vehiculeRateRule;
-                break;
-            }
-        }
-        // If not found, check user's rules
-        if (!rule && userVehiculeRateRules) {
+        const firstTripWithRule = tripsForRule.find(t => t.vehiculeRateRule);
+        if (firstTripWithRule) {
+            rule = firstTripWithRule.vehiculeRateRule;
+        } else {
+            // Fallback to the user's list of rules if not included in the trip object
             rule = userVehiculeRateRules.find(r => r.id === parseInt(ruleId));
         }
 
         if (!rule || distanceSum === 0) continue;
 
-        // Calculate cost based on rule type using total distance for this rule
+        // Calculate cost based on rule type using the total monthly distance for that rule
         if (rule.conditionType === "ALL") {
             totalDistanceCost += distanceSum * rule.rateBeforeThreshold;
         } else if (rule.conditionType === "THRESHOLD") {
@@ -335,93 +331,91 @@ exports.generateMonthlyRecap = async (req, res) => {
 };
 
 exports.getUserAggregates = async (req, res) => {
-  try {
-    const { year, month } = req.query;
-    if (!year || month === undefined) {
-      return res.status(400).json({ error: "Missing year or month" });
-    }
-
-    const startDate = new Date(year, month, 1);
-    const endDate = new Date(year, Number(month) + 1, 0);
-
-    const users = await User.findAll({
-      include: [
-        {
-          model: Role,
-          as: 'role',
-          where: {
-            nom: { [Op.notIn]: ['agent', 'manager'] }
-          }
+    try {
+        const { year, month } = req.query;
+        if (!year || month === undefined) {
+            return res.status(400).json({ error: "Missing year or month" });
         }
-      ]
-    });
 
-    const summaries = await Promise.all(
-      users.map(async (user) => {
-        const [deplacements, roleMissionRates, userVehiculeRateRules] = await Promise.all([
-          Deplacement.findAll({
-            where: {
-              userId: user.id,
-              date: { [Op.between]: [startDate, endDate] }
-            },
+        const startDate = new Date(year, month, 1);
+        const endDate = new Date(year, Number(month) + 1, 0);
+
+        const users = await User.findAll({
             include: [
-              { model: Depense, as: "depenses" },
-              { model: VehiculeRateRule, as: 'vehiculeRateRule' },
-              { model: Chantier, as: 'chantier' }
+                {
+                    model: Role,
+                    as: 'role',
+                    where: {
+                        nom: { [Op.notIn]: ['agent', 'manager'] }
+                    }
+                }
             ]
-          }),
-          TauxMissionRole.findAll({ where: { roleId: user.roleId } }),
-          VehiculeRateRule.findAll({ where: { userId: user.id, active: true } })
-        ]);
+        });
 
-        let totalDistance = 0;
-        let totalExpenses = 0;
-        let justified = 0;
-        let unjustified = 0;
+        const summaries = await Promise.all(
+            users.map(async (user) => {
+                const [deplacements, roleMissionRates, userVehiculeRateRules] = await Promise.all([
+                    Deplacement.findAll({
+                        where: {
+                            userId: user.id,
+                            date: { [Op.between]: [startDate, endDate] }
+                        },
+                        include: [
+                            { model: Depense, as: "depenses" },
+                            { model: VehiculeRateRule, as: 'vehiculeRateRule' },
+                            { model: Chantier, as: 'chantier' }
+                        ]
+                    }),
+                    TauxMissionRole.findAll({ where: { roleId: user.roleId } }),
+                    VehiculeRateRule.findAll({ where: { userId: user.id, active: true } })
+                ]);
 
-        // Calculate expenses and mission rates for each trip
-        for (const trip of deplacements) {
-          totalDistance += parseFloat(trip.distanceKm) || 0;
+                let totalDistance = 0;
+                let totalExpenses = 0;
+                let justified = 0;
+                let unjustified = 0;
 
-          const expensesTotal = getTotalExpenses(trip.depenses);
+                for (const trip of deplacements) {
+                    totalDistance += parseFloat(trip.distanceKm) || 0;
 
-          const travelTypeRate = roleMissionRates.find(
-            rate => rate.typeDeDeplacementId === trip.typeDeDeplacementId
-          );
-          const travelTypeAmount = travelTypeRate ? parseFloat(travelTypeRate.tarifParJour) || 0 : 0;
+                    const expensesTotal = getTotalExpenses(trip.depenses);
 
-          totalExpenses += expensesTotal + travelTypeAmount;
+                    const travelTypeRate = roleMissionRates.find(
+                        rate => rate.typeDeDeplacementId === trip.typeDeDeplacementId
+                    );
+                    const travelTypeAmount = travelTypeRate ? parseFloat(travelTypeRate.tarifParJour) || 0 : 0;
 
-          // Justification count
-          for (const expense of trip.depenses) {
-            const justificatif = expense.cheminJustificatif;
-            if (justificatif && justificatif.trim() !== "") {
-              justified++;
-            } else {
-              unjustified++;
-            }
-          }
-        }
+                    totalExpenses += expensesTotal + travelTypeAmount;
 
-        // Calculate total kilometric cost for all trips at once
-        const totalKilometricCost = calculateTotalKilometricCost(deplacements, userVehiculeRateRules);
-        totalExpenses += totalKilometricCost;
+                    for (const expense of trip.depenses) {
+                        const justificatif = expense.cheminJustificatif;
+                        if (justificatif && justificatif.trim() !== "") {
+                            justified++;
+                        } else {
+                            unjustified++;
+                        }
+                    }
+                }
+                
+                // Calculate total kilometric cost using the corrected function
+                const totalKilometricCost = calculateTotalKilometricCost(deplacements, userVehiculeRateRules);
+                totalExpenses += totalKilometricCost;
 
-        return {
-          userId: user.id,
-          totalDistance,
-          totalTripCost: totalExpenses,
-          justified,
-          unjustified
-        };
-      })
-    );
+                return {
+                    userId: user.id,
+                    totalDistance,
+                    totalTripCost: totalExpenses,
+                    justified,
+                    unjustified
+                };
+            })
+        );
 
-    res.json(summaries);
-  } catch (error) {
-    console.error("Error in getUserAggregates:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
+        res.json(summaries);
+    } catch (error) {
+        console.error("Error in getUserAggregates:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
 };
 
 /**

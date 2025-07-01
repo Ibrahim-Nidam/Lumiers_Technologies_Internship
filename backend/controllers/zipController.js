@@ -66,7 +66,6 @@ exports.generateZipForUser = async (req, res, next) => {
 
     // Get the correct uploads directory
     const uploadsPath = getUploadsPath();
-    console.log(`📁 Using uploads path: ${uploadsPath}`);
 
     for (const trip of trips) {
       for (const exp of trip.depenses) {
@@ -75,13 +74,11 @@ exports.generateZipForUser = async (req, res, next) => {
           const filename = path.basename(exp.cheminJustificatif);
           const fileOnDisk = path.join(uploadsPath, filename);
           
-          console.log(`🔍 Looking for file: ${fileOnDisk}`);
           
           if (await fs.pathExists(fileOnDisk)) {
             archive.file(fileOnDisk, {
               name: `justificatifs/${filename}`
             });
-            console.log(`✅ Added to ZIP: ${filename}`);
           } else {
             console.warn(`⚠️ Justificatif not found on disk: ${fileOnDisk}`);
           }

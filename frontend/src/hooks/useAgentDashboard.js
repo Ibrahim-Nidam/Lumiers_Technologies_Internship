@@ -556,7 +556,6 @@ export const useAgentDashboard = (currentUserId) => {
     prevMonth = 11;
     prevYear -= 1;
   }
-  console.log(`Previous: Year: ${prevYear}, Month: ${prevMonth}`);
   if (currentYear === prevYear && currentMonth === prevMonth) {
     return true;
   }
