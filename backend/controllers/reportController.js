@@ -2,133 +2,123 @@ const { Op } = require('sequelize');
 const os = require('os');
 const { v4: uuidv4 } = require('uuid');
 const {
-  User, Deplacement, Depense, Role,
-  TauxMissionRole, VehiculeRateRule, TypeDeDeplacement, TypeDepense, Chantier
+    User, Deplacement, Depense, Role,
+    TauxMissionRole, VehiculeRateRule, TypeDeDeplacement, TypeDepense, Chantier
 } = require('../models');
-const ExcelJS   = require('exceljs');
-const pdfMake   = require('pdfmake/build/pdfmake');
-const pdfFonts  = require('pdfmake/build/vfs_fonts');
-pdfMake.vfs     = pdfFonts;
-const fs        = require('fs-extra');
-const path      = require('path');
-const logo      = require('../utils/base64Logo');
+const ExcelJS = require('exceljs');
+const pdfMake = require('pdfmake/build/pdfmake');
+const pdfFonts = require('pdfmake/build/vfs_fonts');
+pdfMake.vfs = pdfFonts;
+const fs = require('fs-extra');
+const path = require('path');
+const logo = require('../utils/base64Logo');
 
 // Helper: format "Month Year" in French
 const getMonthLabel = (year, month) =>
-  new Date(year, month).toLocaleDateString('fr-FR', {
-    month: 'long', year: 'numeric'
-  });
+    new Date(year, month).toLocaleDateString('fr-FR', {
+        month: 'long',
+        year: 'numeric'
+    });
 
 // Fetch all dashboard data for one user/month
 async function getDashboardData(userId, year, month) {
-  const start = new Date(year, month, 1);
-  const end   = new Date(year, month + 1, 0);
+    const start = new Date(year, month, 1);
+    const end = new Date(year, month + 1, 0);
 
-  const userInfo = await User.findByPk(userId, {
-    include: [{ model: Role, as: 'role' }]
-  });
+    const userInfo = await User.findByPk(userId, {
+        include: [{ model: Role, as: 'role' }]
+    });
 
-  if (!userInfo) {
-    throw new Error(`User with id ${userId} not found`);
-  }
-  if (!userInfo.roleId) {
-    throw new Error(`User with id ${userId} does not have a role assigned`);
-  }
+    if (!userInfo) {
+        throw new Error(`User with id ${userId} not found`);
+    }
+    if (!userInfo.roleId) {
+        throw new Error(`User with id ${userId} does not have a role assigned`);
+    }
 
-  const trips = await Deplacement.findAll({
-    where: { userId, date: { [Op.between]: [start, end] } },
-    include: [
-      { 
-        model: Depense, 
-        as: 'depenses',
+    const trips = await Deplacement.findAll({
+        where: { userId, date: { [Op.between]: [start, end] } },
         include: [
-          {
-            model: TypeDepense,
-            as: 'typeDepense'
-          }
-        ]
-      },
-      { model: VehiculeRateRule, as: 'vehiculeRateRule' },
-      { model: Chantier, as: 'chantier' }
-    ],
-    order: [['date', 'ASC']] // Added to order trips by date
-  });
+            {
+                model: Depense,
+                as: 'depenses',
+                include: [{ model: TypeDepense, as: 'typeDepense' }]
+            },
+            { model: VehiculeRateRule, as: 'vehiculeRateRule' },
+            { model: Chantier, as: 'chantier' }
+        ],
+        order: [['date', 'ASC']]
+    });
 
-  const roleMissionRates = await TauxMissionRole.findAll({ 
-    where: { roleId: userInfo.roleId } 
-  });
-  
-  const userVehiculeRateRules = await VehiculeRateRule.findAll({ 
-    where: { userId: userInfo.id, active: true } 
-  });
-  
-  const travelTypes = await TypeDeDeplacement.findAll();
+    const roleMissionRates = await TauxMissionRole.findAll({ where: { roleId: userInfo.roleId } });
+    const userVehiculeRateRules = await VehiculeRateRule.findAll({ where: { userId: userInfo.id, active: true } });
+    const travelTypes = await TypeDeDeplacement.findAll();
 
-  return { userInfo, trips, roleMissionRates, userVehiculeRateRules, travelTypes };
+    return { userInfo, trips, roleMissionRates, userVehiculeRateRules, travelTypes };
 }
 
 function getTotalExpenses(depenses) {
-  return depenses.reduce((sum, expense) => sum + (parseFloat(expense.montant) || 0), 0);
+    return depenses.reduce((sum, expense) => sum + (parseFloat(expense.montant) || 0), 0);
 }
 
 // NEW: Helper function to calculate kilometric cost based on vehicule rate rule
 function calculateTotalKilometricCost(trips, userVehiculeRateRules) {
-  // Group trips by their selected vehicle rate rule
-  const groupedByRate = {};
-  
-  for (const trip of trips) {
-    let ruleId = trip.vehiculeRateRuleId;
-    
-    // If trip doesn't have a specific rule, use the first available user rule
-    if (!ruleId && userVehiculeRateRules && userVehiculeRateRules.length > 0) {
-      ruleId = userVehiculeRateRules[0].id;
-    }
-    
-    if (!ruleId) continue; // Skip trips without applicable rules
-    
-    if (!groupedByRate[ruleId]) groupedByRate[ruleId] = [];
-    groupedByRate[ruleId].push(trip);
-  }
+    // Group trips by their selected vehicle rate rule
+    const groupedByRate = {};
 
-  let totalDistanceCost = 0;
-  
-  for (const ruleId in groupedByRate) {
-    const tripsForRule = groupedByRate[ruleId];
-    const distanceSum = tripsForRule.reduce((sum, trip) => sum + (parseFloat(trip.distanceKm) || 0), 0);
-    
-    // Find the applicable rule
-    let rule = null;
-    // First check if any trip has the rule loaded via include
-    for (const trip of tripsForRule) {
-      if (trip.vehiculeRateRuleId === parseInt(ruleId) && trip.vehiculeRateRule) {
-        rule = trip.vehiculeRateRule;
-        break;
-      }
+    for (const trip of trips) {
+        let ruleId = trip.vehiculeRateRuleId;
+
+        // If trip doesn't have a specific rule, use the first available user rule
+        if (!ruleId && userVehiculeRateRules && userVehiculeRateRules.length > 0) {
+            ruleId = userVehiculeRateRules[0].id;
+        }
+
+        if (!ruleId) continue; // Skip trips without applicable rules
+
+        if (!groupedByRate[ruleId]) groupedByRate[ruleId] = [];
+        groupedByRate[ruleId].push(trip);
     }
-    // If not found, check user's rules
-    if (!rule && userVehiculeRateRules) {
-      rule = userVehiculeRateRules.find(r => r.id === parseInt(ruleId));
+
+    let totalDistanceCost = 0;
+
+    for (const ruleId in groupedByRate) {
+        const tripsForRule = groupedByRate[ruleId];
+        const distanceSum = tripsForRule.reduce((sum, trip) => sum + (parseFloat(trip.distanceKm) || 0), 0);
+
+        // Find the applicable rule
+        let rule = null;
+        // First check if any trip has the rule loaded via include
+        for (const trip of tripsForRule) {
+            if (trip.vehiculeRateRuleId === parseInt(ruleId) && trip.vehiculeRateRule) {
+                rule = trip.vehiculeRateRule;
+                break;
+            }
+        }
+        // If not found, check user's rules
+        if (!rule && userVehiculeRateRules) {
+            rule = userVehiculeRateRules.find(r => r.id === parseInt(ruleId));
+        }
+
+        if (!rule || distanceSum === 0) continue;
+
+        // Calculate cost based on rule type using total distance for this rule
+        if (rule.conditionType === "ALL") {
+            totalDistanceCost += distanceSum * rule.rateBeforeThreshold;
+        } else if (rule.conditionType === "THRESHOLD") {
+            const threshold = rule.thresholdKm || 0;
+            const before = rule.rateBeforeThreshold;
+            const after = rule.rateAfterThreshold || before;
+
+            if (distanceSum <= threshold) {
+                totalDistanceCost += distanceSum * before;
+            } else {
+                totalDistanceCost += (threshold * before) + ((distanceSum - threshold) * after);
+            }
+        }
     }
-    
-    if (!rule || distanceSum === 0) continue;
-    
-    // Calculate cost based on rule type using total distance for this rule
-    if (rule.conditionType === "ALL") {
-      totalDistanceCost += distanceSum * rule.rateBeforeThreshold;
-    } else if (rule.conditionType === "THRESHOLD") {
-      const threshold = rule.thresholdKm || 0;
-      const before = rule.rateBeforeThreshold;
-      const after = rule.rateAfterThreshold || before;
-      
-      if (distanceSum <= threshold) {
-        totalDistanceCost += distanceSum * before;
-      } else {
-        totalDistanceCost += (threshold * before) + ((distanceSum - threshold) * after);
-      }
-    }
-  }
-  
-  return totalDistanceCost;
+
+    return totalDistanceCost;
 }
 
 exports.generateMonthlyRecap = async (req, res) => {
@@ -438,353 +428,316 @@ exports.getUserAggregates = async (req, res) => {
  * Helper function to calculate distance costs with threshold logic for export (matches frontend)
  */
 const calculateDistanceCostsForExport = (trips, userVehiculeRateRules) => {
-  // Group trips by their vehicle rate rule
-  const groupedByRate = {};
-  const distanceCosts = new Map();
+    const groupedByRate = {};
+    const distanceCosts = new Map();
 
-  trips.forEach(trip => {
-    const ruleId = trip.vehiculeRateRuleId;
-    if (ruleId) {
-      if (!groupedByRate[ruleId]) groupedByRate[ruleId] = [];
-      groupedByRate[ruleId].push(trip);
-    }
-  });
-
-  // Calculate costs for each rate rule
-  for (const ruleId in groupedByRate) {
-    const tripsForRule = groupedByRate[ruleId];
-    const rule = userVehiculeRateRules?.find(r => r.id === parseInt(ruleId));
-    
-    if (!rule) continue;
-
-    const totalDistance = tripsForRule.reduce((sum, trip) => sum + (parseFloat(trip.distanceKm) || 0), 0);
-    let totalCost = 0;
-
-    if (totalDistance > 0) {
-      if (rule.conditionType === "ALL") {
-        totalCost = totalDistance * rule.rateBeforeThreshold;
-      } else if (rule.conditionType === "THRESHOLD") {
-        const threshold = rule.thresholdKm || 0;
-        const before = rule.rateBeforeThreshold;
-        const after = rule.rateAfterThreshold || before;
-
-        if (totalDistance <= threshold) {
-          totalCost = totalDistance * before;
-        } else {
-          totalCost = (threshold * before) + ((totalDistance - threshold) * after);
+    trips.forEach(trip => {
+        const ruleId = trip.vehiculeRateRuleId;
+        if (ruleId) {
+            if (!groupedByRate[ruleId]) groupedByRate[ruleId] = [];
+            groupedByRate[ruleId].push(trip);
         }
-      }
+    });
 
-      // Use rule name or a default label
-      const ruleLabel = rule.name || rule.libelle || `Règle ${ruleId}`;
-      distanceCosts.set(ruleLabel, {
-        distance: totalDistance,
-        total: totalCost,
-        rate: rule.rateBeforeThreshold, // Show the base rate for display
-        rateAfter: rule.rateAfterThreshold,
-        threshold: rule.thresholdKm,
-        conditionType: rule.conditionType
-      });
+    for (const ruleId in groupedByRate) {
+        const tripsForRule = groupedByRate[ruleId];
+        const rule = userVehiculeRateRules?.find(r => r.id === parseInt(ruleId));
+        if (!rule) continue;
+
+        const totalDistance = tripsForRule.reduce((sum, trip) => sum + (parseFloat(trip.distanceKm) || 0), 0);
+        let totalCost = 0;
+
+        if (totalDistance > 0) {
+            if (rule.conditionType === "ALL") {
+                totalCost = totalDistance * rule.rateBeforeThreshold;
+            } else if (rule.conditionType === "THRESHOLD") {
+                const threshold = rule.thresholdKm || 0;
+                const before = rule.rateBeforeThreshold;
+                const after = rule.rateAfterThreshold || before;
+                totalCost = (totalDistance <= threshold)
+                    ? totalDistance * before
+                    : (threshold * before) + ((totalDistance - threshold) * after);
+            }
+            const ruleLabel = rule.name || `Règle ${ruleId}`;
+            distanceCosts.set(ruleLabel, {
+                distance: totalDistance,
+                total: totalCost,
+                rate: rule.rateBeforeThreshold,
+                rateAfter: rule.rateAfterThreshold,
+                threshold: rule.thresholdKm,
+                conditionType: rule.conditionType
+            });
+        }
     }
-  }
-
-  return distanceCosts;
+    return distanceCosts;
 };
 
 /**
- * Generate Excel file with updated vehicule rate rule system (matches frontend)
+ * Generate Excel file with updated structure and styling.
  */
 exports.generateExcelReport = async (userId, year, month) => {
-  try {
-    const { userInfo, trips, roleMissionRates, userVehiculeRateRules, travelTypes } =
-      await getDashboardData(userId, year, month);
-    const label = getMonthLabel(year, month);
-    const fullName = userInfo.nomComplete;
+    try {
+        const { userInfo, trips, roleMissionRates, userVehiculeRateRules, travelTypes } =
+            await getDashboardData(userId, year, month);
+        const label = getMonthLabel(year, month);
+        const fullName = userInfo.nomComplete;
 
-    // Calculate totals using the updated logic that matches frontend
-    const calculateTotals = () => {
-      const dailyAllowances = new Map();
-      let totalMisc = 0;
-      let miscCount = 0;
+        const calculateTotals = () => {
+            const dailyAllowances = new Map();
+            let totalMisc = 0;
+            let miscCount = 0;
 
-      trips.forEach(trip => {
-        // Sum miscellaneous expenses and count them
-        if (Array.isArray(trip.depenses)) {
-          miscCount += trip.depenses.length;
-          trip.depenses.forEach(expense => {
-            totalMisc += parseFloat(expense.montant) || 0;
-          });
-        }
+            trips.forEach(trip => {
+                if (Array.isArray(trip.depenses)) {
+                    miscCount += trip.depenses.length;
+                    trip.depenses.forEach(expense => {
+                        totalMisc += parseFloat(expense.montant) || 0;
+                    });
+                }
+                const missionRate = roleMissionRates.find(rate => rate.typeDeDeplacementId === trip.typeDeDeplacementId);
+                if (missionRate) {
+                    const rate = parseFloat(missionRate.tarifParJour) || 0;
+                    const travelTypeName = travelTypes.find(type => type.id === trip.typeDeDeplacementId)?.nom || 'Type Inconnu';
+                    if (!dailyAllowances.has(rate)) {
+                        dailyAllowances.set(rate, { count: 0, total: 0, name: travelTypeName });
+                    }
+                    const current = dailyAllowances.get(rate);
+                    current.count++;
+                    current.total += rate;
+                }
+            });
 
-        // Group Daily Allowances by their rate
-        const missionRate = roleMissionRates.find(rate => rate.typeDeDeplacementId === trip.typeDeDeplacementId);
-        if (missionRate) {
-          const rate = parseFloat(missionRate.tarifParJour) || 0;
-          const travelTypeName = travelTypes.find(type => type.id === trip.typeDeDeplacementId)?.nom || 'Type de déplacement inconnu';
+            const mileageCosts = calculateDistanceCostsForExport(trips, userVehiculeRateRules);
+            let grandTotal = totalMisc;
+            mileageCosts.forEach(value => grandTotal += value.total);
+            dailyAllowances.forEach(value => grandTotal += value.total);
 
-          if (!dailyAllowances.has(rate)) {
-            dailyAllowances.set(rate, { count: 0, total: 0, name: travelTypeName });
-          }
-          const current = dailyAllowances.get(rate);
-          current.count += 1;
-          current.total += rate;
-        }
-      });
+            return { totalMisc, miscCount, mileageCosts, dailyAllowances, grandTotal };
+        };
 
-      // Calculate distance costs using the updated logic
-      const mileageCosts = calculateDistanceCostsForExport(trips, userVehiculeRateRules);
+        const totals = calculateTotals();
+        const wb = new ExcelJS.Workbook();
+        const ws = wb.addWorksheet('Rapport Complet');
+        let currentRow = 1;
 
-      // Calculate Grand Total
-      let grandTotal = totalMisc;
-      mileageCosts.forEach(value => grandTotal += value.total);
-      dailyAllowances.forEach(value => grandTotal += value.total);
+        // --- Styling Helper ---
+        const styleRow = (row, startCol = 1) => {
+            row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+                if (colNumber > startCol) {
+                    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                } else {
+                    cell.alignment = { vertical: 'middle', horizontal: 'left' };
+                }
+            });
+        };
 
-      return {
-        totalMisc,
-        miscCount,
-        mileageCosts,
-        dailyAllowances,
-        grandTotal
-      };
-    };
+        // --- Header ---
+        const imgId = wb.addImage({ base64: logo, extension: 'png' });
+        ws.addImage(imgId, { tl: { col: 0, row: 0 }, ext: { width: 120, height: 60 } });
+        ws.mergeCells('D1:E2');
+        ws.getCell('D1').value = `Nom et Prénom : ${fullName}`;
+        ws.getCell('D1').alignment = { horizontal: 'right', vertical: 'middle' };
+        ws.getCell('D1').font = { size: 12 };
+        currentRow = 4;
 
-    const totals = calculateTotals();
+        // --- Title ---
+        ws.mergeCells(`A${currentRow}:E${currentRow}`);
+        ws.getCell(`A${currentRow}`).value = `Note de frais – ${label}`;
+        ws.getCell(`A${currentRow}`).font = { size: 16, bold: true, color: { argb: 'FF4F81BD' } };
+        ws.getCell(`A${currentRow}`).alignment = { horizontal: 'center' };
+        currentRow += 2;
 
-    // Build Excel workbook with single sheet
-    const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('Rapport Complet');
+        // --- SECTION 1: Detailed Trips ---
+        ws.getCell(`A${currentRow}`).value = 'DÉTAIL DES TRAJETS';
+        ws.getCell(`A${currentRow}`).font = { size: 14, bold: true };
+        ws.getCell(`A${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+        currentRow++;
 
-    let currentRow = 1;
-
-    // --- Header with Logo ---
-    const imgId = wb.addImage({ base64: logo, extension: 'png' });
-    ws.addImage(imgId, { tl: { col: 0, row: 0 }, ext: { width: 120, height: 60 } });
-    ws.mergeCells('D1:E2');
-    ws.getCell('D1').value = `Nom et Prénom : ${fullName}`;
-    ws.getCell('D1').alignment = { horizontal: 'right', vertical: 'middle' };
-    ws.getCell('D1').font = { size: 12 };
-
-    currentRow = 4;
-
-    // --- Main Title ---
-    ws.mergeCells(`A${currentRow}:E${currentRow}`);
-    ws.getCell(`A${currentRow}`).value = `Note de frais – ${label}`;
-    ws.getCell(`A${currentRow}`).font = { size: 16, bold: true };
-    ws.getCell(`A${currentRow}`).alignment = { horizontal: 'center' };
-    currentRow += 2; // Add spacer
-
-    // --- SECTION 1: Detailed Trips ---
-    ws.getCell(`A${currentRow}`).value = 'DÉTAIL DES TRAJETS';
-    ws.getCell(`A${currentRow}`).font = { size: 14, bold: true };
-    ws.getCell(`A${currentRow}`).fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFE0E0E0' }
-    };
-    currentRow += 1;
-
-    const tripsHeaderRow = ws.getRow(currentRow);
-    tripsHeaderRow.values = ['Date', 'Chantier', 'Distance (Km)', 'Type de Déplacement'];
-    tripsHeaderRow.eachCell(cell => {
-      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FF4F81BD' }
-      };
-      cell.border = {
-        top: { style: 'thin' },
-        left: { style: 'thin' },
-        bottom: { style: 'thin' },
-        right: { style: 'thin' }
-      };
-      cell.alignment = { vertical: 'middle', horizontal: 'center' };
-    });
-    currentRow += 1;
-
-    trips.forEach(trip => {
-      const travelType = travelTypes.find(t => t.id === trip.typeDeDeplacementId)?.nom || 'N/A';
-      const tripRow = ws.getRow(currentRow);
-      tripRow.values = [
-        new Date(trip.date).toLocaleDateString('fr-FR', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric'
-        }),
-        trip.chantier?.designation || 'N/A',
-        parseFloat(trip.distanceKm) || 0,
-        travelType,
-      ];
-      currentRow += 1;
-    });
-
-    currentRow += 2; // Add spacing
-
-    // --- SECTION 2: Miscellaneous Expenses ---
-    ws.getCell(`A${currentRow}`).value = 'DÉPENSES DIVERSES';
-    ws.getCell(`A${currentRow}`).font = { size: 14, bold: true };
-    ws.getCell(`A${currentRow}`).fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFE0E0E0' }
-    };
-    currentRow += 1;
-
-    const expensesHeaderRow = ws.getRow(currentRow);
-    expensesHeaderRow.values = ['Date du Trajet', 'Type de Dépense', 'Montant (MAD)', 'Justificatif'];
-    expensesHeaderRow.eachCell(cell => {
-      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FF4F81BD' }
-      };
-      cell.border = {
-        top: { style: 'thin' },
-        left: { style: 'thin' },
-        bottom: { style: 'thin' },
-        right: { style: 'thin' }
-      };
-      cell.alignment = { vertical: 'middle', horizontal: 'center' };
-    });
-    currentRow += 1;
-    
-    trips.forEach(trip => {
-      if (trip.depenses && trip.depenses.length > 0) {
-        trip.depenses.forEach(expense => {
-          const amount = parseFloat(expense.montant) || 0;
-          let typeDepense = 'N/A';
-          if (expense.typeDepense && expense.typeDepense.nom) {
-            typeDepense = expense.typeDepense.nom;
-          } else if (expense.TypeDepense && expense.TypeDepense.nom) {
-            typeDepense = expense.TypeDepense.nom;
-          } else if (expense.type_depense && expense.type_depense.nom) {
-            typeDepense = expense.type_depense.nom;
-          }
-          console.log('Expense object:', JSON.stringify(expense, null, 2)); // Debug log
-          
-          const expenseRow = ws.getRow(currentRow);
-          expenseRow.values = [
-            new Date(trip.date).toLocaleDateString('fr-FR', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric'
-            }),
-            typeDepense,
-            amount,
-            expense.cheminJustificatif ? 'Oui' : 'Non'
-          ];
-          expenseRow.getCell(3).numFmt = '#,##0.00 "MAD"';
-          currentRow += 1;
+        const travelTypeNames = travelTypes.map(t => t.nom);
+        const tripsHeaderRow = ws.getRow(currentRow);
+        const dynamicHeaders = ['Date', 'Lieu de deplacement', 'Chantier', ...travelTypeNames, 'Distance (Km)'];
+        tripsHeaderRow.values = dynamicHeaders;
+        tripsHeaderRow.eachCell(cell => {
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
+            cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
         });
-      }
-    });
+        currentRow++;
 
-    // Add total for misc expenses
-    const totalExpensesRow = ws.getRow(currentRow);
-    totalExpensesRow.values = ['Total', '', totals.totalMisc, ''];
-    totalExpensesRow.getCell(1).font = { bold: true };
-    const totalExpensesCell = totalExpensesRow.getCell(3);
-    totalExpensesCell.font = { bold: true };
-    totalExpensesCell.numFmt = '#,##0.00 "MAD"';
-    currentRow += 3; // Add spacing
+        trips.forEach(trip => {
+            const tripRow = ws.getRow(currentRow);
+            const rowData = [
+                new Date(trip.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+                trip.chantier?.designation || 'N/A',
+                trip.chantier?.codeChantier || 'N/A'
+            ];
+            travelTypeNames.forEach(typeName => {
+                const travelType = travelTypes.find(t => t.id === trip.typeDeDeplacementId);
+                rowData.push((travelType && travelType.nom === typeName) ? 1 : '');
+            });
+            rowData.push(parseFloat(trip.distanceKm) || 0);
+            tripRow.values = rowData;
+            styleRow(tripRow);
+            tripRow.getCell(dynamicHeaders.length).numFmt = '0.00';
+            currentRow++;
+        });
 
-    // --- SECTION 3: Récapitulatif (Summary) ---
-    ws.getCell(`A${currentRow}`).value = 'RÉCAPITULATIF';
-    ws.getCell(`A${currentRow}`).font = { size: 14, bold: true };
-    ws.getCell(`A${currentRow}`).fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFE0E0E0' }
-    };
-    currentRow += 1;
+        // --- Summary for Detailed Trips ---
+        const summaryData = { counts: {}, rates: {}, totals: {} };
+        let grandTotalTrips = 0;
+        travelTypes.forEach(type => {
+            const count = trips.filter(trip => trip.typeDeDeplacementId === type.id).length;
+            const missionRate = roleMissionRates.find(rate => rate.typeDeDeplacementId === type.id);
+            const rate = missionRate ? parseFloat(missionRate.tarifParJour) : 0;
+            const total = count * rate;
+            summaryData.counts[type.nom] = count;
+            summaryData.rates[type.nom] = rate;
+            summaryData.totals[type.nom] = total;
+            grandTotalTrips += total;
+        });
 
-    // Recap table header
-    const summaryHeaderRow = ws.getRow(currentRow);
-    summaryHeaderRow.values = ['Désignation', 'Chantier', 'Quantité', 'Taux / J', 'Montant'];
-    summaryHeaderRow.eachCell(cell => {
-      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FF4F81BD' }
-      };
-      cell.border = {
-        top: { style: 'thin' },
-        left: { style: 'thin' },
-        bottom: { style: 'thin' },
-        right: { style: 'thin' }
-      };
-      cell.alignment = { vertical: 'middle', horizontal: 'center' };
-    });
-    currentRow += 1;
+        const summaryRows = [
+            { label: 'Nombre de jours', data: summaryData.counts, format: '0' },
+            { label: 'Taux de mission', data: summaryData.rates, format: '#,##0.00 "MAD"' },
+            { label: 'Total', data: summaryData.totals, format: '#,##0.00 "MAD"' }
+        ];
 
-    // Misc expenses row
-    const miscSummaryRow = ws.getRow(currentRow);
-    miscSummaryRow.values = ['Feuille de depens', '', totals.miscCount, '-', totals.totalMisc];
-    miscSummaryRow.getCell(5).numFmt = '#,##0.00 "MAD"';
-    currentRow += 1;
+        summaryRows.forEach(({ label, data, format }) => {
+            const row = ws.getRow(currentRow);
+            const values = [label, '', '', ...travelTypeNames.map(name => data[name])];
+            row.values = values;
+            styleRow(row);
+            row.font = { bold: true };
+            row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                if (colNumber > 3) cell.numFmt = format;
+            });
+            currentRow++;
+        });
 
-    // Daily allowances
-    totals.dailyAllowances.forEach(({ count, total, name }, rate) => {
-      const allowanceRow = ws.getRow(currentRow);
-      allowanceRow.values = [`Frais journaliers (${name})`, '', count, rate, total];
-      allowanceRow.getCell(4).numFmt = '#,##0.00 "MAD"';
-      allowanceRow.getCell(5).numFmt = '#,##0.00 "MAD"';
-      currentRow += 1;
-    });
+        const grandTotalRow = ws.getRow(currentRow);
+        grandTotalRow.values = ['Total General', '', '', grandTotalTrips];
+        grandTotalRow.getCell(4).numFmt = '#,##0.00 "MAD"';
+        grandTotalRow.font = { bold: true, size: 12 };
+        styleRow(grandTotalRow);
+        currentRow += 2;
 
-    // Mileage costs
-    totals.mileageCosts.forEach(({ distance, total, rate, conditionType, threshold, rateAfter }, libelle) => {
-      let rateDisplay;
-      if (conditionType === "THRESHOLD" && threshold && rateAfter !== rate) {
-        rateDisplay = `${rate.toFixed(2)}/${rateAfter.toFixed(2)} (seuil: ${threshold}km)`;
-      } else {
-        rateDisplay = rate.toFixed(2);
-      }
-      const mileageRow = ws.getRow(currentRow);
-      mileageRow.values = [`Frais kilométrique (${libelle})`, '', `${distance.toFixed(2)} Km`, rateDisplay, total];
-      mileageRow.getCell(5).numFmt = '#,##0.00 "MAD"';
-      currentRow += 1;
-    });
+        // --- SECTION 2: Miscellaneous Expenses ---
+        ws.getCell(`A${currentRow}`).value = 'DÉPENSES DIVERSES';
+        ws.getCell(`A${currentRow}`).font = { size: 14, bold: true };
+        ws.getCell(`A${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+        currentRow++;
+        const expensesHeaderRow = ws.getRow(currentRow);
+        expensesHeaderRow.values = ['Date du Trajet', 'Type de Dépense', 'Montant (MAD)', 'Justificatif'];
+        expensesHeaderRow.eachCell(cell => {
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
+            cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+        currentRow++;
 
-    // Grand total
-    const totalRow = ws.getRow(currentRow);
-    totalRow.values = ['Total Dépense', '', '', '', totals.grandTotal];
-    ws.mergeCells(`A${currentRow}:D${currentRow}`);
-    const totalLabelCell = ws.getCell(`A${currentRow}`);
-    totalLabelCell.font = { bold: true, size: 12 };
-    totalLabelCell.alignment = { horizontal: 'right' };
+        trips.forEach(trip => {
+            if (trip.depenses && trip.depenses.length > 0) {
+                trip.depenses.forEach(expense => {
+                    const expenseRow = ws.getRow(currentRow);
+                    expenseRow.values = [
+                        new Date(trip.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+                        expense.typeDepense?.nom || 'N/A',
+                        parseFloat(expense.montant) || 0,
+                        expense.cheminJustificatif ? 'Oui' : 'Non'
+                    ];
+                    styleRow(expenseRow);
+                    expenseRow.getCell(3).numFmt = '#,##0.00 "MAD"';
+                    currentRow++;
+                });
+            }
+        });
 
-    const grandTotalCell = ws.getCell(`E${currentRow}`);
-    grandTotalCell.numFmt = '#,##0.00 "MAD"';
-    grandTotalCell.font = { bold: true, size: 12 };
-    grandTotalCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
-    grandTotalCell.alignment = { horizontal: 'right' };
+        const totalExpensesRow = ws.getRow(currentRow);
+        totalExpensesRow.values = ['Total', '', totals.totalMisc];
+        ws.mergeCells(`A${currentRow}:B${currentRow}`);
+        styleRow(totalExpensesRow, 0); // Style all cells
+        totalExpensesRow.font = { bold: true };
+        totalExpensesRow.getCell(3).numFmt = '#,##0.00 "MAD"';
+        currentRow += 3;
 
-    // Auto-width columns
-    ws.columns.forEach(column => {
-      let maxTextLength = 0;
-      column.eachCell({ includeEmpty: true }, cell => {
-        const textLength = (cell.value || '').toString().length;
-        if (textLength > maxTextLength) {
-          maxTextLength = textLength;
-        }
-      });
-      column.width = maxTextLength < 10 ? 12 : maxTextLength + 4;
-    });
+        // --- SECTION 3: Récapitulatif ---
+        ws.getCell(`A${currentRow}`).value = 'RÉCAPITULATIF';
+        ws.getCell(`A${currentRow}`).font = { size: 14, bold: true };
+        ws.getCell(`A${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+        currentRow++;
+        const summaryHeaderRow = ws.getRow(currentRow);
+        summaryHeaderRow.values = ['Désignation', 'Chantier', 'Quantité', 'Taux / J', 'Montant'];
+        summaryHeaderRow.eachCell(cell => {
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
+            cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+        currentRow++;
 
-    // Write to tmp and return path
-    const tmpDir = path.join(os.tmpdir(), 'myapp-reports');
-    await fs.ensureDir(tmpDir);
-    const outPath = path.join(tmpDir, `report-${userId}-${year}-${month+1}-${uuidv4()}.xlsx`);
-    await wb.xlsx.writeFile(outPath);
-    return outPath;
+        const miscSummaryRow = ws.getRow(currentRow);
+        miscSummaryRow.values = ['Feuille de depens', '', totals.miscCount, '-', totals.totalMisc];
+        styleRow(miscSummaryRow);
+        miscSummaryRow.getCell(5).numFmt = '#,##0.00 "MAD"';
+        currentRow++;
 
-  } catch (err) {
-    console.error("❌ generateExcelReport failed:", err);
-    throw err;
-  }
+        totals.dailyAllowances.forEach(({ count, total, name }, rate) => {
+            const allowanceRow = ws.getRow(currentRow);
+            allowanceRow.values = [`Frais journaliers (${name})`, '', count, rate, total];
+            styleRow(allowanceRow);
+            allowanceRow.getCell(4).numFmt = '#,##0.00 "MAD"';
+            allowanceRow.getCell(5).numFmt = '#,##0.00 "MAD"';
+            currentRow++;
+        });
+
+        totals.mileageCosts.forEach(({ distance, total, rate, conditionType, threshold, rateAfter }, libelle) => {
+            const rateDisplay = (conditionType === "THRESHOLD" && threshold && rateAfter !== rate)
+                ? `${rate.toFixed(2)}/${rateAfter.toFixed(2)} (seuil: ${threshold}km)`
+                : rate.toFixed(2);
+            const mileageRow = ws.getRow(currentRow);
+            mileageRow.values = [`Frais kilométrique (${libelle})`, '', `${distance.toFixed(2)} Km`, rateDisplay, total];
+            styleRow(mileageRow);
+            mileageRow.getCell(5).numFmt = '#,##0.00 "MAD"';
+            currentRow++;
+        });
+
+        const finalTotalRow = ws.getRow(currentRow);
+        finalTotalRow.values = ['Total Dépense', '', '', '', totals.grandTotal];
+        ws.mergeCells(`A${currentRow}:D${currentRow}`);
+        const totalLabelCell = ws.getCell(`A${currentRow}`);
+        totalLabelCell.font = { bold: true, size: 12 };
+        totalLabelCell.alignment = { horizontal: 'right', vertical: 'middle' };
+        totalLabelCell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        const grandTotalCell = ws.getCell(`E${currentRow}`);
+        grandTotalCell.numFmt = '#,##0.00 "MAD"';
+        grandTotalCell.font = { bold: true, size: 12 };
+        grandTotalCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
+        grandTotalCell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        grandTotalCell.alignment = { horizontal: 'right', vertical: 'middle' };
+
+        // --- Auto-width columns ---
+        ws.columns.forEach(column => {
+            let maxTextLength = 0;
+            column.eachCell({ includeEmpty: true }, cell => {
+                maxTextLength = Math.max(maxTextLength, (cell.value || '').toString().length);
+            });
+            column.width = maxTextLength < 12 ? 14 : maxTextLength + 4;
+        });
+
+        // --- Write to file ---
+        const tmpDir = path.join(os.tmpdir(), 'myapp-reports');
+        await fs.ensureDir(tmpDir);
+        const outPath = path.join(tmpDir, `report-${userId}-${year}-${month + 1}-${uuidv4()}.xlsx`);
+        await wb.xlsx.writeFile(outPath);
+        return outPath;
+
+    } catch (err) {
+        console.error("❌ generateExcelReport failed:", err);
+        throw err;
+    }
 };
 
 /**
