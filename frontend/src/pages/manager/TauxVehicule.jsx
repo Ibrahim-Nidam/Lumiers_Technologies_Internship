@@ -50,7 +50,7 @@ export default function VehiculeRates() {
   const fetchRates = async () => {
     try {
       setLoading(true);
-      const res = await apiClient.get(`/vehicule-rates/user/${selectedUserId}`);
+      const res = await apiClient.get(`/vehicule-rates/user/${selectedUserId}?includeInactive=true`);
       setRules(res.data);
     } catch (error) {
       console.error("Error fetching rates:", error);
@@ -359,9 +359,9 @@ export default function VehiculeRates() {
                           <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: colors.logo_text }}>
                             Taux (dh/km)
                           </th>
-                          <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: colors.logo_text }}>
+                          {/* <th className="px-6 py-4 text-left text-sm font-semibold" style={{ color: colors.logo_text }}>
                             Seuil (km)
-                          </th>
+                          </th> */}
                           <th className="px-6 py-4 text-center text-sm font-semibold" style={{ color: colors.logo_text }}>
                             Statut
                           </th>
@@ -395,11 +395,11 @@ export default function VehiculeRates() {
                                 )}
                               </div>
                             </td>
-                            <td className="px-6 py-4">
+                            {/* <td className="px-6 py-4">
                               <span className="text-sm" style={{ color: colors.logo_text }}>
                                 {rule.thresholdKm || "-"}
                               </span>
-                            </td>
+                            </td> */}
                             <td className="px-6 py-4 text-center">
                               {rule.active ? (
                                 <CheckCircle className="w-5 h-5 text-green-500 mx-auto" />

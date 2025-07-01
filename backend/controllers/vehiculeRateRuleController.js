@@ -4,9 +4,16 @@ const { VehiculeRateRule, User } = require("../models");
 exports.getAllRatesByUser = async (req, res) => {
   try {
     const userId = req.params.userId;
-    const rules = await VehiculeRateRule.findAll({
-      where: { userId, active: true }
-    });
+    const includeInactive = req.query.includeInactive === "true";
+
+    console.log("Fetching rates for user:", userId, "| includeInactive:", includeInactive);
+
+    const whereClause = includeInactive
+      ? { userId }                     // all rules
+      : { userId, active: true };      // only active
+
+    const rules = await VehiculeRateRule.findAll({ where: whereClause });
+
     res.json(rules);
   } catch (error) {
     console.error("GET /vehicule-rates/user/:id →", error);
