@@ -66,6 +66,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+const [showForgotPasswordMessage, setShowForgotPasswordMessage] = useState(false);
 
   useEffect(() => {
     const { user, token } = getStoredCredentials();
@@ -134,6 +135,13 @@ export default function Login() {
     }
   };
 
+  const handleForgotPasswordClick = () => {
+    setShowForgotPasswordMessage(true);
+    setTimeout(() => {
+      setShowForgotPasswordMessage(false);
+    }, 3000); // Hides the message after 3 seconds
+  };
+
   return (
     <div className="space-y-6">
       <div className="text-center mb-2">
@@ -197,6 +205,7 @@ export default function Login() {
             </label>
             <a
               href="#"
+              onClick={handleForgotPasswordClick}
               className="text-sm font-medium hover:underline transition-colors"
               style={{ color: colors.primary }}
             >
@@ -276,6 +285,11 @@ export default function Login() {
               )}
             </button>
           </div>
+          {showForgotPasswordMessage && (
+            <div className="mt-2 p-2 bg-yellow-100 border border-yellow-300 text-yellow-800 rounded-md text-sm">
+              Contacter les managers pour réinitialiser votre mot de passe.
+            </div>
+          )}
         </div>
 
         {/* Remember Me */}

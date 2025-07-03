@@ -36,8 +36,8 @@ strengthLabels,
 // roles,
 // carLoanChecked,
 // onToggleCarLoan,
-termsAccepted,
-onToggleTerms,
+// termsAccepted,
+// onToggleTerms,
 isLoading,
 message,
 messageType,
@@ -428,7 +428,7 @@ return (
     </div> */}
 
     {/* Terms and Conditions */}
-    <div className="flex items-start">
+    {/* <div className="flex items-start">
         <div className="flex items-center h-5">
         <input
             id="terms"
@@ -461,7 +461,7 @@ return (
             <span className="text-red-500 ml-1">*</span>
         </label>
         </div>
-    </div>
+    </div> */}
 
     {/* Message */}
     <Message

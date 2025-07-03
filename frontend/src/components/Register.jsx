@@ -16,7 +16,7 @@ export default function Register() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
-  const [termsAccepted, setTermsAccepted] = useState(false);
+  // const [termsAccepted, setTermsAccepted] = useState(false);
 
   // Password validation helpers
   const validatePassword = useCallback((password) => {
@@ -66,21 +66,21 @@ export default function Register() {
     if (message) clearMessage();
   };
 
-  const handleToggleTerms = (e) => {
-    setTermsAccepted(e.target.checked);
-    if (message) clearMessage();
-  };
+  // const handleToggleTerms = (e) => {
+  //   setTermsAccepted(e.target.checked);
+  //   if (message) clearMessage();
+  // };
 
   // Step 1 submit: validate terms & password
   const handleFirstFormSubmit = async (e) => {
     e.preventDefault();
-    if (!termsAccepted) {
-      setMessage(
-        "Vous devez accepter les conditions d'utilisation et la politique de confidentialité."
-      );
-      setMessageType("error");
-      return;
-    }
+    // if (!termsAccepted) {
+    //   setMessage(
+    //     "Vous devez accepter les conditions d'utilisation et la politique de confidentialité."
+    //   );
+    //   setMessageType("error");
+    //   return;
+    // }
     if (!passwordValidation.isValid) {
       setMessage(`Mot de passe invalide. ${passwordValidation.message}`);
       setMessageType("error");
@@ -103,7 +103,7 @@ export default function Register() {
       );
       setMessageType("success");
       setForm({ name: "", email: "", password: "", cnie: "", role: "agent" });
-      setTermsAccepted(false);
+      // setTermsAccepted(false);
     } catch (err) {
       // If server responded with error
       const errorMsg =
@@ -125,8 +125,8 @@ export default function Register() {
       passwordValidation={passwordValidation}
       passwordStrength={passwordStrength}
       strengthLabels={strengthLabels}
-      termsAccepted={termsAccepted}
-      onToggleTerms={handleToggleTerms}
+      // termsAccepted={termsAccepted}
+      // onToggleTerms={handleToggleTerms}
       isLoading={isLoading}
       message={message}
       messageType={messageType}
