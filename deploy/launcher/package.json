@@ -1,0 +1,61 @@
+{
+  "name": "note-de-frais-launcher",
+  "version": "1.0.0",
+  "description": "Launcher GUI for Note de Frais",
+  "author": "ibrahim nidam",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "predist": "rimraf ../release",
+    "dist": "npm run predist && electron-builder",
+    "dist-debug": "npm run predist && electron-builder --publish=never"
+  },
+  "devDependencies": {
+    "electron": "^29.0.0",
+    "electron-builder": "^24.6.3",
+    "rimraf": "^5.0.0"
+  },
+  "build": {
+    "appId": "com.yourcompany.notedefrais",
+    "productName": "Note de Frais Launcher",
+    "directories": {
+      "output": "../release"
+    },
+    "files": [
+      "**/*",
+      "!node_modules",
+      "!src",
+      "!*.md"
+    ],
+    "extraResources": [
+      {
+        "from": "../fiche-app.exe",
+        "to": "fiche-app.exe"
+      },
+      {
+        "from": "../dist",
+        "to": "dist",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../.env",
+        "to": ".env"
+      }
+    ],
+    "win": {
+      "icon": "../assets/app-icon.ico",
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "sign": null,
+      "verifyUpdateCodeSignature": false,
+      "signingHashAlgorithms": []
+    },
+    "portable": {
+      "artifactName": "${productName} Portable ${version}.${ext}"
+    }
+  }
+}

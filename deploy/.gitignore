@@ -1,2 +1,5 @@
 .env
 fiche-app.exe
+release
+node_modules
+dist

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Note de Frais Launcher</title>
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      font-family: "Segoe UI", sans-serif;
+      background: #f0f2f5;
+      height: 100%;
+    }
+    .container {
+      background: #fff;
+      padding: 30px 40px;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+      text-align: center;
+      width: 400px;
+      margin: auto;
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    h2 { 
+      margin-bottom: 20px; 
+      color: #333; 
+      font-size: 24px;
+    }
+    
+    button {
+      padding: 12px 30px;
+      margin-top: 10px;
+      font-size: 16px; 
+      font-weight: bold;
+      border: none; 
+      border-radius: 8px;
+      cursor: pointer; 
+      width: 100%;
+      transition: background 0.3s, transform 0.2s;
+    }
+    
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    
+    .start-btn { 
+      background: #28a745; 
+      color: #fff; 
+    }
+    .start-btn:hover:not(:disabled) { 
+      background: #218838; 
+    }
+    
+    .stop-btn { 
+      background: #dc3545; 
+      color: #fff; 
+    }
+    .stop-btn:hover:not(:disabled) { 
+      background: #c82333; 
+    }
+    
+    button:active:not(:disabled) { 
+      transform: scale(0.98); 
+    }
+    
+    .hidden { 
+      display: none; 
+    }
+    
+    .ip-info {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #555;
+      word-break: break-all;
+    }
+    
+    .ip-info a {
+      color: #007bff;
+      text-decoration: none;
+    }
+    
+    .ip-info a:hover {
+      text-decoration: underline;
+    }
+    
+    .status {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    
+    .status.running {
+      background: #d4edda;
+      color: #155724;
+    }
+    
+    .status.stopped {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    
+    .output {
+      margin-top: 20px;
+      max-height: 150px;
+      overflow-y: auto;
+      text-align: left;
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 12px;
+      font-family: 'Consolas', monospace;
+    }
+    
+    .message {
+      margin-bottom: 5px;
+      padding: 2px 0;
+    }
+    
+    .message.error {
+      color: #dc3545;
+    }
+    
+    .message.success {
+      color: #28a745;
+    }
+    
+    .message.info {
+      color: #17a2b8;
+    }
+    
+    .message.output {
+      color: #6c757d;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Note de Frais Launcher</h2>
+    
+    <button id="startBtn" class="start-btn">Start Server</button>
+    <button id="stopBtn" class="stop-btn hidden">Stop Server</button>
+    
+    <div id="status" class="status stopped">Server Status: Stopped</div>
+    
+    <div class="ip-info" id="ipInfo">Loading IP…</div>
+    
+    <div class="output" id="output"></div>
+  </div>
+  
+  <script src="renderer.js"></script>
+</body>
+</html>
