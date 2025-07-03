@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import apiClient from "../utils/axiosConfig";
-import { handleExcelExport, handlePDFExport } from "../utils/exportUtils";
+import { handleExcelExport, handlePDFExport, handlePrintExcel } from "../utils/exportUtils";
 
 export const useAgentDashboard = (currentUserId) => {
   const [trips, setTrips] = useState([])
@@ -79,6 +79,10 @@ export const useAgentDashboard = (currentUserId) => {
   const exportMonthlyPDF = () => {
     return handlePDFExport(currentYear, currentMonth, prepareDashboardData());
   };
+
+  const printMonthlyExcel = () => {
+  handlePrintExcel(currentYear, currentMonth, prepareDashboardData());
+};
 
   useEffect(() => {
     const fetchTypes = async () => {
@@ -570,6 +574,6 @@ export const useAgentDashboard = (currentUserId) => {
     toggleDayExpansion, sendEmailWithReport, showEmailFormatSelection, addTrip, updateTripField, updateTripLocal,
     deleteTrip, addExpense, addExpenseType, updateExpenseField, updateExpenseLocal, handleExpenseFileUpload,
     clearExpenseFile, deleteExpense, getTotalExpenses, getTripTotal, getTripsForDay, getMonthlyTrips, getMonthlyTotal,
-    getMonthlyDistanceTotal, getMonthlyExpensesCount, getDaysInMonth, exportMonthlyPDF, exportMonthlyExcel, isDataReady, isMonthEditable
+    getMonthlyDistanceTotal, getMonthlyExpensesCount, getDaysInMonth, exportMonthlyPDF, exportMonthlyExcel, isDataReady, isMonthEditable,printMonthlyExcel,
   };
 };

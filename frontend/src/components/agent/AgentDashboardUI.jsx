@@ -2,7 +2,7 @@
 
 import { useState,useMemo  } from "react"
 import { colors } from "../../colors"
-import { ChevronLeft, ChevronRight, Plus, Trash2, FileSpreadsheet, MapPin, ChevronDown, ChevronUp, Calendar, X, Check, Download, Mail } from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus, Trash2, FileSpreadsheet, MapPin, ChevronDown, ChevronUp, Calendar, X, Check, Download, Mail, Printer } from "lucide-react"
 
 // Utility function to get user info by ID
 // const getUserInfo = (userId, allUsers) => {
@@ -224,6 +224,7 @@ const AgentDashboardUI = ({
   getDaysInMonth,
   exportMonthlyPDF,
   exportMonthlyExcel,
+  printMonthlyExcel,
 }) => {
   const [newExpenseTypeName, setNewExpenseTypeName] = useState({});
   const [showMultiDayCreator, setShowMultiDayCreator] = useState(false);
@@ -854,6 +855,15 @@ const AgentDashboardUI = ({
             </p>
           </div>
           <div className="flex items-center space-x-2">
+            <button
+              onClick={printMonthlyExcel}
+              className="flex items-center cursor-pointer space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
+              style={{ borderColor: colors.primary, color: colors.primary }}
+            >
+              <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Imprimer Excel</span>
+              <span className="sm:hidden">Imprimer</span>
+            </button>
             <button
               onClick={exportMonthlyExcel}
               className="flex items-center cursor-pointer space-x-1 sm:space-x-2 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"

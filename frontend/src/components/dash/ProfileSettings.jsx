@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import apiClient from "../../utils/axiosConfig"; // ← your configured axios instance
+import apiClient from "../../utils/axiosConfig";
 import { colors } from "../../colors";
 import { updateStoredCredentials } from "../../utils/storageUtils";
 
@@ -11,6 +11,9 @@ export default function ProfileSettings() {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
   const [messageSection, setMessageSection] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [importOption, setImportOption] = useState("override");
+  const [showImportModal, setShowImportModal] = useState(false);
 
   const [formData, setFormData] = useState({
     nomComplete: "",
@@ -31,7 +34,6 @@ export default function ProfileSettings() {
       navigate("/login");
       return;
     }
-    // set the token on apiClient
     apiClient.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
     const loadData = async () => {
@@ -173,6 +175,102 @@ export default function ProfileSettings() {
     }
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type === "application/json") {
+      setSelectedFile(file);
+    } else {
+      setSelectedFile(null);
+      setMessage("Veuillez sélectionner un fichier JSON valide.");
+      setMessageType("error");
+      setMessageSection("dataManagement");
+    }
+  };
+
+  const handleExport = async () => {
+    setSaving(true);
+    setMessage("");
+    setMessageType("");
+    setMessageSection("");
+    try {
+      const response = await apiClient.get("/trips-and-expenses/export");
+      const data = response.data;
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "trips_and_expenses.json";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      setMessage("Données exportées avec succès.");
+      setMessageType("success");
+      setMessageSection("dataManagement");
+    } catch (error) {
+      console.error("handleExport ERROR →", error);
+      setMessage(
+        error.response?.data?.message ||
+          error.message ||
+          "Erreur lors de l'exportation."
+      );
+      setMessageType("error");
+      setMessageSection("dataManagement");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleImport = async () => {
+    if (!selectedFile) {
+      setMessage("Veuillez sélectionner un fichier à importer.");
+      setMessageType("error");
+      setMessageSection("dataManagement");
+      return;
+    }
+    setSaving(true);
+    setMessage("");
+    setMessageType("");
+    setMessageSection("");
+    try {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          const payload = {
+            data,
+            overrideExisting: importOption === "override",
+          };
+          await apiClient.post("/trips-and-expenses/import", payload);
+          setMessage("Données importées avec succès.");
+          setMessageType("success");
+          setMessageSection("dataManagement");
+          setShowImportModal(false);
+        } catch (error) {
+          console.error("handleImport ERROR →", error);
+          setMessage(
+            error.response?.data?.message ||
+              error.message ||
+              "Erreur lors de l'importation."
+          );
+          setMessageType("error");
+          setMessageSection("dataManagement");
+        } finally {
+          setSaving(false);
+        }
+      };
+      reader.readAsText(selectedFile);
+    } catch (error) {
+      console.error("handleImport ERROR →", error);
+      setMessage("Erreur lors de la lecture du fichier.");
+      setMessageType("error");
+      setMessageSection("dataManagement");
+      setSaving(false);
+    }
+  };
+
   const MessageDisplay = ({ section }) => {
     if (!message || messageSection !== section) return null;
     return (
@@ -254,19 +352,133 @@ export default function ProfileSettings() {
         </p>
       </div>
 
-      {/* General success messages appear at the top */}
       <MessageDisplay section="general" />
 
+      {/* Export and Import Buttons at the Top */}
+<div className="flex flex-wrap justify-between mb-6 gap-2">
+  <button
+    onClick={handleExport}
+    disabled={saving}
+    className="
+      px-4 py-2
+      bg-white text-black
+      border border-green-600
+      rounded-md
+      text-sm sm:text-base
+      disabled:opacity-50 disabled:cursor-not-allowed
+      hover:border-green-700 hover:cursor-pointer
+      focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2
+    "
+  >
+    {saving ? "Exportation..." : "Exporter les données"}
+  </button>
+  <button
+    onClick={() => setShowImportModal(true)}
+    className="
+      px-4 py-2
+      bg-white text-black
+      border border-blue-600
+      rounded-md
+      text-sm sm:text-base
+      hover:border-blue-700 hover:cursor-pointer
+      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+    "
+  >
+    Importer les données
+  </button>
+</div>
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-md">
+            <h2 className="text-lg font-semibold mb-4">Importer les données</h2>
+            <MessageDisplay section="dataManagement" />
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Sélectionner un fichier JSON
+                </label>
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleFileChange}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-2">
+                  Options d'importation
+                </p>
+                <div className="space-y-2">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="importOption"
+                      value="override"
+                      checked={importOption === "override"}
+                      onChange={() => setImportOption("override")}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">
+                      Remplacer les données existantes
+                    </span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="importOption"
+                      value="keepOriginal"
+                      checked={importOption === "keepOriginal"}
+                      onChange={() => setImportOption("keepOriginal")}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">
+                      Conserver les données existantes en cas de conflit
+                    </span>
+                  </label>
+                </div>
+              </div>
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={() => setShowImportModal(false)}
+                  className="
+                    px-4 py-2
+                    bg-white text-black
+                    border border-gray-400
+                    rounded-md
+                    hover:border-gray-500 hover:cursor-pointer
+                  "
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleImport}
+                  disabled={!selectedFile || saving}
+                  className="
+                    px-4 py-2
+                    bg-white text-black
+                    border border-blue-600
+                    rounded-md
+                    disabled:opacity-50 disabled:cursor-not-allowed
+                    hover:border-blue-700 hover:cursor-pointer
+                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                  "
+                >
+                  {saving ? "Importation..." : "Importer"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-6 sm:space-y-8">
-        {/* Informations personnelles */}
         <div className="bg-gray-50 p-4 sm:p-6 rounded">
           <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">
             Informations personnelles
           </h2>
-          
-          {/* Personal info error messages appear here */}
           <MessageDisplay section="personal" />
-          
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -281,7 +493,6 @@ export default function ProfileSettings() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Adresse e-mail *
@@ -295,7 +506,6 @@ export default function ProfileSettings() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Carte Nationale (CNIE) *
@@ -309,26 +519,9 @@ export default function ProfileSettings() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
               />
             </div>
-
-
-            {/* <div className="lg:col-span-2">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="possedeVoiturePersonnelle"
-                  checked={formData.possedeVoiturePersonnelle}
-                  onChange={handleInputChange}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label className="ml-2 text-sm text-gray-700">
-                  Possède une voiture personnelle
-                </label>
-              </div>
-            </div> */}
           </div>
         </div>
 
-        {/* Mot de passe */}
         <div className="bg-gray-50 p-4 sm:p-6 rounded">
           <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">
             Mot de passe
@@ -336,10 +529,7 @@ export default function ProfileSettings() {
           <p className="text-sm text-gray-600 mb-3 sm:mb-4">
             Laissez vide pour conserver le mot de passe actuel
           </p>
-          
-          {/* Password error messages appear here */}
           <MessageDisplay section="password" />
-          
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -396,7 +586,6 @@ export default function ProfileSettings() {
                 </button>
               </div>
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Confirmer le mot de passe
@@ -412,29 +601,6 @@ export default function ProfileSettings() {
           </div>
         </div>
 
-        
-
-        {/* Daily Returns Section */}
-        {/* <div className="bg-gray-50 p-4 sm:p-6 rounded">
-          <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">
-            Indemnités journalières
-          </h2>
-          <p className="text-sm text-gray-600 mb-3 sm:mb-4">
-            Gérez vos demandes d'indemnités journalières pour les déplacements professionnels.
-          </p>
-          <button
-            onClick={() => navigate('/daily-returns')}
-            className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            style={{
-              backgroundColor: colors?.primary,
-              "--tw-ring-color": `${colors?.primary}40`,
-            }}
-          >
-            Accéder aux indemnités journalières
-          </button>
-        </div> */}
-
-        {/* Bouton Enregistrer */}
         <div className="flex justify-end">
           <button
             onClick={handleSubmit}

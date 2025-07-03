@@ -23,6 +23,7 @@ const roleRoutes = require("./routes/roleRoutes");
 const chantierRoutes = require("./routes/chantierRoutes");
 const vehiculeRateRules = require("./routes/vehiculeRateRules");
 const backupRoutes = require("./routes/backup");
+const tripsAndExpensesRoutes = require("./routes/tripsAndExpensesRoutes");
 
 const app = express();
 
@@ -99,6 +100,7 @@ app.use('/uploads', express.static(getUploadsPath()));
     app.use("/api/chantiers", chantierRoutes);
     app.use("/api/vehicule-rates", vehiculeRateRules);
     app.use("/api/backup", backupRoutes);
+    app.use("/api/trips-and-expenses", tripsAndExpensesRoutes);
     
     // Protected test route
     app.get("/api/dashboard-data", authMiddleware, async (req, res) => {

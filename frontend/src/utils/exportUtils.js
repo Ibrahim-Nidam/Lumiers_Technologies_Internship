@@ -565,3 +565,383 @@ export const handlePDFExport = async (year, month, dashboardData) => {
         alert('Une erreur est survenue lors de la génération du PDF');
     }
 };
+
+/**
+ * Opens a print dialog with an HTML representation of the Excel data.
+ *
+ * @param {number} year - The year to print (e.g., 2022).
+ * @param {number} month - The month to print (0-11, where 0 = January).
+ * @param {Object} dashboardData - The dashboard data to print.
+ */
+export const handlePrintExcel = async (year, month, dashboardData) => {
+  try {
+        const { userInfo, trips, userMissionRates, userCarLoans, travelTypes } = dashboardData;
+        const label = getMonthLabel(year, month);
+        const fullName = userInfo?.fullName || 'N/A';
+        const roleMissionRates = userMissionRates;
+
+        // Reuse calculation logic
+        const calculateTotals = () => {
+            const dailyAllowances = new Map();
+            let totalMisc = 0;
+            let miscCount = 0;
+
+            trips.forEach(trip => {
+                if (Array.isArray(trip.depenses)) {
+                    miscCount += trip.depenses.length;
+                    trip.depenses.forEach(expense => {
+                        totalMisc += parseFloat(expense.montant) || 0;
+                    });
+                }
+                const missionRate = roleMissionRates.find(rate => rate.typeDeDeplacementId === trip.typeDeDeplacementId);
+                if (missionRate) {
+                    const rate = parseFloat(missionRate.tarifParJour) || 0;
+                    const travelTypeName = travelTypes.find(type => type.id === trip.typeDeDeplacementId)?.nom || 'Type Inconnu';
+                    if (!dailyAllowances.has(rate)) {
+                        dailyAllowances.set(rate, { count: 0, total: 0, name: travelTypeName });
+                    }
+                    const current = dailyAllowances.get(rate);
+                    current.count++;
+                    current.total += rate;
+                }
+            });
+
+            const mileageCosts = calculateDistanceCostsForExport(trips, userCarLoans);
+            let grandTotal = totalMisc;
+            mileageCosts.forEach(value => grandTotal += value.total);
+            dailyAllowances.forEach(value => grandTotal += value.total);
+
+            return { totalMisc, miscCount, mileageCosts, dailyAllowances, grandTotal };
+        };
+
+        const totals = calculateTotals();
+        const travelTypeNames = travelTypes.map(t => t.nom);
+
+        // Create HTML content with enhanced print styles
+        const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Note de frais ${label}</title>
+            <style>
+                @page {
+                    size: A4 landscape;
+                    margin: 0.4in 0.5in;
+                    /* Additional page settings for cleaner printing */
+                    @top-left { content: ""; }
+                    @top-center { content: ""; }
+                    @top-right { content: ""; }
+                    @bottom-left { content: ""; }
+                    @bottom-center { content: ""; }
+                    @bottom-right { content: ""; }
+                }
+                
+                body {
+                    font-family: "Calibri", Arial, sans-serif;
+                    font-size: 11px;
+                    margin: 0;
+                    padding: 15px;
+                    background: white;
+                    color: black;
+                }
+                
+                .header {
+                    text-align: center;
+                    margin-bottom: 20px;
+                    page-break-inside: avoid;
+                }
+                
+                .header h1 {
+                    font-size: 18px;
+                    color: #4F81BD;
+                    margin: 0;
+                }
+                
+                .header .user-info {
+                    font-size: 14px;
+                    font-weight: bold;
+                    margin: 10px 0;
+                }
+                
+                .section-title {
+                    font-size: 14px;
+                    font-weight: bold;
+                    background-color: #E0E0E0;
+                    padding: 8px;
+                    margin: 20px 0 10px 0;
+                    border: 1px solid #000;
+                    page-break-after: avoid;
+                }
+                
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 20px;
+                    page-break-inside: avoid;
+                }
+                
+                th, td {
+                    border: 1px solid #000;
+                    padding: 6px;
+                    text-align: center;
+                    font-size: 10px;
+                }
+                
+                th {
+                    background-color: #4F81BD;
+                    color: white;
+                    font-weight: bold;
+                }
+                
+                .text-left {
+                    text-align: left;
+                }
+                
+                .text-right {
+                    text-align: right;
+                }
+                
+                .bold {
+                    font-weight: bold;
+                }
+                
+                .total-row {
+                    background-color: #D3D3D3;
+                    font-weight: bold;
+                }
+                
+                .currency::after {
+                    content: " MAD";
+                }
+                
+                /* Enhanced print styles */
+                @media print {
+                    body { 
+                        -webkit-print-color-adjust: exact;
+                        color-adjust: exact;
+                    }
+                    
+                    /* Force page breaks for better layout */
+                    .page-break {
+                        page-break-before: always;
+                    }
+                    
+                    /* Ensure headers don't get cut off */
+                    .section-title {
+                        page-break-after: avoid;
+                    }
+                    
+                    /* Hide any potential URL display elements */
+                    .no-print {
+                        display: none !important;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="user-info">Nom et Prénom : ${fullName}</div>
+                <h1>Note de frais – ${label}</h1>
+            </div>
+            
+            <!-- Section 1: Detailed Trips -->
+            <div class="section-title">DÉTAIL DES TRAJETS</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Lieu de deplacement</th>
+                        <th>Chantier</th>
+                        ${travelTypeNames.map(name => `<th>${name}</th>`).join('')}
+                        <th>Distance (Km)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${trips.map(trip => {
+                        const rowData = [
+                            new Date(trip.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+                            trip.chantier?.designation || 'N/A',
+                            trip.chantier?.codeChantier || 'N/A',
+                            ...travelTypeNames.map(typeName => {
+                                const travelType = travelTypes.find(t => t.id === trip.typeDeDeplacementId);
+                                return (travelType && travelType.nom === typeName) ? '1' : '';
+                            }),
+                            (parseFloat(trip.distanceKm) || 0).toFixed(2)
+                        ];
+                        return `<tr>${rowData.map(cell => `<td>${cell}</td>`).join('')}</tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+            
+            <!-- Summary Table -->
+            <table>
+                <tbody>
+                    <tr class="bold">
+                        <td class="text-left">Nombre de jours</td>
+                        <td></td>
+                        <td></td>
+                        ${travelTypeNames.map(typeName => {
+                            const count = trips.filter(trip => {
+                                const travelType = travelTypes.find(t => t.id === trip.typeDeDeplacementId);
+                                return travelType && travelType.nom === typeName;
+                            }).length;
+                            return `<td>${count}</td>`;
+                        }).join('')}
+                    </tr>
+                    <tr class="bold">
+                        <td class="text-left">Taux de mission</td>
+                        <td></td>
+                        <td></td>
+                        ${travelTypeNames.map(typeName => {
+                            const travelType = travelTypes.find(t => t.nom === typeName);
+                            const missionRate = roleMissionRates.find(rate => rate.typeDeDeplacementId === travelType?.id);
+                            const rate = missionRate ? parseFloat(missionRate.tarifParJour) : 0;
+                            return `<td class="currency">${rate.toFixed(2)}</td>`;
+                        }).join('')}
+                    </tr>
+                    <tr class="bold">
+                        <td class="text-left">Total</td>
+                        <td></td>
+                        <td></td>
+                        ${travelTypeNames.map(typeName => {
+                            const travelType = travelTypes.find(t => t.nom === typeName);
+                            const count = trips.filter(trip => {
+                                const tripType = travelTypes.find(t => t.id === trip.typeDeDeplacementId);
+                                return tripType && tripType.nom === typeName;
+                            }).length;
+                            const missionRate = roleMissionRates.find(rate => rate.typeDeDeplacementId === travelType?.id);
+                            const rate = missionRate ? parseFloat(missionRate.tarifParJour) : 0;
+                            const total = count * rate;
+                            return `<td class="currency">${total.toFixed(2)}</td>`;
+                        }).join('')}
+                    </tr>
+                </tbody>
+            </table>
+            
+            <!-- Section 2: Miscellaneous Expenses -->
+            <div class="section-title">DÉPENSES DIVERSES</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date du Trajet</th>
+                        <th>Type de Dépense</th>
+                        <th>Montant (MAD)</th>
+                        <th>Justificatif</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${trips.map(trip => {
+                        if (trip.depenses && trip.depenses.length > 0) {
+                            return trip.depenses.map(expense => `
+                                <tr>
+                                    <td>${new Date(trip.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+                                    <td>${expense.typeDepense?.nom || 'N/A'}</td>
+                                    <td class="currency">${(parseFloat(expense.montant) || 0).toFixed(2)}</td>
+                                    <td>${expense.cheminJustificatif ? 'Oui' : 'Non'}</td>
+                                </tr>
+                            `).join('');
+                        }
+                        return '';
+                    }).join('')}
+                    <tr class="bold total-row">
+                        <td colspan="2" class="text-left">Total</td>
+                        <td class="currency">${totals.totalMisc.toFixed(2)}</td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <!-- Section 3: Récapitulatif -->
+            <div class="section-title">RÉCAPITULATIF</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Désignation</th>
+                        <th>Chantier</th>
+                        <th>Quantité</th>
+                        <th>Taux / J</th>
+                        <th>Montant</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="text-left">Feuille de depens</td>
+                        <td></td>
+                        <td>${totals.miscCount}</td>
+                        <td>-</td>
+                        <td class="currency">${totals.totalMisc.toFixed(2)}</td>
+                    </tr>
+                    ${Array.from(totals.dailyAllowances.entries()).map(([rate, { count, total, name }]) => `
+                        <tr>
+                            <td class="text-left">Frais journaliers (${name})</td>
+                            <td></td>
+                            <td>${count}</td>
+                            <td class="currency">${rate.toFixed(2)}</td>
+                            <td class="currency">${total.toFixed(2)}</td>
+                        </tr>
+                    `).join('')}
+                    ${Array.from(totals.mileageCosts.entries()).map(([libelle, { distance, total, rate, conditionType, threshold, rateAfter }]) => {
+                        const rateDisplay = (conditionType === "THRESHOLD" && threshold && rateAfter !== rate)
+                            ? `${rate.toFixed(2)}/${rateAfter.toFixed(2)} (seuil: ${threshold}km)`
+                            : rate.toFixed(2);
+                        return `
+                            <tr>
+                                <td class="text-left">Frais kilométrique (${libelle})</td>
+                                <td></td>
+                                <td>${distance.toFixed(2)} Km</td>
+                                <td>${rateDisplay}</td>
+                                <td class="currency">${total.toFixed(2)}</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                    <tr class="bold total-row">
+                        <td colspan="4" class="text-right">Total Dépense</td>
+                        <td class="currency">${totals.grandTotal.toFixed(2)}</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <script>
+                // Auto-open print dialog when page loads
+                window.onload = function() {
+                    // Set document title for cleaner printing
+                    document.title = "Note de frais ${label}";
+                    
+                    setTimeout(() => {
+                        window.print();
+                        // Close window after printing
+                        window.onafterprint = function() {
+                            setTimeout(() => {
+                                window.close();
+                            }, 1000);
+                        };
+                    }, 500);
+                };
+            </script>
+        </body>
+        </html>
+        `;
+
+        // Create blob and data URL for cleaner document reference
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        
+        // Open with data URL (cleaner than direct HTML writing)
+        const printWindow = window.open(url, '_blank', 'width=1200,height=800');
+        
+        // Clean up the URL after use
+        setTimeout(() => {
+            URL.revokeObjectURL(url);
+        }, 5000);
+        
+        // Focus on the new window
+        if (printWindow) {
+            printWindow.focus();
+        }
+
+    } catch (err) {
+        console.error("❌ handleExcelPrintClean failed:", err);
+        alert('Une erreur est survenue lors de la génération du document pour impression.');
+    }
+};

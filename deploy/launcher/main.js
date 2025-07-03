@@ -81,14 +81,12 @@ ipcMain.handle('start-server', async () => {
     
     if (!fs.existsSync(envPath)) {
       const defaultEnv = `# Note de Frais Configuration
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=note_de_frais
-DB_USER=root
-DB_PASSWORD=
-PORT=3001
-NODE_ENV=production
-DEBUG=false`;
+PG_DATABASE=fiche_deplacement
+PG_USERNAME=postgres
+PG_PASSWORD=post
+PG_HOST=localhost
+PG_PORT=5432
+JWT_SECRET=TiriOtfpjMYs2LCapxRkpPmM5E8Gn2CD`;
       
       try {
         fs.writeFileSync(envPath, defaultEnv);
