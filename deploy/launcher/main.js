@@ -73,8 +73,6 @@ ipcMain.handle('start-server', async () => {
     const distPath = isDev 
       ? path.join(__dirname, '..', 'dist')
       : path.join(process.resourcesPath, 'dist');
-    console.log('Looking for dist folder at:', distPath);
-    console.log('Dist folder exists:', fs.existsSync(distPath));
     
     // Create default .env if it doesn't exist
     const envPath = isDev 
@@ -94,13 +92,11 @@ DEBUG=false`;
       
       try {
         fs.writeFileSync(envPath, defaultEnv);
-        console.log('Created default .env file at:', envPath);
       } catch (error) {
         console.error('Could not create .env file:', error);
       }
     }
 
-    console.log('Starting server at:', exePath);
     
     serverProcess = spawn(exePath, [], {
       windowsHide: true,
@@ -110,7 +106,6 @@ DEBUG=false`;
 
     // Handle process output
     serverProcess.stdout.on('data', (data) => {
-      console.log('Server stdout:', data.toString());
       // Send output to renderer if needed
       if (win && !win.isDestroyed()) {
         win.webContents.send('server-output', data.toString());
@@ -125,7 +120,6 @@ DEBUG=false`;
     });
 
     serverProcess.on('exit', (code, signal) => {
-      console.log(`Server process exited with code ${code}, signal ${signal}`);
       serverProcess = null;
       if (win && !win.isDestroyed()) {
         win.webContents.send('server-stopped', { code, signal });
@@ -157,7 +151,6 @@ ipcMain.handle('stop-server', async () => {
           console.error('taskkill error:', err.message);
           resolve({ success: false, message: err.message });
         } else {
-          console.log('Server stopped:', stdout);
           serverProcess = null;
           resolve({ success: true, message: 'Server stopped successfully' });
         }
