@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Users, Car, Shield, Edit3, Check, X, Search, Filter, Plus } from "lucide-react";
+import { Users, Car, Shield, Edit3, Check, X, Search, Filter, Plus, RefreshCw } from "lucide-react";
 import apiClient from "../../utils/axiosConfig";
 import { colors } from "../../colors";
 import { updateStoredCredentials, getStoredUser } from "../../utils/storageUtils";
@@ -12,6 +12,7 @@ export default function AccountApproval() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterHasCar, setFilterHasCar] = useState(null);
   const [filterIsActive, setFilterIsActive] = useState(null);
+  const [resettingPassword, setResettingPassword] = useState({});
   
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,6 +29,28 @@ export default function AccountApproval() {
   const toast = {
     error: (msg) => console.log('Error:', msg),
     success: (msg) => console.log('Success:', msg)
+  };
+
+  const resetPassword = async (id) => {
+    try {
+      setResettingPassword(prev => ({ ...prev, [id]: true }));
+      
+      const response = await apiClient.patch(`/users/${id}/reset-password`);
+      
+      if (response.data.success) {
+        toast.success(`Mot de passe réinitialisé avec succès. Nouveau mot de passe: ${response.data.defaultPassword}`);
+      }
+    } catch (err) {
+      console.error('Reset password error:', err);
+      if (err.response?.status === 401) {
+        toast.error("Session expirée. Redirection vers la connexion...");
+      } else {
+        const msg = err?.response?.data?.error || "Erreur lors de la réinitialisation";
+        toast.error(msg);
+      }
+    } finally {
+      setResettingPassword(prev => ({ ...prev, [id]: false }));
+    }
   };
 
   const fetchAccounts = useCallback(async () => {
@@ -684,10 +707,10 @@ export default function AccountApproval() {
                           {account.hasCar ? "Possède" : "Aucun"}
                         </button>
                       </div>
-                      <div className="col-span-2">
+                      <div className="col-span-2 flex items-center gap-2">
                         <button
                           onClick={() => toggleField(account.id, "estActif", account.status === "Actif")}
-                          className={`flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 hover:scale-105 shadow-md ${
+                          className={`flex-1 flex items-center justify-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 hover:scale-105 shadow-md ${
                             account.status === "Actif"
                               ? "bg-green-500 text-white hover:bg-green-600"
                               : "bg-yellow-500 text-white hover:bg-yellow-600"
@@ -695,6 +718,20 @@ export default function AccountApproval() {
                         >
                           {account.status === "Actif" ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
                           {account.status}
+                        </button>
+                        <button
+                          onClick={() => resetPassword(account.id)}
+                          disabled={resettingPassword[account.id]}
+                          className={`p-2 rounded-full transition-all duration-200 ${
+                            resettingPassword[account.id] ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'
+                          }`}
+                          title="Réinitialiser le mot de passe"
+                        >
+                          {resettingPassword[account.id] ? (
+                            <div className="w-4 h-4 border-2 border-gray-300 border-t-2 rounded-full animate-spin" style={{ borderTopColor: colors.primary }}></div>
+                          ) : (
+                            <RefreshCw className="w-4 h-4 text-gray-600" />
+                          )}
                         </button>
                       </div>
                       <div className="col-span-2">
@@ -793,6 +830,22 @@ export default function AccountApproval() {
                     >
                       {account.status === "Actif" ? <Check className="w-4 h-4 flex-shrink-0" /> : <X className="w-4 h-4 flex-shrink-0" />}
                       <span className="truncate">{account.status}</span>
+                    </button>
+                    <button
+                      onClick={() => resetPassword(account.id)}
+                      disabled={resettingPassword[account.id]}
+                      className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium text-sm transition-all duration-200 shadow-sm ${
+                        resettingPassword[account.id] ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'
+                      }`}
+                    >
+                      {resettingPassword[account.id] ? (
+                        <div className="w-4 h-4 border-2 border-gray-300 border-t-2 rounded-full animate-spin" style={{ borderTopColor: colors.primary }}></div>
+                      ) : (
+                        <>
+                          <RefreshCw className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate">Réinitialiser MDP</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>

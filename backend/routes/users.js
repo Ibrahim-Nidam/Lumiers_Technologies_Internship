@@ -8,6 +8,7 @@ const {
   updateUserRole,
   getUsersWithCars,
   createUser,
+  resetUserPassword,
 } = require("../controllers/userController");
 
 // Fetch users (non-admin)
@@ -18,6 +19,9 @@ router.patch("/:id", authMiddleware, toggleUserField);
 
 // Update user role
 router.patch("/:id/role", authMiddleware, updateUserRole);
+
+// Update user reset-password
+router.patch("/:id/reset-password", authMiddleware, resetUserPassword);
 
 // Fetch assignable roles
 router.get("/roles", authMiddleware, getAssignableRoles);

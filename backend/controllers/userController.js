@@ -104,6 +104,37 @@ exports.toggleUserField = async (req, res) => {
   }
 };
 
+// PATCH Reset User Password
+exports.resetUserPassword = async (req, res) => {
+  const { id } = req.params;
+  const defaultPassword = "Lumieres1!";
+
+  try {
+    const targetUser = await User.findByPk(id);
+
+    if (!targetUser) {
+      return res.status(404).json({ error: "Utilisateur introuvable." });
+    }
+
+    // Hash the default password
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+    
+    // Update user's password
+    targetUser.motDePasseHache = hashedPassword;
+    targetUser.dateModification = new Date();
+    
+    await targetUser.save();
+
+    res.json({ 
+      success: true, 
+      message: "Mot de passe réinitialisé avec succès.",
+      defaultPassword: defaultPassword 
+    });
+  } catch (err) {
+    console.error("Error resetting user password:", err);
+    res.status(500).json({ error: "Erreur lors de la réinitialisation du mot de passe." });
+  }
+};
 
 // GET assignable roles (filter out admin and superadmin)
 exports.getAssignableRoles = async (req, res) => {
@@ -153,7 +184,6 @@ exports.updateUserRole = async (req, res) => {
     res.status(500).json({ error: "Erreur serveur." });
   }
 };
-
 
 // GET Users With Cars
 exports.getUsersWithCars = async (req, res) => {
