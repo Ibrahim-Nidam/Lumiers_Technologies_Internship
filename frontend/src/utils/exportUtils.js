@@ -175,7 +175,7 @@ export const handleExcelExport = async (year, month, dashboardData) => {
         ws.getCell(`A${currentRow}`).alignment = { horizontal: 'center' };
         currentRow += 2;
 
-        // --- SECTION 1: Detailed Trips ---
+        // --- SECTION 1: Detailed Trips (WITHOUT distance column) ---
         ws.getCell(`A${currentRow}`).value = 'DÉTAIL DES TRAJETS';
         ws.getCell(`A${currentRow}`).font = { size: 14, bold: true };
         ws.getCell(`A${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
@@ -183,7 +183,7 @@ export const handleExcelExport = async (year, month, dashboardData) => {
 
         const travelTypeNames = travelTypes.map(t => t.nom);
         const tripsHeaderRow = ws.getRow(currentRow);
-        const dynamicHeaders = ['Date', 'Lieu de deplacement', 'Chantier', ...travelTypeNames, 'Distance (Km)'];
+        const dynamicHeaders = ['Date', 'Lieu de deplacement', 'Chantier', ...travelTypeNames];
         tripsHeaderRow.values = dynamicHeaders;
         tripsHeaderRow.eachCell(cell => {
             cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -204,10 +204,8 @@ export const handleExcelExport = async (year, month, dashboardData) => {
                 const travelType = travelTypes.find(t => t.id === trip.typeDeDeplacementId);
                 rowData.push((travelType && travelType.nom === typeName) ? 1 : '');
             });
-            rowData.push(parseFloat(trip.distanceKm) || 0);
             tripRow.values = rowData;
             styleRow(tripRow);
-            tripRow.getCell(dynamicHeaders.length).numFmt = '0.00';
             currentRow++;
         });
 
@@ -289,6 +287,82 @@ export const handleExcelExport = async (year, month, dashboardData) => {
         totalExpensesRow.font = { bold: true };
         totalExpensesRow.getCell(3).numFmt = '#,##0.00 "MAD"';
         currentRow += 3;
+
+        // --- NEW SECTION: Distance Table ---
+        ws.getCell(`A${currentRow}`).value = 'DISTANCES PARCOURUES';
+        ws.getCell(`A${currentRow}`).font = { size: 14, bold: true };
+        ws.getCell(`A${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+        currentRow++;
+
+        const distanceHeaderRow = ws.getRow(currentRow);
+        distanceHeaderRow.values = ['Date', 'Lieu de deplacement', 'Distance (Km)'];
+        distanceHeaderRow.eachCell(cell => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+        currentRow++;
+
+        let totalDistance = 0;
+        trips.forEach(trip => {
+        const distance = parseFloat(trip.distanceKm) || 0;
+        totalDistance += distance;
+        const distanceRow = ws.getRow(currentRow);
+        distanceRow.values = [
+            new Date(trip.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+            trip.chantier?.designation || 'N/A',
+            distance
+        ];
+        styleRow(distanceRow);
+        distanceRow.getCell(3).numFmt = '0.00';
+        currentRow++;
+        });
+
+        // total distance row
+        const totalDistanceRow = ws.getRow(currentRow);
+        totalDistanceRow.values = ['Total', '', totalDistance];
+        ws.mergeCells(`A${currentRow}:B${currentRow}`);
+        styleRow(totalDistanceRow, 0);
+        totalDistanceRow.font = { bold: true };
+        totalDistanceRow.getCell(3).numFmt = '0.00';
+        currentRow++;
+
+        // --- Add mileage‑rate rows ---
+        if (totals.mileageCosts.size > 1) {
+        // multiple rates
+        Array.from(totals.mileageCosts.entries()).forEach(([libelle, { rate, distance}]) => {
+            const tauxRow = ws.getRow(currentRow);
+            tauxRow.values = [`Taux (${libelle})`, '', `${rate.toFixed(2)} - ${distance.toFixed(2)} Km`];
+            ws.mergeCells(`A${currentRow}:B${currentRow}`);
+            styleRow(tauxRow, 0);
+            tauxRow.font = { bold: true };
+            tauxRow.getCell(3).numFmt = '#,##0.00 "MAD"';
+            currentRow++;
+        });
+        } else {
+        // single rate
+        const tauxRow = ws.getRow(currentRow);
+        const first = totals.mileageCosts.values().next().value || { rate: 0 };
+        tauxRow.values = ['Taux', '', first.rate.toFixed(2)];
+        ws.mergeCells(`A${currentRow}:B${currentRow}`);
+        styleRow(tauxRow, 0);
+        tauxRow.font = { bold: true };
+        tauxRow.getCell(3).numFmt = '#,##0.00 "MAD"';
+        currentRow++;
+        }
+
+        // --- Net à payer ---
+        const netPayerRow = ws.getRow(currentRow);
+        const totalMileageCost = Array.from(totals.mileageCosts.values()).reduce((sum, c) => sum + c.total, 0);
+        netPayerRow.values = ['Net à payer', '', totalMileageCost];
+        ws.mergeCells(`A${currentRow}:B${currentRow}`);
+        styleRow(netPayerRow, 0);
+        netPayerRow.font = { bold: true };
+        netPayerRow.getCell(3).numFmt = '#,##0.00 "MAD"';
+        netPayerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
+        currentRow += 3;
+
 
         // --- SECTION 3: Récapitulatif ---
         ws.getCell(`A${currentRow}`).value = 'RÉCAPITULATIF';
@@ -617,6 +691,9 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
         const totals = calculateTotals();
         const travelTypeNames = travelTypes.map(t => t.nom);
 
+        // Calculate total distance for the distance table
+        const totalDistance = trips.reduce((sum, trip) => sum + (parseFloat(trip.distanceKm) || 0), 0);
+
         // Create HTML content with enhanced print styles
         const htmlContent = `
         <!DOCTYPE html>
@@ -754,7 +831,6 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
                         <th>Lieu de deplacement</th>
                         <th>Chantier</th>
                         ${travelTypeNames.map(name => `<th>${name}</th>`).join('')}
-                        <th>Distance (Km)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -766,8 +842,7 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
                             ...travelTypeNames.map(typeName => {
                                 const travelType = travelTypes.find(t => t.id === trip.typeDeDeplacementId);
                                 return (travelType && travelType.nom === typeName) ? '1' : '';
-                            }),
-                            (parseFloat(trip.distanceKm) || 0).toFixed(2)
+                            })
                         ];
                         return `<tr>${rowData.map(cell => `<td>${cell}</td>`).join('')}</tr>`;
                     }).join('')}
@@ -852,7 +927,76 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
                 </tbody>
             </table>
             
-            <!-- Section 3: Récapitulatif -->
+            <!-- Section 3: Distance Table -->
+            <div class="section-title">DISTANCES PARCOURUES</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Lieu de deplacement</th>
+                        <th>Distance (Km)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${trips.map(trip => {
+                        const distance = parseFloat(trip.distanceKm) || 0;
+                        return `
+                        <tr>
+                            <td>${new Date(trip.date)
+                                    .toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+                            <td>${trip.chantier?.designation || 'N/A'}</td>
+                            <td>${distance.toFixed(2)}</td>
+                        </tr>
+                        `;
+                    }).join('')}
+
+                    <!-- Total distance -->
+                    <tr class="bold total-row">
+                        <td colspan="2" class="text-left">Total</td>
+                        <td>${totalDistance.toFixed(2)}</td>
+                    </tr>
+
+                    <!-- Taux rows: multiple or single -->
+                    ${
+                        totals.mileageCosts.size > 1
+                        ? Array.from(totals.mileageCosts.entries()).map(
+                            ([libelle, { rate, distance }]) => `
+                                <tr class="bold">
+                                <td colspan="2" class="text-left">Taux (${libelle})</td>
+                                <td class="currency">${rate.toFixed(2)} - ${distance.toFixed(2)} Km</td>
+                                </tr>
+                            `
+                            ).join('')
+                        : `<tr class="bold">
+                            <td colspan="2" class="text-left">Taux</td>
+                            <td class="currency">
+                                ${
+                                totals.mileageCosts.size > 0
+                                    ? Array.from(totals.mileageCosts.values())[0].rate.toFixed(2)
+                                    : '0.00'
+                                }
+                            </td>
+                            </tr>`
+                    }
+
+                    <!-- Net à payer -->
+                    <tr class="bold total-row">
+                        <td colspan="2" class="text-left">Net à payer</td>
+                        <td class="currency">
+                        ${
+                            totals.mileageCosts.size > 0
+                            ? Array.from(totals.mileageCosts.values())
+                                .reduce((sum, { total }) => sum + total, 0)
+                                .toFixed(2)
+                            : '0.00'
+                        }
+                        </td>
+                    </tr>
+                    </tbody>
+
+            </table>
+            
+            <!-- Section 4: Récapitulatif -->
             <div class="section-title">RÉCAPITULATIF</div>
             <table>
                 <thead>
