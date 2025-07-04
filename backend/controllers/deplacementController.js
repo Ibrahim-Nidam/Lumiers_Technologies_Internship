@@ -12,6 +12,32 @@ const { Op } = Sequelize;
 const path = require('path');
 const fs = require('fs-extra');
 
+/**
+ * GET /api/deplacements/dates
+ * Returns an array of distinct `date` values for the current (or target) user.
+ */
+exports.getAvailableDates = async (req, res, next) => {
+  try {
+    // managerAccessMiddleware will set req.targetUserId if a manager is requesting another user
+    const userId = req.targetUserId || req.user.userId;
+
+    const rows = await Deplacement.findAll({
+      attributes: [
+        [Sequelize.fn('DISTINCT', Sequelize.col('date')), 'date']
+      ],
+      where: { userId },
+      order: [['date', 'ASC']],
+      raw: true
+    });
+
+    // rows: [ { date: '2025-06-20' }, { date: '2025-06-25' }, … ]
+    const dates = rows.map(r => r.date);
+    return res.json(dates);
+  } catch (err) {
+    next(err);
+  }
+};
+
 // Helper function to get uploads path
 function getUploadsPath() {
   if (process.pkg) {

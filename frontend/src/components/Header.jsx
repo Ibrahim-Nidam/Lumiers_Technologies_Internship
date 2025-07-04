@@ -92,15 +92,25 @@ const Header = () => {
 
           <nav className="hidden md:flex items-center space-x-8">
             {isLoggedIn && (
-              <Link
-                to={dashboardPath}
-                className={`text-slate-700 hover:text-slate-900 font-medium text-sm transition-colors duration-200 relative group ${
-                  isActive(dashboardPath) ? "border-b-2 border-primary" : ""
-                }`}
-              >
-                Tableau de bord
-              </Link>
-            )}
+                <>
+                  <Link
+                    to={dashboardPath}
+                    className={`text-slate-700 hover:text-slate-900 font-medium text-sm transition-colors duration-200 relative group ${
+                      isActive(dashboardPath) ? "border-b-2 border-primary" : ""
+                    }`}
+                  >
+                    Tableau de bord
+                  </Link>
+                  <Link
+                    to="/distanceDetails"
+                    className={`text-slate-700 hover:text-slate-900 font-medium text-sm transition-colors duration-200 relative group ${
+                      isActive("/distanceDetails") ? "border-b-2 border-primary" : ""
+                    }`}
+                  >
+                    Détails des trajets
+                  </Link>
+                </>
+              )}
 
             {/* {(userData?.role === "manager" || userData?.role === "supermanager") && (
               <Link
@@ -226,6 +236,18 @@ const Header = () => {
               onClick={() => setMobileMenuOpen(false)}
             >
               Tableau de bord
+            </Link>
+          )}
+
+          {isLoggedIn && (
+            <Link
+              to="/distanceDetails"
+              className={`block px-4 py-3 text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-md font-medium text-sm transition-colors duration-200 ${
+                isActive("/distanceDetails") ? "bg-slate-100 border-l-4 border-primary" : ""
+              }`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Détails des trajets
             </Link>
           )}
 

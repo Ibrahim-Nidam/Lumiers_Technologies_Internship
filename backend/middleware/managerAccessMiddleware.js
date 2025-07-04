@@ -1,4 +1,3 @@
-// middleware/managerAccessMiddleware.js
 const { User } = require("../models");
 
 const managerAccessMiddleware = async (req, res, next) => {

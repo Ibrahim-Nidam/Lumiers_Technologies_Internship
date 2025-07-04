@@ -9,6 +9,7 @@ import Home from "../pages/Home";
 import AgentDashboard from "../components/dash/AgentDashboard";
 import ManagerDashboard from "../components/dash/ManagerDashboard";
 import ProfileSettings from "../components/dash/ProfileSettings";
+import DistanceDetails from "../components/DistanceDetails";
 import DailyReturnsPage from "../pages/DailyReturnsPage";
 
 
@@ -57,6 +58,7 @@ export default function AppRoutes() {
         {/* Protected Routes */}
         <Route element={<PrivateRoute />}>
           <Route path="/agentDashboard" element={<AgentDashboard />} />
+          <Route path="/distanceDetails" element={<DistanceDetails />} />
 
           {/* Manager Dashboard with nested pages */}
           <Route path="/managerDashboard" element={<ManagerDashboard />}>

@@ -28,4 +28,7 @@ router.delete("/:tripId/depenses/:expenseId/justificatif",
   ctrl.removeExpenseJustificatif
 );
 
+// GET /api/deplacements/dates
+router.get("/dates",authMiddleware, ctrl.getAvailableDates);
+
 module.exports = router

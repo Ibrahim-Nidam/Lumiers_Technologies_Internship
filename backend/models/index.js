@@ -23,6 +23,7 @@ const TypeDeDeplacement = require("./TypeDeDeplacement")(sequelize, DataTypes);
 const TauxMissionRole = require("./TauxMissionRole")(sequelize, DataTypes);
 const VehiculeRateRule = require("./VehiculeRateRule")(sequelize, DataTypes);
 const Chantier = require("./Chantier")(sequelize, DataTypes);
+const DistanceDetail = require('./DistanceDetail')(sequelize, DataTypes);
 
 // ─── Role ↔ User ─────────────────────────────────────────────────
 Role.hasMany(User, { foreignKey: "roleId", onDelete: "SET NULL", as: "users" });
@@ -80,6 +81,14 @@ Depense.belongsTo(User, { foreignKey: "createdBy", as: "creator" });
 User.hasMany(Depense, { foreignKey: "modifiedBy", as: "modifiedExpenses" });
 Depense.belongsTo(User, { foreignKey: "modifiedBy", as: "modifier" });
 
+// ─── User ↔ DistanceDetail ───────────────────────────────────────
+User.hasMany(DistanceDetail, { foreignKey: 'userId', onDelete: 'CASCADE', as: 'distanceSegments'});
+DistanceDetail.belongsTo(User, { foreignKey: 'userId', as: 'user'});
+
+// ─── VehiculeRateRule ↔ DistanceDetail ──────────────────────────
+VehiculeRateRule.hasMany(DistanceDetail, { foreignKey: 'vehiculeRateRuleId', onDelete: 'SET NULL', as: 'distanceSegments'});
+DistanceDetail.belongsTo(VehiculeRateRule, { foreignKey: 'vehiculeRateRuleId', as: 'vehiculeRateRule'});
+
 // ─── Export All ─────────────────────────────────────────────────
 module.exports = {
   sequelize,
@@ -92,5 +101,6 @@ module.exports = {
   TypeDeDeplacement,
   TauxMissionRole,
   VehiculeRateRule,
-  Chantier
+  Chantier,
+  DistanceDetail
 };
