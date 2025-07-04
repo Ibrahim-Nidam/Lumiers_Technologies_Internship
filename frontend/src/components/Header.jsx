@@ -123,7 +123,7 @@ const Header = () => {
               </Link>
             )} */}
 
-            {isLoggedIn ? (
+            {isLoggedIn && (
               <div className="flex items-center space-x-4">
                 <button
                   onClick={handleLogout}
@@ -151,17 +151,6 @@ const Header = () => {
                   </span>
                 </div>
               </div>
-            ) : (
-              <Link
-                to="/get-started"
-                className="ml-4 px-6 py-2.5 rounded text-white font-semibold text-sm transition-all duration-200 hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2"
-                style={{
-                    backgroundColor: colors.primary,
-                    "--tw-ring-color": `${colors.primary}40`,
-                }}
-              >
-                Commencer
-              </Link>
             )}
           </nav>
 
@@ -266,7 +255,7 @@ const Header = () => {
 
           {/* Logout or Commencer button */}
           <div className="pt-2">
-            {isLoggedIn ? (
+            {isLoggedIn && (
               <button
                 onClick={() => {
                   handleLogout();
@@ -280,19 +269,7 @@ const Header = () => {
               >
                 Déconnexion
               </button>
-            ) : (
-              <Link
-                to="/get-started"
-                className="block w-full px-4 py-3 rounded-md text-white font-semibold text-sm text-center transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2"
-                style={{
-                  backgroundColor: colors.primary,
-                  "--tw-ring-color": `${colors.primary}40`,
-                }}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Commencer
-              </Link>
-            )}
+            ) }
           </div>
         </div>
       </div>
