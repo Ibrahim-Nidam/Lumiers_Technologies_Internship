@@ -24,6 +24,7 @@ import Chantier from "../pages/manager/Chantier";
 // import CarLoanRates from "../pages/manager/CarLoanRates";
 import Consult from "../pages/manager/Consult";
 import Role from "../pages/manager/Role";
+import DistanceDetailsManager from "../pages/manager/DistanceDetailsManager";
 
 /**
  * Defines the routes for the application.
@@ -71,6 +72,7 @@ export default function AppRoutes() {
             <Route path="taux-deplacement" element={<TauxDeplacement />} />
             <Route path="carrates" element={<TauxVehicule />} />
             <Route path="chantier" element={<Chantier />} />
+            <Route path="distancedetails" element={<DistanceDetailsManager />} />
             {/* Add more manager routes as needed */}
           </Route>
             <Route path="/agentDashboard/:userId" element={<AgentDashboard />} />

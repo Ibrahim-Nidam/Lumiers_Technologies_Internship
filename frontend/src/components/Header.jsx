@@ -101,14 +101,14 @@ const Header = () => {
                   >
                     Tableau de bord
                   </Link>
-                  <Link
+                  {/* <Link
                     to="/distanceDetails"
                     className={`text-slate-700 hover:text-slate-900 font-medium text-sm transition-colors duration-200 relative group ${
                       isActive("/distanceDetails") ? "border-b-2 border-primary" : ""
                     }`}
                   >
                     Détails des trajets
-                  </Link>
+                  </Link> */}
                 </>
               )}
 
@@ -239,7 +239,7 @@ const Header = () => {
             </Link>
           )}
 
-          {isLoggedIn && (
+          {/* {isLoggedIn && (
             <Link
               to="/distanceDetails"
               className={`block px-4 py-3 text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-md font-medium text-sm transition-colors duration-200 ${
@@ -249,7 +249,7 @@ const Header = () => {
             >
               Détails des trajets
             </Link>
-          )}
+          )} */}
 
           {/* Displacement dashboard link for managers and supermanagers */}
           {/* {isLoggedIn && (userData?.role === "manager" || userData?.role === "supermanager") && (

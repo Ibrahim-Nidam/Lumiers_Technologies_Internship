@@ -1,11 +1,11 @@
-const { DistanceDetail, VehiculeRateRule, Sequelize } = require('../models');
+const { DistanceDetail, VehiculeRateRule, Sequelize, User } = require('../models');
 
 // Create a new segment
 exports.createSegment = async (req, res, next) => {
   try {
     const { dateSegment, lieuDepart, lieuArrivee, distanceKm, vehiculeRateRuleId } = req.body;
     const segment = await DistanceDetail.create({
-      userId: req.user.userId, // Changed from req.user.id to req.user.userId
+      userId: req.user.userId, 
       dateSegment,
       lieuDepart,
       lieuArrivee,
@@ -26,7 +26,7 @@ exports.getSegmentsByDate = async (req, res, next) => {
 
     const segments = await DistanceDetail.findAll({
       where: {
-        userId: req.user.userId, // Changed from req.user.id to req.user.userId
+        userId: req.user.userId, 
         dateSegment: date
       },
       include: [{ model: VehiculeRateRule, as: 'vehiculeRateRule' }]
@@ -42,7 +42,7 @@ exports.updateSegment = async (req, res, next) => {
   try {
     const { id } = req.params;
     const segment = await DistanceDetail.findOne({ 
-      where: { id, userId: req.user.userId } // Changed from req.user.id to req.user.userId
+      where: { id, userId: req.user.userId } 
     });
     if (!segment) return res.status(404).json({ message: 'Segment not found' });
 
@@ -59,7 +59,7 @@ exports.deleteSegment = async (req, res, next) => {
   try {
     const { id } = req.params;
     const deleted = await DistanceDetail.destroy({
-      where: { id, userId: req.user.userId } // Changed from req.user.id to req.user.userId
+      where: { id, userId: req.user.userId } 
     });
     if (!deleted) return res.status(404).json({ message: 'Segment not found or already deleted' });
     return res.status(204).send();
@@ -72,8 +72,6 @@ exports.deleteSegment = async (req, res, next) => {
 exports.getDatesWithSegments = async (req, res, next) => {
   try {
     const userId = req.user.userId;
-    console.log('Getting distinct dateSegment for user:', userId);
-
     const rows = await DistanceDetail.findAll({
       attributes: [[Sequelize.fn('DISTINCT', Sequelize.col('date_segment')), 'dateSegment']],
       where: { userId },
@@ -86,5 +84,50 @@ exports.getDatesWithSegments = async (req, res, next) => {
   } catch (err) {
     console.error('Erreur dans getDatesWithSegments:', err);
     return res.status(500).json({ message: 'Erreur interne', error: err.message });
+  }
+};
+
+
+exports.getAllDistanceDetails = async (req, res, next) => {
+  try {
+    const details = await DistanceDetail.findAll({
+      include: [
+        { 
+          model: VehiculeRateRule, 
+          as: 'vehiculeRateRule' 
+        },
+        { 
+          model: User, 
+          as: 'user',
+          attributes: ['id', 'nomComplete'] // Only include necessary fields
+        }
+      ],
+      order: [['dateSegment', 'DESC']]
+    });
+    return res.json(details);
+  } catch (err) {
+    console.error("Erreur lors de la récupération des DistanceDetails:", err);
+    return res.status(500).json({ message: "Erreur serveur", error: err.message });
+  }
+};
+
+
+// Admin: delete any segment by ID
+exports.adminDeleteSegment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const deleted = await DistanceDetail.destroy({
+      where: { id } // ❗️pas de filtre userId ici
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ message: 'Segment not found or already deleted' });
+    }
+
+    return res.status(204).send();
+  } catch (err) {
+    console.error('Erreur adminDeleteSegment:', err);
+    return res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
 };

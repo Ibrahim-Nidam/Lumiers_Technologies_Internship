@@ -11,6 +11,7 @@ import Role  from "../../pages/manager/Role"
 import TauxDeplacement from "../../pages/manager/TauxDeplacement"
 import TauxVehicule from "../../pages/manager/TauxVehicule"
 import Chantier from "../../pages/manager/Chantier"
+import DistanceDetailsManager from "../../pages/manager/DistanceDetailsManager"
 
 /**
  * The AdminDashboard component renders the entire manager dashboard interface.
@@ -53,6 +54,8 @@ export default function AdminDashboard() {
         return <TauxVehicule key="carrates" />
       case "chantier":
         return <Chantier key="chantier" />
+      case "distancedetails":
+        return <DistanceDetailsManager key="distancedetails" />
       default:
         return <AccountApproval key="accounts-default" />
     }

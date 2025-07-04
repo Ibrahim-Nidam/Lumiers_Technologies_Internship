@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/authMiddleware");
+const managerAccessMiddleware = require("../middleware/managerAccessMiddleware")
 const ctrl = require("../controllers/distanceDetailController");
 
 // All routes require authentication
@@ -23,5 +24,10 @@ router.put("/:id", ctrl.updateSegment);
 router.delete("/:id", ctrl.deleteSegment);
 
 router.get("/dates-with-segments", auth, ctrl.getDatesWithSegments)
+
+router.get('/all', ctrl.getAllDistanceDetails);
+
+// DELETE /api/distance-details/admin/:id
+router.delete('/admin/:id', managerAccessMiddleware, ctrl.adminDeleteSegment);
 
 module.exports = router;
