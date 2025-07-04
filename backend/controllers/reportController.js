@@ -550,7 +550,7 @@ exports.generateExcelReport = async (userId, year, month) => {
 
         const travelTypeNames = travelTypes.map(t => t.nom);
         const tripsHeaderRow = ws.getRow(currentRow);
-        const dynamicHeaders = ['Date', 'Lieu de deplacement', 'Chantier', ...travelTypeNames, 'Distance (Km)'];
+        const dynamicHeaders = ['Date', 'Lieu de deplacement', 'Chantier', ...travelTypeNames];
         tripsHeaderRow.values = dynamicHeaders;
         tripsHeaderRow.eachCell(cell => {
             cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -571,10 +571,8 @@ exports.generateExcelReport = async (userId, year, month) => {
                 const travelType = travelTypes.find(t => t.id === trip.typeDeDeplacementId);
                 rowData.push((travelType && travelType.nom === typeName) ? 1 : '');
             });
-            rowData.push(parseFloat(trip.distanceKm) || 0);
             tripRow.values = rowData;
             styleRow(tripRow);
-            tripRow.getCell(dynamicHeaders.length).numFmt = '0.00';
             currentRow++;
         });
 
@@ -655,6 +653,81 @@ exports.generateExcelReport = async (userId, year, month) => {
         styleRow(totalExpensesRow, 0); // Style all cells
         totalExpensesRow.font = { bold: true };
         totalExpensesRow.getCell(3).numFmt = '#,##0.00 "MAD"';
+        currentRow += 3;
+
+        // --- NEW SECTION: Distance Table ---
+        ws.getCell(`A${currentRow}`).value = 'DISTANCES PARCOURUES';
+        ws.getCell(`A${currentRow}`).font = { size: 14, bold: true };
+        ws.getCell(`A${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+        currentRow++;
+
+        const distanceHeaderRow = ws.getRow(currentRow);
+        distanceHeaderRow.values = ['Date', 'Lieu de deplacement', 'Distance (Km)'];
+        distanceHeaderRow.eachCell(cell => {
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
+            cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+        currentRow++;
+
+        let totalDistance = 0;
+        trips.forEach(trip => {
+            const distance = parseFloat(trip.distanceKm) || 0;
+            totalDistance += distance;
+            const distanceRow = ws.getRow(currentRow);
+            distanceRow.values = [
+                new Date(trip.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+                trip.chantier?.designation || 'N/A',
+                distance
+            ];
+            styleRow(distanceRow);
+            distanceRow.getCell(3).numFmt = '0.00';
+            currentRow++;
+        });
+
+        // total distance row
+        const totalDistanceRow = ws.getRow(currentRow);
+        totalDistanceRow.values = ['Total', '', totalDistance];
+        ws.mergeCells(`A${currentRow}:B${currentRow}`);
+        styleRow(totalDistanceRow, 0);
+        totalDistanceRow.font = { bold: true };
+        totalDistanceRow.getCell(3).numFmt = '0.00';
+        currentRow++;
+
+        // --- Add mileage‑rate rows ---
+        if (totals.mileageCosts.size > 1) {
+            // multiple rates
+            Array.from(totals.mileageCosts.entries()).forEach(([libelle, { rate, distance}]) => {
+                const tauxRow = ws.getRow(currentRow);
+                tauxRow.values = [`Taux (${libelle})`, '', `${rate.toFixed(2)} - ${distance.toFixed(2)} Km`];
+                ws.mergeCells(`A${currentRow}:B${currentRow}`);
+                styleRow(tauxRow, 0);
+                tauxRow.font = { bold: true };
+                tauxRow.getCell(3).numFmt = '#,##0.00 "MAD"';
+                currentRow++;
+            });
+        } else {
+            // single rate
+            const tauxRow = ws.getRow(currentRow);
+            const first = totals.mileageCosts.values().next().value || { rate: 0 };
+            tauxRow.values = ['Taux', '', first.rate.toFixed(2)];
+            ws.mergeCells(`A${currentRow}:B${currentRow}`);
+            styleRow(tauxRow, 0);
+            tauxRow.font = { bold: true };
+            tauxRow.getCell(3).numFmt = '#,##0.00 "MAD"';
+            currentRow++;
+        }
+
+        // --- Net à payer ---
+        const netPayerRow = ws.getRow(currentRow);
+        const totalMileageCost = Array.from(totals.mileageCosts.values()).reduce((sum, c) => sum + c.total, 0);
+        netPayerRow.values = ['Net à payer', '', totalMileageCost];
+        ws.mergeCells(`A${currentRow}:B${currentRow}`);
+        styleRow(netPayerRow, 0);
+        netPayerRow.font = { bold: true };
+        netPayerRow.getCell(3).numFmt = '#,##0.00 "MAD"';
+        netPayerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
         currentRow += 3;
 
         // --- SECTION 3: Récapitulatif ---
