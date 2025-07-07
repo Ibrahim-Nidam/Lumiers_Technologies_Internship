@@ -1,6 +1,7 @@
 const { Op } = require('sequelize');
 const os = require('os');
 const { v4: uuidv4 } = require('uuid');
+const archiver = require('archiver');
 const {
     User, Deplacement, Depense, Role,
     TauxMissionRole, VehiculeRateRule, TypeDeDeplacement, TypeDepense, Chantier
@@ -1056,4 +1057,210 @@ exports.exportPDF = async (req, res, next) => {
     }
     next(err);
   }
+};
+
+async function generateSimplifiedExcelReport(userId, year, month) {
+    // Fetch user details
+    const user = await User.findByPk(userId);
+    if (!user) throw new Error(`User with id ${userId} not found`);
+
+    // Define the date range for the month
+    const start = new Date(year, month, 1);
+    const end = new Date(year, month + 1, 0);
+
+    // Fetch user's trips for the month
+    const trips = await Deplacement.findAll({
+        where: { userId, date: { [Op.between]: [start, end] } },
+        include: [
+            { model: Chantier, as: 'chantier' },
+            { model: TypeDeDeplacement, as: 'typeDeDeplacement' }
+        ],
+        order: [['date', 'ASC']]
+    });
+
+    // Fetch all travel types
+    const travelTypes = await TypeDeDeplacement.findAll();
+    const travelTypeNames = travelTypes.map(t => t.nom);
+
+    // Create Excel workbook and worksheet
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Fiche de Deplacement');
+
+    // Add logo
+    const imgId = wb.addImage({ base64: logo, extension: 'png' });
+    ws.addImage(imgId, { tl: { col: 0, row: 0 }, ext: { width: 120, height: 60 } });
+
+    // Add user name
+    ws.mergeCells('D1:E2');
+    ws.getCell('D1').value = `Nom et Prénom : ${user.nomComplete}`;
+    ws.getCell('D1').alignment = { horizontal: 'right', vertical: 'middle' };
+    ws.getCell('D1').font = { size: 12 };
+
+    // Add title with French month label
+    const label = getMonthLabel(year, month);
+    ws.mergeCells('A3:E3');
+    ws.getCell('A3').value = `Fiche de Deplacement - ${label}`;
+    ws.getCell('A3').font = { size: 16, bold: true, color: { argb: 'FF4F81BD' } };
+    ws.getCell('A3').alignment = { horizontal: 'center' };
+
+    // Add table header (without 'Jours avec déplacement')
+    const headers = ['Date', 'Lieu de deplacement', 'Chantier', ...travelTypeNames];
+    const headerRow = ws.getRow(5);
+    headerRow.values = headers;
+    headerRow.eachCell(cell => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+
+    // Add daily trip rows and calculate totals
+    const daysInMonth = getDaysInMonth(year, month);
+    let currentRow = 6;
+    const tripTypeTotals = new Array(travelTypeNames.length).fill(0); // Array to store totals
+
+    daysInMonth.forEach(day => {
+        const tripsOnDay = trips.filter(t => new Date(t.date).toDateString() === day.toDateString());
+        const hasTrip = tripsOnDay.length > 0;
+        const rowData = [
+            day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+            hasTrip ? tripsOnDay[0].chantier?.designation || 'N/A' : '',
+            hasTrip ? tripsOnDay[0].chantier?.codeChantier || 'N/A' : '',
+            ...travelTypeNames.map((typeName, index) => {
+                const used = tripsOnDay.some(trip => trip.typeDeDeplacement?.nom === typeName);
+                if (used) {
+                    tripTypeTotals[index] += 1; // Increment total for this trip type
+                }
+                return used ? 1 : null; // Set 1 if used, null (empty) if not
+            })
+        ];
+        const row = ws.getRow(currentRow);
+        row.values = rowData;
+        row.eachCell({ includeEmpty: true }, cell => {
+            cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+        currentRow++;
+    });
+
+    // Add summary row with calculated totals
+    const summaryRow = ws.getRow(currentRow);
+    summaryRow.getCell(1).value = 'Total';
+    summaryRow.font = { bold: true };
+    tripTypeTotals.forEach((total, index) => {
+        summaryRow.getCell(4 + index).value = total; // Set static total value (column D=4, E=5, etc.)
+    });
+    summaryRow.eachCell({ includeEmpty: true }, cell => {
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+
+    // Auto-width columns
+    ws.columns.forEach(column => {
+        let maxTextLength = 0;
+        column.eachCell({ includeEmpty: true }, cell => {
+            maxTextLength = Math.max(maxTextLength, (cell.value || '').toString().length);
+        });
+        column.width = maxTextLength < 12 ? 14 : maxTextLength + 4;
+    });
+
+    // Save the file
+    const safeName = user.nomComplete.replace(/\s+/g, '_');
+    const safeLabel = label.replace(/\s+/g, '_');
+    const fileName = `${safeName}_${safeLabel}.xlsx`;
+    const tmpDir = path.join(os.tmpdir(), 'myapp-reports');
+    await fs.ensureDir(tmpDir);
+    const outPath = path.join(tmpDir, fileName);
+    await wb.xlsx.writeFile(outPath);
+    return outPath;
+}
+
+// API endpoint to generate ZIP file with simplified Excel reports
+exports.generateTripTablesZip = async (req, res, next) => {
+    try {
+        // Validate query parameters
+        const { year, month } = req.query;
+        if (!year || month === undefined) {
+            return res.status(400).json({ error: "Missing year or month parameters" });
+        }
+
+        // Fetch all active users
+        const users = await User.findAll({
+            where: { estActif: true },
+            include: [
+                {
+                    model: Role,
+                    as: 'role',
+                    where: {
+                        nom: {
+                            [Op.notIn]: ['agent', 'manager']
+                        }
+                    }
+                }
+            ]
+        });
+
+        // Generate ZIP file name
+        const label = getMonthLabel(+year, +month);
+        const safeLabel = label.replace(/\s+/g, '_');
+        const zipName = `fiche_de_deplacement_des_utilisateurs_${safeLabel}.zip`;
+
+        // Create temporary directory for ZIP
+        const tmpDir = path.join(os.tmpdir(), 'myapp-zips');
+        await fs.ensureDir(tmpDir);
+        const zipPath = path.join(tmpDir, `${uuidv4()}.zip`);
+
+        // Set up ZIP stream
+        const output = fs.createWriteStream(zipPath);
+        const archive = archiver('zip', { zlib: { level: 9 } });
+        archive.pipe(output);
+        archive.on('error', err => next(err));
+
+        // Generate and add Excel reports for each user
+        const excelPaths = [];
+        for (const user of users) {
+            try {
+                const excelPath = await generateSimplifiedExcelReport(user.id, +year, +month);
+                excelPaths.push(excelPath);
+                const fileName = path.basename(excelPath);
+                archive.file(excelPath, { name: fileName });
+            } catch (err) {
+                console.error(`Failed to generate report for user ${user.id}:`, err);
+                // Continue with other users even if one fails
+            }
+        }
+
+        // Finalize the ZIP archive
+        await archive.finalize();
+
+        // Send the ZIP file and clean up
+        output.on('close', async () => {
+            try {
+                // Delete temporary Excel files
+                for (const excelPath of excelPaths) {
+                    await fs.remove(excelPath);
+                }
+            } catch (err) {
+                console.error('Failed to delete temporary Excel files:', err);
+            }
+
+            // Set response headers
+            res.setHeader('Content-Disposition', `attachment; filename="${zipName}"`);
+            res.setHeader('Content-Type', 'application/zip');
+
+            // Send the file and delete it afterward
+            res.download(zipPath, zipName, async err => {
+                if (err) console.error("Download error:", err);
+                try {
+                    await fs.remove(zipPath);
+                } catch (unlinkErr) {
+                    console.error('Failed to delete ZIP file:', unlinkErr);
+                }
+            });
+        });
+
+    } catch (err) {
+        console.error("generateTripTablesZip error:", err);
+        next(err);
+    }
 };

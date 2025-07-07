@@ -231,6 +231,55 @@ export default function Consult() {
     return result;
   });
 
+  const handleRLP = async () => {
+    try {
+      // Show loading state or disable button during request
+      setLoading(true);
+      
+      const response = await apiClient.get("/report/trip-tables-zip", {
+        params: { 
+          year: currentYear, 
+          month: currentMonth 
+        },
+        responseType: "blob"
+      });
+      
+      // Extract filename from response headers
+      let filename;
+      const contentDisposition = response.headers['content-disposition'];
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+      
+      // Fallback filename if not found in headers
+      if (!filename) {
+        const monthDate = new Date(currentYear, currentMonth);
+        const frenchMonthYear = monthDate.toLocaleDateString('fr-FR', { 
+          month: 'long', 
+          year: 'numeric' 
+        }).replace(/\s+/g, '_');
+        filename = `fiche_de_deplacement_des_utilisateurs_${frenchMonthYear}.zip`;
+      }
+      
+      // Create and download the blob
+      const blob = new Blob([response.data], { type: "application/zip" });
+      saveAs(blob, filename);
+      
+    } catch (err) {
+      console.error("RLP export failed:", err);
+      
+      // Optional: Show user-friendly error message
+      // You might want to add a toast notification or alert here
+      alert("Erreur lors de l'export RLP. Veuillez réessayer.");
+      
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Calculate statistics more safely
   const totalUsersWithData = users.filter(user => userHasData(user.id)).length;
   const totalDistance = summaries.reduce((sum, s) => sum + (s.totalDistance || 0), 0);
@@ -323,6 +372,14 @@ export default function Consult() {
                   }}
                 >
                   Aujourd'hui
+                </button>
+                <button 
+                  onClick={handleRLP}
+                  className="flex items-center gap-3 px-6 py-3 rounded-xl text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                  style={{ backgroundColor: colors.primary }}
+                >
+                  <FaFileArchive className="w-4 h-4" />
+                  RLP
                 </button>
                 <button 
                   onClick={handleMonthlyRecap}
