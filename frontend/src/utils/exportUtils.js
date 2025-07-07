@@ -3,6 +3,7 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
 import logo from './base64Logo';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
+import JSZip from 'jszip';
 
 /**
  * Returns a human-readable label for the given year and month as a string.
@@ -16,6 +17,17 @@ export const getMonthLabel = (year, month) => {
         month: "long",
         year: "numeric",
     });
+};
+
+
+const getDaysInMonth = (year, month) => {
+  const days = [];
+  const date = new Date(year, month, 1);
+  while (date.getMonth() === month) {
+    days.push(new Date(date));
+    date.setDate(date.getDate() + 1);
+  }
+  return days;
 };
 
 /**
@@ -143,6 +155,7 @@ export const handleExcelExport = async (year, month, dashboardData) => {
         };
 
         const totals = calculateTotals();
+        const daysInMonth = getDaysInMonth(year, month);
         const wb = new ExcelJS.Workbook();
         const ws = wb.addWorksheet('Rapport Complet');
         let currentRow = 1;
@@ -193,21 +206,26 @@ export const handleExcelExport = async (year, month, dashboardData) => {
         });
         currentRow++;
 
-        trips.forEach(trip => {
+        daysInMonth.forEach(day => {
+            const trip = trips.find(t => new Date(t.date).toDateString() === day.toDateString());
             const tripRow = ws.getRow(currentRow);
             const rowData = [
-                new Date(trip.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-                trip.chantier?.designation || 'N/A',
-                trip.chantier?.codeChantier || 'N/A'
+                day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+                trip ? trip.chantier?.designation || 'N/A' : '',
+                trip ? trip.chantier?.codeChantier || 'N/A' : ''
             ];
             travelTypeNames.forEach(typeName => {
+                if (trip) {
                 const travelType = travelTypes.find(t => t.id === trip.typeDeDeplacementId);
                 rowData.push((travelType && travelType.nom === typeName) ? 1 : '');
+                } else {
+                rowData.push('');
+                }
             });
             tripRow.values = rowData;
             styleRow(tripRow);
             currentRow++;
-        });
+            });
 
         // --- Summary for Detailed Trips ---
         const summaryData = { counts: {}, rates: {}, totals: {} };
@@ -263,12 +281,14 @@ export const handleExcelExport = async (year, month, dashboardData) => {
         });
         currentRow++;
 
-        trips.forEach(trip => {
-            if (trip.depenses && trip.depenses.length > 0) {
-                trip.depenses.forEach(expense => {
+        daysInMonth.forEach(day => {
+            const tripsOnDay = trips.filter(t => new Date(t.date).toDateString() === day.toDateString());
+            const expensesOnDay = tripsOnDay.flatMap(trip => trip.depenses || []);
+            if (expensesOnDay.length > 0) {
+                expensesOnDay.forEach(expense => {
                     const expenseRow = ws.getRow(currentRow);
                     expenseRow.values = [
-                        new Date(trip.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+                        day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
                         expense.typeDepense?.nom || 'N/A',
                         parseFloat(expense.montant) || 0,
                         expense.cheminJustificatif ? 'Oui' : 'Non'
@@ -277,13 +297,25 @@ export const handleExcelExport = async (year, month, dashboardData) => {
                     expenseRow.getCell(3).numFmt = '#,##0.00 "MAD"';
                     currentRow++;
                 });
+            } else {
+                // No expenses on this day
+                const noExpenseRow = ws.getRow(currentRow);
+                noExpenseRow.values = [
+                    day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+                    '',
+                    '',
+                    ''
+                ];
+                styleRow(noExpenseRow);
+                currentRow++;
             }
         });
 
+        // Total expenses row
         const totalExpensesRow = ws.getRow(currentRow);
         totalExpensesRow.values = ['Total', '', totals.totalMisc];
         ws.mergeCells(`A${currentRow}:B${currentRow}`);
-        styleRow(totalExpensesRow, 0); // Style all cells
+        styleRow(totalExpensesRow, 0);
         totalExpensesRow.font = { bold: true };
         totalExpensesRow.getCell(3).numFmt = '#,##0.00 "MAD"';
         currentRow += 3;
@@ -304,22 +336,21 @@ export const handleExcelExport = async (year, month, dashboardData) => {
         });
         currentRow++;
 
-        let totalDistance = 0;
-        trips.forEach(trip => {
-        const distance = parseFloat(trip.distanceKm) || 0;
-        totalDistance += distance;
+        const totalDistance = trips.reduce((sum, trip) => sum + (parseFloat(trip.distanceKm) || 0), 0);
+        daysInMonth.forEach(day => {
+        const trip = trips.find(t => new Date(t.date).toDateString() === day.toDateString());
+        const distance = trip ? parseFloat(trip.distanceKm) || 0 : 0;
         const distanceRow = ws.getRow(currentRow);
         distanceRow.values = [
-            new Date(trip.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-            trip.chantier?.designation || 'N/A',
+            day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+            trip ? trip.chantier?.designation || 'N/A' : '',
             distance
         ];
         styleRow(distanceRow);
         distanceRow.getCell(3).numFmt = '0.00';
         currentRow++;
         });
-
-        // total distance row
+        // Total distance row
         const totalDistanceRow = ws.getRow(currentRow);
         totalDistanceRow.values = ['Total', '', totalDistance];
         ws.mergeCells(`A${currentRow}:B${currentRow}`);
@@ -689,6 +720,7 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
         };
 
         const totals = calculateTotals();
+        const daysInMonth = getDaysInMonth(year, month);
         const travelTypeNames = travelTypes.map(t => t.nom);
 
         // Calculate total distance for the distance table
@@ -834,14 +866,18 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
                     </tr>
                 </thead>
                 <tbody>
-                    ${trips.map(trip => {
+                    ${daysInMonth.map(day => {
+                        const trip = trips.find(t => new Date(t.date).toDateString() === day.toDateString());
                         const rowData = [
-                            new Date(trip.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-                            trip.chantier?.designation || 'N/A',
-                            trip.chantier?.codeChantier || 'N/A',
+                            day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+                            trip ? trip.chantier?.designation || 'N/A' : '',
+                            trip ? trip.chantier?.codeChantier || 'N/A' : '',
                             ...travelTypeNames.map(typeName => {
-                                const travelType = travelTypes.find(t => t.id === trip.typeDeDeplacementId);
-                                return (travelType && travelType.nom === typeName) ? '1' : '';
+                                if (trip) {
+                                    const travelType = travelTypes.find(t => t.id === trip.typeDeDeplacementId);
+                                    return (travelType && travelType.nom === typeName) ? '1' : '';
+                                }
+                                return '';
                             })
                         ];
                         return `<tr>${rowData.map(cell => `<td>${cell}</td>`).join('')}</tr>`;
@@ -906,18 +942,28 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
                     </tr>
                 </thead>
                 <tbody>
-                    ${trips.map(trip => {
-                        if (trip.depenses && trip.depenses.length > 0) {
-                            return trip.depenses.map(expense => `
+                    ${daysInMonth.map(day => {
+                        const tripsOnDay = trips.filter(t => new Date(t.date).toDateString() === day.toDateString());
+                        const expensesOnDay = tripsOnDay.flatMap(trip => trip.depenses || []);
+                        if (expensesOnDay.length > 0) {
+                            return expensesOnDay.map(expense => `
                                 <tr>
-                                    <td>${new Date(trip.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+                                    <td>${day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
                                     <td>${expense.typeDepense?.nom || 'N/A'}</td>
                                     <td class="currency">${(parseFloat(expense.montant) || 0).toFixed(2)}</td>
                                     <td>${expense.cheminJustificatif ? 'Oui' : 'Non'}</td>
                                 </tr>
                             `).join('');
+                        } else {
+                            return `
+                                <tr>
+                                    <td>${day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                            `;
                         }
-                        return '';
                     }).join('')}
                     <tr class="bold total-row">
                         <td colspan="2" class="text-left">Total</td>
@@ -938,18 +984,17 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
                     </tr>
                 </thead>
                 <tbody>
-                    ${trips.map(trip => {
-                        const distance = parseFloat(trip.distanceKm) || 0;
+                    ${daysInMonth.map(day => {
+                        const trip = trips.find(t => new Date(t.date).toDateString() === day.toDateString());
+                        const distance = trip ? parseFloat(trip.distanceKm) || 0 : 0;
                         return `
                         <tr>
-                            <td>${new Date(trip.date)
-                                    .toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
-                            <td>${trip.chantier?.designation || 'N/A'}</td>
+                            <td>${day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+                            <td>${trip ? trip.chantier?.designation || 'N/A' : ''}</td>
                             <td>${distance.toFixed(2)}</td>
                         </tr>
                         `;
                     }).join('')}
-
                     <!-- Total distance -->
                     <tr class="bold total-row">
                         <td colspan="2" class="text-left">Total</td>
