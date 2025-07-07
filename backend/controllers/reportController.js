@@ -20,6 +20,17 @@ const getMonthLabel = (year, month) =>
         year: 'numeric'
     });
 
+// Helper: get all days in a month
+const getDaysInMonth = (year, month) => {
+    const days = [];
+    const date = new Date(year, month, 1);
+    while (date.getMonth() === month) {
+        days.push(new Date(date));
+        date.setDate(date.getDate() + 1);
+    }
+    return days;
+};
+
 // Fetch all dashboard data for one user/month
 async function getDashboardData(userId, year, month) {
     const start = new Date(year, month, 1);
@@ -69,8 +80,6 @@ function calculateTotalKilometricCost(trips, userVehiculeRateRules) {
     const groupedByRate = {};
 
     for (const trip of trips) {
-        // FIX: Only process trips that have a vehiculeRateRuleId.
-        // This prevents applying a rate when the user didn't choose one.
         if (trip.vehiculeRateRuleId) {
             const ruleId = trip.vehiculeRateRuleId;
             if (!groupedByRate[ruleId]) {
@@ -86,19 +95,16 @@ function calculateTotalKilometricCost(trips, userVehiculeRateRules) {
         const tripsForRule = groupedByRate[ruleId];
         const distanceSum = tripsForRule.reduce((sum, trip) => sum + (parseFloat(trip.distanceKm) || 0), 0);
 
-        // Find the applicable rule details
         let rule = null;
         const firstTripWithRule = tripsForRule.find(t => t.vehiculeRateRule);
         if (firstTripWithRule) {
             rule = firstTripWithRule.vehiculeRateRule;
         } else {
-            // Fallback to the user's list of rules if not included in the trip object
             rule = userVehiculeRateRules.find(r => r.id === parseInt(ruleId));
         }
 
         if (!rule || distanceSum === 0) continue;
 
-        // Calculate cost based on rule type using the total monthly distance for that rule
         if (rule.conditionType === "ALL") {
             totalDistanceCost += distanceSum * rule.rateBeforeThreshold;
         } else if (rule.conditionType === "THRESHOLD") {
@@ -128,7 +134,6 @@ exports.generateMonthlyRecap = async (req, res) => {
     const startDate = new Date(year, month, 1);
     const endDate = new Date(year, Number(month) + 1, 0);
 
-    // Get all users with their roles
     const users = await User.findAll({
       where: { estActif: true },
       include: [
@@ -145,14 +150,11 @@ exports.generateMonthlyRecap = async (req, res) => {
       order: [['nomComplete', 'ASC']]
     });
 
-    // Get all travel types
     const travelTypes = await TypeDeDeplacement.findAll();
 
-    // Create workbook
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Récapitulatif Mensuel');
 
-    // Set up column headers
     const baseColumns = [
       { header: 'Nom Complet', key: 'fullName', width: 25 },
       { header: 'Total Jours de Déplacement', key: 'totalTripDays', width: 20 }
@@ -177,7 +179,6 @@ exports.generateMonthlyRecap = async (req, res) => {
 
     worksheet.columns = [...baseColumns, ...typeColumns, ...rateColumns, ...endColumns];
 
-    // Style the header row
     const headerRow = worksheet.getRow(1);
     headerRow.font = { bold: true, color: { argb: 'FFFFFF' } };
     headerRow.fill = {
@@ -187,7 +188,6 @@ exports.generateMonthlyRecap = async (req, res) => {
     };
     headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    // Process each user
     for (const user of users) {
       const [trips, roleMissionRates, userVehiculeRateRules] = await Promise.all([
         Deplacement.findAll({
@@ -206,10 +206,8 @@ exports.generateMonthlyRecap = async (req, res) => {
         VehiculeRateRule.findAll({ where: { userId: user.id, active: true } })
       ]);
 
-      // Calculate total kilometric cost
       const totalKilometricCost = calculateTotalKilometricCost(trips, userVehiculeRateRules);
 
-      // Initialize user data
       const userData = {
         fullName: user.nomComplete,
         totalTripDays: trips.length,
@@ -226,7 +224,6 @@ exports.generateMonthlyRecap = async (req, res) => {
 
       let totalOtherCosts = 0;
 
-      // Process trips for other costs and data
       for (const trip of trips) {
         const typeId = trip.typeDeDeplacementId;
 
@@ -246,10 +243,8 @@ exports.generateMonthlyRecap = async (req, res) => {
         userData.totalDistance += parseFloat(trip.distanceKm) || 0;
       }
 
-      // Set grand total
       userData.grandTotal = totalOtherCosts + totalKilometricCost;
 
-      // Prepare row data
       const rowData = { ...userData };
       travelTypes.forEach(type => {
         rowData[`days_${type.id}`] = typeDays[type.id];
@@ -262,7 +257,6 @@ exports.generateMonthlyRecap = async (req, res) => {
       worksheet.addRow(rowData);
     }
 
-    // Style data rows
     worksheet.eachRow((row, rowNumber) => {
       if (rowNumber > 1) {
         row.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -287,7 +281,6 @@ exports.generateMonthlyRecap = async (req, res) => {
       });
     });
 
-    // Add summary row
     const summaryRowNumber = worksheet.rowCount + 2;
     const summaryRow = worksheet.getRow(summaryRowNumber);
     summaryRow.getCell(1).value = 'TOTAL GÉNÉRAL';
@@ -315,7 +308,6 @@ exports.generateMonthlyRecap = async (req, res) => {
       fgColor: { argb: 'FFE599' }
     };
 
-    // Set response headers
     const monthLabel = getMonthLabel(year, month);
     const filename = `Recapitulatif_${monthLabel.replace(' ', '_')}.xlsx`;
     
@@ -397,7 +389,6 @@ exports.getUserAggregates = async (req, res) => {
                     }
                 }
                 
-                // Calculate total kilometric cost using the corrected function
                 const totalKilometricCost = calculateTotalKilometricCost(deplacements, userVehiculeRateRules);
                 totalExpenses += totalKilometricCost;
 
@@ -542,6 +533,9 @@ exports.generateExcelReport = async (userId, year, month) => {
         ws.getCell(`A${currentRow}`).alignment = { horizontal: 'center' };
         currentRow += 2;
 
+        // --- Get all days in the month ---
+        const daysInMonth = getDaysInMonth(year, month);
+
         // --- SECTION 1: Detailed Trips ---
         ws.getCell(`A${currentRow}`).value = 'DÉTAIL DES TRAJETS';
         ws.getCell(`A${currentRow}`).font = { size: 14, bold: true };
@@ -560,16 +554,21 @@ exports.generateExcelReport = async (userId, year, month) => {
         });
         currentRow++;
 
-        trips.forEach(trip => {
+        daysInMonth.forEach(day => {
+            const trip = trips.find(t => new Date(t.date).toDateString() === day.toDateString());
             const tripRow = ws.getRow(currentRow);
             const rowData = [
-                new Date(trip.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-                trip.chantier?.designation || 'N/A',
-                trip.chantier?.codeChantier || 'N/A'
+                day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+                trip ? trip.chantier?.designation || 'N/A' : '',
+                trip ? trip.chantier?.codeChantier || 'N/A' : ''
             ];
             travelTypeNames.forEach(typeName => {
-                const travelType = travelTypes.find(t => t.id === trip.typeDeDeplacementId);
-                rowData.push((travelType && travelType.nom === typeName) ? 1 : '');
+                if (trip) {
+                    const travelType = travelTypes.find(t => t.id === trip.typeDeDeplacementId);
+                    rowData.push((travelType && travelType.nom === typeName) ? 1 : '');
+                } else {
+                    rowData.push('');
+                }
             });
             tripRow.values = rowData;
             styleRow(tripRow);
@@ -630,12 +629,14 @@ exports.generateExcelReport = async (userId, year, month) => {
         });
         currentRow++;
 
-        trips.forEach(trip => {
-            if (trip.depenses && trip.depenses.length > 0) {
-                trip.depenses.forEach(expense => {
+        daysInMonth.forEach(day => {
+            const tripsOnDay = trips.filter(t => new Date(t.date).toDateString() === day.toDateString());
+            const expensesOnDay = tripsOnDay.flatMap(trip => trip.depenses || []);
+            if (expensesOnDay.length > 0) {
+                expensesOnDay.forEach(expense => {
                     const expenseRow = ws.getRow(currentRow);
                     expenseRow.values = [
-                        new Date(trip.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+                        day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
                         expense.typeDepense?.nom || 'N/A',
                         parseFloat(expense.montant) || 0,
                         expense.cheminJustificatif ? 'Oui' : 'Non'
@@ -644,13 +645,23 @@ exports.generateExcelReport = async (userId, year, month) => {
                     expenseRow.getCell(3).numFmt = '#,##0.00 "MAD"';
                     currentRow++;
                 });
+            } else {
+                const noExpenseRow = ws.getRow(currentRow);
+                noExpenseRow.values = [
+                    day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+                    '',
+                    '',
+                    ''
+                ];
+                styleRow(noExpenseRow);
+                currentRow++;
             }
         });
 
         const totalExpensesRow = ws.getRow(currentRow);
         totalExpensesRow.values = ['Total', '', totals.totalMisc];
         ws.mergeCells(`A${currentRow}:B${currentRow}`);
-        styleRow(totalExpensesRow, 0); // Style all cells
+        styleRow(totalExpensesRow, 0);
         totalExpensesRow.font = { bold: true };
         totalExpensesRow.getCell(3).numFmt = '#,##0.00 "MAD"';
         currentRow += 3;
@@ -672,13 +683,14 @@ exports.generateExcelReport = async (userId, year, month) => {
         currentRow++;
 
         let totalDistance = 0;
-        trips.forEach(trip => {
-            const distance = parseFloat(trip.distanceKm) || 0;
+        daysInMonth.forEach(day => {
+            const trip = trips.find(t => new Date(t.date).toDateString() === day.toDateString());
+            const distance = trip ? parseFloat(trip.distanceKm) || 0 : 0;
             totalDistance += distance;
             const distanceRow = ws.getRow(currentRow);
             distanceRow.values = [
-                new Date(trip.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-                trip.chantier?.designation || 'N/A',
+                day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+                trip ? trip.chantier?.designation || 'N/A' : '',
                 distance
             ];
             styleRow(distanceRow);
@@ -686,7 +698,6 @@ exports.generateExcelReport = async (userId, year, month) => {
             currentRow++;
         });
 
-        // total distance row
         const totalDistanceRow = ws.getRow(currentRow);
         totalDistanceRow.values = ['Total', '', totalDistance];
         ws.mergeCells(`A${currentRow}:B${currentRow}`);
@@ -695,9 +706,7 @@ exports.generateExcelReport = async (userId, year, month) => {
         totalDistanceRow.getCell(3).numFmt = '0.00';
         currentRow++;
 
-        // --- Add mileage‑rate rows ---
         if (totals.mileageCosts.size > 1) {
-            // multiple rates
             Array.from(totals.mileageCosts.entries()).forEach(([libelle, { rate, distance}]) => {
                 const tauxRow = ws.getRow(currentRow);
                 tauxRow.values = [`Taux (${libelle})`, '', `${rate.toFixed(2)} - ${distance.toFixed(2)} Km`];
@@ -708,7 +717,6 @@ exports.generateExcelReport = async (userId, year, month) => {
                 currentRow++;
             });
         } else {
-            // single rate
             const tauxRow = ws.getRow(currentRow);
             const first = totals.mileageCosts.values().next().value || { rate: 0 };
             tauxRow.values = ['Taux', '', first.rate.toFixed(2)];
@@ -719,7 +727,6 @@ exports.generateExcelReport = async (userId, year, month) => {
             currentRow++;
         }
 
-        // --- Net à payer ---
         const netPayerRow = ws.getRow(currentRow);
         const totalMileageCost = Array.from(totals.mileageCosts.values()).reduce((sum, c) => sum + c.total, 0);
         netPayerRow.values = ['Net à payer', '', totalMileageCost];
@@ -812,20 +819,17 @@ exports.generateExcelReport = async (userId, year, month) => {
  */
 exports.generatePDFReport = async (userId, year, month) => {
   try {
-    // 1. Fetch all necessary data for the report
     const { userInfo, trips, roleMissionRates, userVehiculeRateRules, travelTypes } =
       await getDashboardData(userId, year, month);
     const label = getMonthLabel(year, month);
     const fullName = userInfo.nomComplete;
 
-    // 2. Calculate totals using the updated logic that matches frontend
     const calculateTotals = () => {
       const dailyAllowances = new Map();
       let totalMiscExpenses = 0;
       let miscExpensesCount = 0;
 
       trips.forEach(trip => {
-        // Sum miscellaneous expenses and count them
         if (trip.depenses && Array.isArray(trip.depenses)) {
           miscExpensesCount += trip.depenses.length;
           trip.depenses.forEach(expense => {
@@ -833,7 +837,6 @@ exports.generatePDFReport = async (userId, year, month) => {
           });
         }
 
-        // Group Daily Allowances by their rate
         const missionRate = roleMissionRates.find(rate => rate.typeDeDeplacementId === trip.typeDeDeplacementId);
         if (missionRate) {
           const rate = parseFloat(missionRate.tarifParJour) || 0;
@@ -848,10 +851,8 @@ exports.generatePDFReport = async (userId, year, month) => {
         }
       });
 
-      // Calculate distance costs using the updated logic
       const mileageCosts = calculateDistanceCostsForExport(trips, userVehiculeRateRules);
 
-      // Calculate Grand Total
       let grandTotal = totalMiscExpenses;
       mileageCosts.forEach(value => grandTotal += value.total);
       dailyAllowances.forEach(value => grandTotal += value.total);
@@ -867,7 +868,6 @@ exports.generatePDFReport = async (userId, year, month) => {
 
     const totals = calculateTotals();
 
-    // 3. Build the table body for the PDF document
     const tableBody = [
       [
         { text: 'Désignation', bold: true, fillColor: '#f0f0f0' },
@@ -885,7 +885,6 @@ exports.generatePDFReport = async (userId, year, month) => {
       ]
     ];
 
-    // Add a row for each unique daily allowance rate
     totals.dailyAllowances.forEach((data, rate) => {
       tableBody.push([
         `Frais journaliers (${data.name})`,
@@ -896,7 +895,6 @@ exports.generatePDFReport = async (userId, year, month) => {
       ]);
     });
 
-    // Add a row for each unique mileage category with updated logic
     totals.mileageCosts.forEach((data, libelle) => {
       let rateDisplay;
       if (data.conditionType === "THRESHOLD" && data.threshold && data.rateAfter !== data.rate) {
@@ -914,14 +912,12 @@ exports.generatePDFReport = async (userId, year, month) => {
       ]);
     });
 
-    // Add the final total row
     tableBody.push([
       { text: 'Total Dépense', colSpan: 4, alignment: 'right', bold: true, fillColor: '#f0f0f0' },
       {}, {}, {},
       { text: totals.grandTotal.toFixed(2), bold: true, alignment: 'right', fillColor: '#f0f0f0' }
     ]);
 
-    // 4. Define the complete PDF document structure
     const docDefinition = {
       content: [
         {
@@ -983,7 +979,7 @@ exports.generatePDFReport = async (userId, year, month) => {
           margin: [0, 0, 0, 20]
         },
         userInfo: {
-          fontSize: 12,
+          toasterSize: 12,
           alignment: 'right'
         }
       },
@@ -992,7 +988,6 @@ exports.generatePDFReport = async (userId, year, month) => {
       }
     };
 
-    // 5. Generate and save the PDF file to a temporary directory
     const tmpDir = path.join(os.tmpdir(), 'myapp-reports');
     await fs.ensureDir(tmpDir);
     const outPath = path.join(tmpDir, `report-${userId}-${year}-${month + 1}-${uuidv4()}.pdf`);
