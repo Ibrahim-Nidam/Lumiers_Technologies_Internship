@@ -685,6 +685,15 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
         const fullName = userInfo?.fullName || 'N/A';
         const roleMissionRates = userMissionRates;
 
+        // Helper function to split large arrays into chunks
+        const createTableChunks = (rows, chunkSize = 15) => {
+            const chunks = [];
+            for (let i = 0; i < rows.length; i += chunkSize) {
+                chunks.push(rows.slice(i, i + chunkSize));
+            }
+            return chunks;
+        };
+
         // Reuse calculation logic
         const calculateTotals = () => {
             const dailyAllowances = new Map();
@@ -726,6 +735,118 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
         // Calculate total distance for the distance table
         const totalDistance = trips.reduce((sum, trip) => sum + (parseFloat(trip.distanceKm) || 0), 0);
 
+        // Generate trips table in chunks to prevent page break issues
+        const generateTripsTableInChunks = (daysInMonth, trips, travelTypeNames, travelTypes) => {
+            const chunks = createTableChunks(daysInMonth, 20); // 20 rows per chunk for better page fitting
+            
+            return chunks.map((chunk, index) => `
+                ${index > 0 ? '<div class="page-break"></div>' : ''}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Lieu de deplacement</th>
+                            <th>Chantier</th>
+                            ${travelTypeNames.map(name => `<th>${name}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${chunk.map(day => {
+                            const trip = trips.find(t => new Date(t.date).toDateString() === day.toDateString());
+                            const rowData = [
+                                day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+                                trip ? trip.chantier?.designation || 'N/A' : '',
+                                trip ? trip.chantier?.codeChantier || 'N/A' : '',
+                                ...travelTypeNames.map(typeName => {
+                                    if (trip) {
+                                        const travelType = travelTypes.find(t => t.id === trip.typeDeDeplacementId);
+                                        return (travelType && travelType.nom === typeName) ? '1' : '';
+                                    }
+                                    return '';
+                                })
+                            ];
+                            return `<tr>${rowData.map(cell => `<td>${cell}</td>`).join('')}</tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `).join('');
+        };
+
+        // Generate miscellaneous expenses table in chunks
+        const generateMiscExpensesTableInChunks = (daysInMonth, trips) => {
+            const chunks = createTableChunks(daysInMonth, 20);
+            
+            return chunks.map((chunk, index) => `
+                ${index > 0 ? '<div class="page-break"></div>' : ''}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date du Trajet</th>
+                            <th>Type de Dépense</th>
+                            <th>Montant (MAD)</th>
+                            <th>Justificatif</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${chunk.map(day => {
+                            const tripsOnDay = trips.filter(t => new Date(t.date).toDateString() === day.toDateString());
+                            const expensesOnDay = tripsOnDay.flatMap(trip => trip.depenses || []);
+                            if (expensesOnDay.length > 0) {
+                                return expensesOnDay.map(expense => `
+                                    <tr>
+                                        <td>${day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+                                        <td>${expense.typeDepense?.nom || 'N/A'}</td>
+                                        <td class="currency">${(parseFloat(expense.montant) || 0).toFixed(2)}</td>
+                                        <td>${expense.cheminJustificatif ? 'Oui' : 'Non'}</td>
+                                    </tr>
+                                `).join('');
+                            } else {
+                                return `
+                                    <tr>
+                                        <td>${day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                    </tr>
+                                `;
+                            }
+                        }).join('')}
+                    </tbody>
+                </table>
+            `).join('');
+        };
+
+        // Generate distance table in chunks
+        const generateDistanceTableInChunks = (daysInMonth, trips) => {
+            const chunks = createTableChunks(daysInMonth, 20);
+            
+            return chunks.map((chunk, index) => `
+                ${index > 0 ? '<div class="page-break"></div>' : ''}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Lieu de deplacement</th>
+                            <th>Distance (Km)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${chunk.map(day => {
+                            const trip = trips.find(t => new Date(t.date).toDateString() === day.toDateString());
+                            const distance = trip ? parseFloat(trip.distanceKm) || 0 : 0;
+                            return `
+                            <tr>
+                                <td>${day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+                                <td>${trip ? trip.chantier?.designation || 'N/A' : ''}</td>
+                                <td>${distance.toFixed(2)}</td>
+                            </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `).join('');
+        };
+
         // Create HTML content with enhanced print styles
         const htmlContent = `
         <!DOCTYPE html>
@@ -737,7 +858,6 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
                 @page {
                     size: A4 landscape;
                     margin: 0.4in 0.5in;
-                    /* Additional page settings for cleaner printing */
                     @top-left { content: ""; }
                     @top-center { content: ""; }
                     @top-right { content: ""; }
@@ -781,13 +901,40 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
                     margin: 20px 0 10px 0;
                     border: 1px solid #000;
                     page-break-after: avoid;
+                    page-break-inside: avoid;
                 }
                 
                 table {
                     width: 100%;
                     border-collapse: collapse;
                     margin-bottom: 20px;
+                    /* Removed page-break-inside: avoid to allow table breaking */
+                }
+                
+                /* Keep table headers with their content */
+                thead {
+                    display: table-header-group;
                     page-break-inside: avoid;
+                }
+                
+                tbody {
+                    display: table-row-group;
+                }
+                
+                /* Prevent single table rows from breaking */
+                tr {
+                    page-break-inside: avoid;
+                }
+                
+                /* Keep important summary rows together */
+                .total-row {
+                    page-break-inside: avoid;
+                    page-break-before: avoid;
+                }
+                
+                /* Ensure at least 3 rows stay together before breaking */
+                tr:nth-child(-n+3) {
+                    page-break-after: avoid;
                 }
                 
                 th, td {
@@ -841,9 +988,37 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
                         page-break-after: avoid;
                     }
                     
+                    /* Keep section titles with some content */
+                    .section-title + table {
+                        page-break-before: avoid;
+                    }
+                    
+                    /* Prevent orphaned headers */
+                    thead {
+                        page-break-after: avoid;
+                    }
+                    
                     /* Hide any potential URL display elements */
                     .no-print {
                         display: none !important;
+                    }
+                    
+                    /* Ensure table headers repeat on each page */
+                    table {
+                        page-break-inside: auto;
+                    }
+                    
+                    thead {
+                        display: table-header-group;
+                    }
+                    
+                    tbody {
+                        display: table-row-group;
+                    }
+                    
+                    /* Better spacing between sections */
+                    .section-title:not(:first-of-type) {
+                        margin-top: 30px;
                     }
                 }
             </style>
@@ -856,34 +1031,7 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
             
             <!-- Section 1: Detailed Trips -->
             <div class="section-title">DÉTAIL DES TRAJETS</div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Lieu de deplacement</th>
-                        <th>Chantier</th>
-                        ${travelTypeNames.map(name => `<th>${name}</th>`).join('')}
-                    </tr>
-                </thead>
-                <tbody>
-                    ${daysInMonth.map(day => {
-                        const trip = trips.find(t => new Date(t.date).toDateString() === day.toDateString());
-                        const rowData = [
-                            day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-                            trip ? trip.chantier?.designation || 'N/A' : '',
-                            trip ? trip.chantier?.codeChantier || 'N/A' : '',
-                            ...travelTypeNames.map(typeName => {
-                                if (trip) {
-                                    const travelType = travelTypes.find(t => t.id === trip.typeDeDeplacementId);
-                                    return (travelType && travelType.nom === typeName) ? '1' : '';
-                                }
-                                return '';
-                            })
-                        ];
-                        return `<tr>${rowData.map(cell => `<td>${cell}</td>`).join('')}</tr>`;
-                    }).join('')}
-                </tbody>
-            </table>
+            ${generateTripsTableInChunks(daysInMonth, trips, travelTypeNames, travelTypes)}
             
             <!-- Summary Table -->
             <table>
@@ -932,39 +1080,11 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
             
             <!-- Section 2: Miscellaneous Expenses -->
             <div class="section-title">DÉPENSES DIVERSES</div>
+            ${generateMiscExpensesTableInChunks(daysInMonth, trips)}
+            
+            <!-- Total for miscellaneous expenses -->
             <table>
-                <thead>
-                    <tr>
-                        <th>Date du Trajet</th>
-                        <th>Type de Dépense</th>
-                        <th>Montant (MAD)</th>
-                        <th>Justificatif</th>
-                    </tr>
-                </thead>
                 <tbody>
-                    ${daysInMonth.map(day => {
-                        const tripsOnDay = trips.filter(t => new Date(t.date).toDateString() === day.toDateString());
-                        const expensesOnDay = tripsOnDay.flatMap(trip => trip.depenses || []);
-                        if (expensesOnDay.length > 0) {
-                            return expensesOnDay.map(expense => `
-                                <tr>
-                                    <td>${day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
-                                    <td>${expense.typeDepense?.nom || 'N/A'}</td>
-                                    <td class="currency">${(parseFloat(expense.montant) || 0).toFixed(2)}</td>
-                                    <td>${expense.cheminJustificatif ? 'Oui' : 'Non'}</td>
-                                </tr>
-                            `).join('');
-                        } else {
-                            return `
-                                <tr>
-                                    <td>${day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
-                                    <td></td>
-                                    <td></td>
-                                    <td></td>
-                                </tr>
-                            `;
-                        }
-                    }).join('')}
                     <tr class="bold total-row">
                         <td colspan="2" class="text-left">Total</td>
                         <td class="currency">${totals.totalMisc.toFixed(2)}</td>
@@ -975,26 +1095,11 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
             
             <!-- Section 3: Distance Table -->
             <div class="section-title">DISTANCES PARCOURUES</div>
+            ${generateDistanceTableInChunks(daysInMonth, trips)}
+            
+            <!-- Distance summary table -->
             <table>
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Lieu de deplacement</th>
-                        <th>Distance (Km)</th>
-                    </tr>
-                </thead>
                 <tbody>
-                    ${daysInMonth.map(day => {
-                        const trip = trips.find(t => new Date(t.date).toDateString() === day.toDateString());
-                        const distance = trip ? parseFloat(trip.distanceKm) || 0 : 0;
-                        return `
-                        <tr>
-                            <td>${day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
-                            <td>${trip ? trip.chantier?.designation || 'N/A' : ''}</td>
-                            <td>${distance.toFixed(2)}</td>
-                        </tr>
-                        `;
-                    }).join('')}
                     <!-- Total distance -->
                     <tr class="bold total-row">
                         <td colspan="2" class="text-left">Total</td>
@@ -1037,8 +1142,7 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
                         }
                         </td>
                     </tr>
-                    </tbody>
-
+                </tbody>
             </table>
             
             <!-- Section 4: Récapitulatif -->

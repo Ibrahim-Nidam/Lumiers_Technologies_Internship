@@ -373,14 +373,14 @@ export default function Consult() {
                 >
                   Aujourd'hui
                 </button>
-                <button 
+                {/* <button 
                   onClick={handleRLP}
                   className="flex items-center gap-3 px-6 py-3 rounded-xl text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
                   style={{ backgroundColor: colors.primary }}
                 >
                   <FaFileArchive className="w-4 h-4" />
                   RLP
-                </button>
+                </button> */}
                 <button 
                   onClick={handleMonthlyRecap}
                   className="flex items-center gap-3 px-6 py-3 rounded-xl text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
