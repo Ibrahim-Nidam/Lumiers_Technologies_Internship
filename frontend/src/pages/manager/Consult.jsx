@@ -216,8 +216,8 @@ export default function Consult() {
     }
   };
 
-  const navigateToEditPage = (userId) => {
-    navigate(`/agentDashboard/${userId}`);
+  const navigateToEditPage = (user) => {
+    navigate(`/agentDashboard/${user.id}`, { state: { userName: user.name } });
   };
 
   // Improved filtering logic with better debugging
@@ -508,7 +508,7 @@ export default function Consult() {
                           {user.name || 'Unknown User'}
                         </h3>
                         <button
-                          onClick={() => navigateToEditPage(user.id)}
+                          onClick={() => navigateToEditPage(user)}
                           className="ml-2 p-2 rounded-full hover:bg-gray-100 text-gray-500 hover:text-blue-600 transition-all"
                           title="Modifier les déplacements"
                         >

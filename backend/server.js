@@ -1,4 +1,8 @@
-require("dotenv").config();
+require("dotenv").config({
+  path: typeof process.pkg !== "undefined"
+    ? require("path").join(require("path").dirname(process.execPath), ".env")
+    : require("path").join(__dirname, "..", ".env")
+});
 const express = require("express");
 const cors = require("cors");
 const path = require("path");

@@ -3,8 +3,12 @@
 import { useState, useEffect } from "react"
 import apiClient from "../utils/axiosConfig";
 import { handleExcelExport, handlePDFExport, handlePrintExcel } from "../utils/exportUtils";
+import { useLocation } from "react-router-dom"
 
 export const useAgentDashboard = (currentUserId) => {
+  const location = useLocation();
+  const userNameFromState = location.state?.userName;
+
   const [trips, setTrips] = useState([])
   const [travelTypes, setTravelTypes] = useState([])
   const [expenseTypes, setExpenseTypes] = useState([])
@@ -57,10 +61,25 @@ export const useAgentDashboard = (currentUserId) => {
     const effectiveUserId = getEffectiveUserId();
     const currentUserData = getUserData();
     const isViewingOtherUser = currentUserData?.id !== effectiveUserId;
+    
+    // Determine the correct full name
+    const getFullName = () => {
+      // 1. Prioritize the name passed from the previous page's state.
+      if (userNameFromState) {
+        return userNameFromState;
+      }
+      // 2. If viewing their own dashboard, use their own name.
+      if (!isViewingOtherUser) {
+        return currentUserData?.nom_complete || currentUserData?.name || 'N/A';
+      }
+      // 3. Fallback for edge cases (e.g., direct navigation by manager).
+      return `Utilisateur ${effectiveUserId}`;
+    };
+
     return {
       trips: getMonthlyTrips(),
       userInfo: {
-        fullName: isViewingOtherUser ? `Utilisateur ${effectiveUserId}` : (currentUserData?.nom_complete || currentUserData?.name || 'N/A'),
+        fullName: getFullName(), // <-- USE THE NEW LOGIC HERE
         isViewingOtherUser,
         targetUserId: effectiveUserId
       },
