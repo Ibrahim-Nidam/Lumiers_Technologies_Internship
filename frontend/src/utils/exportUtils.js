@@ -19,7 +19,6 @@ export const getMonthLabel = (year, month) => {
     });
 };
 
-
 const getDaysInMonth = (year, month) => {
   const days = [];
   const date = new Date(year, month, 1);
@@ -28,6 +27,68 @@ const getDaysInMonth = (year, month) => {
     date.setDate(date.getDate() + 1);
   }
   return days;
+};
+
+/**
+ * Helper function to get the full name of the target user
+ * Handles both user and manager access scenarios
+ * Priority: dashboardData.userInfo -> currentUser -> fallback
+ */
+const getTargetUserFullName = (dashboardData, currentUser) => {
+    const { userInfo } = dashboardData;
+    
+    // Try to get name from userInfo (target user's data)
+    if (userInfo) {
+        // Check for fullName property
+        if (userInfo.fullName && userInfo.fullName.trim()) {
+            return userInfo.fullName.trim();
+        }
+        
+        // Check for firstName and lastName combination
+        if (userInfo.firstName && userInfo.lastName) {
+            return `${userInfo.firstName.trim()} ${userInfo.lastName.trim()}`;
+        }
+        
+        // Check for prenom and nom combination (French naming)
+        if (userInfo.prenom && userInfo.nom) {
+            return `${userInfo.prenom.trim()} ${userInfo.nom.trim()}`;
+        }
+        
+        // Check for name property
+        if (userInfo.name && userInfo.name.trim()) {
+            return userInfo.name.trim();
+        }
+    }
+    
+    // Fallback to current user info if userInfo doesn't have complete name
+    if (currentUser) {
+        if (currentUser.fullName && currentUser.fullName.trim()) {
+            return currentUser.fullName.trim();
+        }
+        
+        if (currentUser.firstName && currentUser.lastName) {
+            return `${currentUser.firstName.trim()} ${currentUser.lastName.trim()}`;
+        }
+        
+        if (currentUser.prenom && currentUser.nom) {
+            return `${currentUser.prenom.trim()} ${currentUser.nom.trim()}`;
+        }
+        
+        if (currentUser.name && currentUser.name.trim()) {
+            return currentUser.name.trim();
+        }
+    }
+    
+    // Last resort - try to use userInfo ID or currentUser ID
+    if (userInfo?.id) {
+        return `Utilisateur ${userInfo.id}`;
+    }
+    
+    if (currentUser?.id) {
+        return `Utilisateur ${currentUser.id}`;
+    }
+    
+    return 'Utilisateur Inconnu';
 };
 
 /**
@@ -110,15 +171,15 @@ const autoWidthColumns = (worksheet) => {
  * @param {number} year - The year to export (e.g. 2022).
  * @param {number} month - The month to export (0-11, where 0 = January).
  * @param {Object} dashboardData - The dashboard data to export.
+ * @param {Object} currentUser - The current user session data.
  *
  * @returns {Promise<void>}
  */
-export const handleExcelExport = async (year, month, dashboardData) => {
+export const handleExcelExport = async (year, month, dashboardData, currentUser = null) => {
     try {
-        const { userInfo, trips, userMissionRates, userCarLoans, travelTypes } = dashboardData;
+        const { trips, userMissionRates, userCarLoans, travelTypes } = dashboardData;
         const label = getMonthLabel(year, month);
-        const fullName = userInfo?.fullName || 'N/A';
-        // Map userMissionRates to roleMissionRates for consistency
+        const fullName = getTargetUserFullName(dashboardData, currentUser);
         const roleMissionRates = userMissionRates;
 
         const calculateTotals = () => {
@@ -160,7 +221,6 @@ export const handleExcelExport = async (year, month, dashboardData) => {
         const ws = wb.addWorksheet('Rapport Complet');
         let currentRow = 1;
 
-        // --- Styling Helper ---
         const styleRow = (row, startCol = 1) => {
             row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
                 cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
@@ -188,7 +248,7 @@ export const handleExcelExport = async (year, month, dashboardData) => {
         ws.getCell(`A${currentRow}`).alignment = { horizontal: 'center' };
         currentRow += 2;
 
-        // --- SECTION 1: Detailed Trips (WITHOUT distance column) ---
+        // --- SECTION 1: Detailed Trips ---
         ws.getCell(`A${currentRow}`).value = 'DÉTAIL DES TRAJETS';
         ws.getCell(`A${currentRow}`).font = { size: 14, bold: true };
         ws.getCell(`A${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
@@ -216,16 +276,16 @@ export const handleExcelExport = async (year, month, dashboardData) => {
             ];
             travelTypeNames.forEach(typeName => {
                 if (trip) {
-                const travelType = travelTypes.find(t => t.id === trip.typeDeDeplacementId);
-                rowData.push((travelType && travelType.nom === typeName) ? 1 : '');
+                    const travelType = travelTypes.find(t => t.id === trip.typeDeDeplacementId);
+                    rowData.push((travelType && travelType.nom === typeName) ? 1 : '');
                 } else {
-                rowData.push('');
+                    rowData.push('');
                 }
             });
             tripRow.values = rowData;
             styleRow(tripRow);
             currentRow++;
-            });
+        });
 
         // --- Summary for Detailed Trips ---
         const summaryData = { counts: {}, rates: {}, totals: {} };
@@ -249,19 +309,26 @@ export const handleExcelExport = async (year, month, dashboardData) => {
 
         summaryRows.forEach(({ label, data, format }) => {
             const row = ws.getRow(currentRow);
-            const values = [label, '', '', ...travelTypeNames.map(name => data[name])];
-            row.values = values;
+            row.getCell(1).value = label;
+            ws.mergeCells(`A${currentRow}:C${currentRow}`);
+            travelTypeNames.forEach((name, i) => {
+                row.getCell(4 + i).value = data[name];
+                row.getCell(4 + i).numFmt = format;
+            });
             styleRow(row);
             row.font = { bold: true };
-            row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                if (colNumber > 3) cell.numFmt = format;
-            });
             currentRow++;
         });
 
         const grandTotalRow = ws.getRow(currentRow);
-        grandTotalRow.values = ['Total General', '', '', grandTotalTrips];
-        grandTotalRow.getCell(4).numFmt = '#,##0.00 "MAD"';
+        grandTotalRow.getCell(1).value = 'Total General';
+        ws.mergeCells(`A${currentRow}:C${currentRow}`);
+        const startCol = 4;
+        const endCol = startCol + travelTypeNames.length - 1;
+        ws.mergeCells(startCol, currentRow, endCol, currentRow);
+        grandTotalRow.getCell(startCol).value = grandTotalTrips;
+        grandTotalRow.getCell(startCol).numFmt = '#,##0.00 "MAD"';
+        grandTotalRow.getCell(startCol).alignment = { horizontal: 'center', vertical: 'middle' };
         grandTotalRow.font = { bold: true, size: 12 };
         styleRow(grandTotalRow);
         currentRow += 2;
@@ -298,7 +365,6 @@ export const handleExcelExport = async (year, month, dashboardData) => {
                     currentRow++;
                 });
             } else {
-                // No expenses on this day
                 const noExpenseRow = ws.getRow(currentRow);
                 noExpenseRow.values = [
                     day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
@@ -311,7 +377,6 @@ export const handleExcelExport = async (year, month, dashboardData) => {
             }
         });
 
-        // Total expenses row
         const totalExpensesRow = ws.getRow(currentRow);
         totalExpensesRow.values = ['Total', '', totals.totalMisc];
         ws.mergeCells(`A${currentRow}:B${currentRow}`);
@@ -320,7 +385,7 @@ export const handleExcelExport = async (year, month, dashboardData) => {
         totalExpensesRow.getCell(3).numFmt = '#,##0.00 "MAD"';
         currentRow += 3;
 
-        // --- NEW SECTION: Distance Table ---
+        // --- SECTION 3: Distance Table ---
         ws.getCell(`A${currentRow}`).value = 'DISTANCES PARCOURUES';
         ws.getCell(`A${currentRow}`).font = { size: 14, bold: true };
         ws.getCell(`A${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
@@ -329,28 +394,28 @@ export const handleExcelExport = async (year, month, dashboardData) => {
         const distanceHeaderRow = ws.getRow(currentRow);
         distanceHeaderRow.values = ['Date', 'Lieu de deplacement', 'Distance (Km)'];
         distanceHeaderRow.eachCell(cell => {
-        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
-        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
+            cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
         });
         currentRow++;
 
         const totalDistance = trips.reduce((sum, trip) => sum + (parseFloat(trip.distanceKm) || 0), 0);
         daysInMonth.forEach(day => {
-        const trip = trips.find(t => new Date(t.date).toDateString() === day.toDateString());
-        const distance = trip ? parseFloat(trip.distanceKm) || 0 : 0;
-        const distanceRow = ws.getRow(currentRow);
-        distanceRow.values = [
-            day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-            trip ? trip.chantier?.designation || 'N/A' : '',
-            distance
-        ];
-        styleRow(distanceRow);
-        distanceRow.getCell(3).numFmt = '0.00';
-        currentRow++;
+            const trip = trips.find(t => new Date(t.date).toDateString() === day.toDateString());
+            const distance = trip ? parseFloat(trip.distanceKm) || 0 : 0;
+            const distanceRow = ws.getRow(currentRow);
+            distanceRow.values = [
+                day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+                trip ? trip.chantier?.designation || 'N/A' : '',
+                distance
+            ];
+            styleRow(distanceRow);
+            distanceRow.getCell(3).numFmt = '0.00';
+            currentRow++;
         });
-        // Total distance row
+
         const totalDistanceRow = ws.getRow(currentRow);
         totalDistanceRow.values = ['Total', '', totalDistance];
         ws.mergeCells(`A${currentRow}:B${currentRow}`);
@@ -359,43 +424,46 @@ export const handleExcelExport = async (year, month, dashboardData) => {
         totalDistanceRow.getCell(3).numFmt = '0.00';
         currentRow++;
 
-        // --- Add mileage‑rate rows ---
         if (totals.mileageCosts.size > 1) {
-        // multiple rates
-        Array.from(totals.mileageCosts.entries()).forEach(([libelle, { rate, distance}]) => {
+            Array.from(totals.mileageCosts.entries()).forEach(([libelle, { rate, distance}]) => {
+                const tauxRow = ws.getRow(currentRow);
+                tauxRow.values = [`Taux (${libelle})`, '', `${rate.toFixed(2)} - ${distance.toFixed(2)} Km`];
+                ws.mergeCells(`A${currentRow}:B${currentRow}`);
+                styleRow(tauxRow, 0);
+                tauxRow.font = { bold: true };
+                tauxRow.getCell(3).numFmt = '#,##0.00 "MAD"';
+                currentRow++;
+            });
+        } else {
             const tauxRow = ws.getRow(currentRow);
-            tauxRow.values = [`Taux (${libelle})`, '', `${rate.toFixed(2)} - ${distance.toFixed(2)} Km`];
+            const first = totals.mileageCosts.values().next().value || { rate: 0 };
+            tauxRow.values = ['Taux', '', first.rate.toFixed(2)];
             ws.mergeCells(`A${currentRow}:B${currentRow}`);
             styleRow(tauxRow, 0);
             tauxRow.font = { bold: true };
             tauxRow.getCell(3).numFmt = '#,##0.00 "MAD"';
             currentRow++;
-        });
-        } else {
-        // single rate
-        const tauxRow = ws.getRow(currentRow);
-        const first = totals.mileageCosts.values().next().value || { rate: 0 };
-        tauxRow.values = ['Taux', '', first.rate.toFixed(2)];
-        ws.mergeCells(`A${currentRow}:B${currentRow}`);
-        styleRow(tauxRow, 0);
-        tauxRow.font = { bold: true };
-        tauxRow.getCell(3).numFmt = '#,##0.00 "MAD"';
-        currentRow++;
         }
 
-        // --- Net à payer ---
-        const netPayerRow = ws.getRow(currentRow);
+        const netPayerRow = currentRow;
         const totalMileageCost = Array.from(totals.mileageCosts.values()).reduce((sum, c) => sum + c.total, 0);
-        netPayerRow.values = ['Net à payer', '', totalMileageCost];
-        ws.mergeCells(`A${currentRow}:B${currentRow}`);
-        styleRow(netPayerRow, 0);
-        netPayerRow.font = { bold: true };
-        netPayerRow.getCell(3).numFmt = '#,##0.00 "MAD"';
-        netPayerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
+        ws.mergeCells(`A${netPayerRow}:B${netPayerRow}`);
+        const netPayerCell = ws.getCell(`A${netPayerRow}`);
+        netPayerCell.value = 'Net à payer';
+        netPayerCell.font = { bold: true };
+        netPayerCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
+        netPayerCell.alignment = { horizontal: 'center', vertical: 'middle' };
+        netPayerCell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        const valueCell = ws.getCell(`C${netPayerRow}`);
+        valueCell.value = totalMileageCost;
+        valueCell.numFmt = '#,##0.00 "MAD"';
+        valueCell.font = { bold: true };
+        valueCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
+        valueCell.alignment = { horizontal: 'center', vertical: 'middle' };
+        valueCell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
         currentRow += 3;
 
-
-        // --- SECTION 3: Récapitulatif ---
+        // --- SECTION 4: Récapitulatif ---
         ws.getCell(`A${currentRow}`).value = 'RÉCAPITULATIF';
         ws.getCell(`A${currentRow}`).font = { size: 14, bold: true };
         ws.getCell(`A${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
@@ -425,23 +493,31 @@ export const handleExcelExport = async (year, month, dashboardData) => {
             currentRow++;
         });
 
-        totals.mileageCosts.forEach(({ distance, total, rate, conditionType, threshold, rateAfter }, libelle) => {
-            const rateDisplay = (conditionType === "THRESHOLD" && threshold && rateAfter !== rate)
-                ? `${rate.toFixed(2)}/${rateAfter.toFixed(2)} (seuil: ${threshold}km)`
-                : rate.toFixed(2);
-            const mileageRow = ws.getRow(currentRow);
-            mileageRow.values = [`Frais kilométrique (${libelle})`, '', `${distance.toFixed(2)} Km`, rateDisplay, total];
-            styleRow(mileageRow);
-            mileageRow.getCell(5).numFmt = '#,##0.00 "MAD"';
+        if (totals.mileageCosts.size > 0) {
+            totals.mileageCosts.forEach(({ distance, total, rate, conditionType, threshold, rateAfter }, libelle) => {
+                const rateDisplay = (conditionType === "THRESHOLD" && threshold && rateAfter !== rate)
+                    ? `${rate.toFixed(2)}/${rateAfter.toFixed(2)} (seuil: ${threshold}km)`
+                    : rate.toFixed(2);
+                const mileageRow = ws.getRow(currentRow);
+                mileageRow.values = [`Frais kilométrique (${libelle})`, '', `${distance.toFixed(2)} Km`, rateDisplay, total];
+                styleRow(mileageRow);
+                mileageRow.getCell(5).numFmt = '#,##0.00 "MAD"';
+                currentRow++;
+            });
+        } else {
+            const emptyMileageRow = ws.getRow(currentRow);
+            emptyMileageRow.values = ['Frais kilométrique', '', '0.00 Km', '0.00', 0];
+            styleRow(emptyMileageRow);
+            emptyMileageRow.getCell(5).numFmt = '#,##0.00 "MAD"';
             currentRow++;
-        });
+        }
 
         const finalTotalRow = ws.getRow(currentRow);
         finalTotalRow.values = ['Total Dépense', '', '', '', totals.grandTotal];
         ws.mergeCells(`A${currentRow}:D${currentRow}`);
         const totalLabelCell = ws.getCell(`A${currentRow}`);
         totalLabelCell.font = { bold: true, size: 12 };
-        totalLabelCell.alignment = { horizontal: 'right', vertical: 'middle' };
+        totalLabelCell.alignment = { horizontal: 'center', vertical: 'middle' };
         totalLabelCell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
         const grandTotalCell = ws.getCell(`E${currentRow}`);
         grandTotalCell.numFmt = '#,##0.00 "MAD"';
@@ -450,13 +526,10 @@ export const handleExcelExport = async (year, month, dashboardData) => {
         grandTotalCell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
         grandTotalCell.alignment = { horizontal: 'right', vertical: 'middle' };
 
-        // --- Auto-width columns ---
         autoWidthColumns(ws);
 
-        // --- Write to buffer and save ---
         const buf = await wb.xlsx.writeBuffer();
         saveAs(new Blob([buf]), `Note_de_frais_${fullName}_${year}_${month + 1}.xlsx`);
-
     } catch (err) {
         console.error("❌ handleExcelExport failed:", err);
         alert('Une erreur est survenue lors de la génération du fichier Excel.');
@@ -476,7 +549,6 @@ export const handleExcelExport = async (year, month, dashboardData) => {
 export const handlePDFExport = async (year, month, dashboardData) => {
     const label = getMonthLabel(year, month);
 
-    // Initialize pdfmake correctly
     pdfMake.vfs = pdfFonts.vfs;
     pdfMake.fonts = {
         Roboto: {
@@ -487,7 +559,6 @@ export const handlePDFExport = async (year, month, dashboardData) => {
         }
     };
 
-    // Calculate totals from dashboard data using updated logic
     const calculateTotals = () => {
         const { trips, userMissionRates, userCarLoans, travelTypes } = dashboardData;
 
@@ -496,7 +567,6 @@ export const handlePDFExport = async (year, month, dashboardData) => {
         let miscExpensesCount = 0;
 
         trips.forEach(trip => {
-            // Sum miscellaneous expenses and count them
             if (trip.depenses && Array.isArray(trip.depenses)) {
                 miscExpensesCount += trip.depenses.length;
                 trip.depenses.forEach(expense => {
@@ -504,12 +574,10 @@ export const handlePDFExport = async (year, month, dashboardData) => {
                 });
             }
 
-            // Group Daily Allowances by their rate
             const missionRate = userMissionRates.find(rate => rate.typeDeDeplacementId === trip.typeDeDeplacementId);
             if (missionRate) {
                 const rate = parseFloat(missionRate.tarifParJour) || 0;
                 const travelTypeName = travelTypes.find(type => type.id === trip.typeDeDeplacementId)?.nom || 'Type de déplacement inconnu';
-
                 if (!dailyAllowances.has(rate)) {
                     dailyAllowances.set(rate, { count: 0, total: 0, name: travelTypeName });
                 }
@@ -519,10 +587,8 @@ export const handlePDFExport = async (year, month, dashboardData) => {
             }
         });
 
-        // Calculate distance costs using the updated logic
         const mileageCosts = calculateDistanceCostsForExport(trips, userCarLoans);
 
-        // Calculate Grand Total
         let grandTotal = totalMiscExpenses;
         mileageCosts.forEach(value => grandTotal += value.total);
         dailyAllowances.forEach(value => grandTotal += value.total);
@@ -539,7 +605,6 @@ export const handlePDFExport = async (year, month, dashboardData) => {
     const totals = calculateTotals();
     const userInfo = dashboardData.userInfo || {};
 
-    // Dynamically build the table body
     const tableBody = [
         [
             { text: 'Désignation', bold: true, fillColor: '#f0f0f0' },
@@ -557,7 +622,6 @@ export const handlePDFExport = async (year, month, dashboardData) => {
         ]
     ];
 
-    // Add a row for each unique daily allowance rate
     totals.dailyAllowances.forEach((data, rate) => {
         tableBody.push([
             `Frais journaliers (${data.name})`,
@@ -568,25 +632,32 @@ export const handlePDFExport = async (year, month, dashboardData) => {
         ]);
     });
 
-    // Add a row for each unique mileage category with updated logic
-    totals.mileageCosts.forEach((data, libelle) => {
-        let rateDisplay;
-        if (data.conditionType === "THRESHOLD" && data.threshold && data.rateAfter !== data.rate) {
-            rateDisplay = `${data.rate.toFixed(2)}/${data.rateAfter.toFixed(2)} (seuil: ${data.threshold}km)`;
-        } else {
-            rateDisplay = data.rate.toFixed(2);
-        }
-
+    if (totals.mileageCosts.size === 0) {
         tableBody.push([
-            `Frais kilométrique (${libelle})`,
+            'Frais kilométrique',
             '',
-            { text: `${data.distance.toFixed(2)} Km`, alignment: 'right' },
-            { text: rateDisplay, alignment: 'right' },
-            { text: data.total.toFixed(2), alignment: 'right' }
+            { text: '0.00 Km', alignment: 'right' },
+            { text: '0.00', alignment: 'right' },
+            { text: '0.00', alignment: 'right' }
         ]);
-    });
+    } else {
+        totals.mileageCosts.forEach((data, libelle) => {
+            let rateDisplay;
+            if (data.conditionType === "THRESHOLD" && data.threshold && data.rateAfter !== data.rate) {
+                rateDisplay = `${data.rate.toFixed(2)}/${data.rateAfter.toFixed(2)} (seuil: ${data.threshold}km)`;
+            } else {
+                rateDisplay = data.rate.toFixed(2);
+            }
+            tableBody.push([
+                `Frais kilométrique (${libelle})`,
+                '',
+                { text: `${data.distance.toFixed(2)} Km`, alignment: 'right' },
+                { text: rateDisplay, alignment: 'right' },
+                { text: data.total.toFixed(2), alignment: 'right' }
+            ]);
+        });
+    }
 
-    // Add the final total row
     tableBody.push([
         { text: 'Total Dépense', colSpan: 4, alignment: 'right', bold: true, fillColor: '#f0f0f0' },
         {}, {}, {},
@@ -679,13 +750,12 @@ export const handlePDFExport = async (year, month, dashboardData) => {
  * @param {Object} dashboardData - The dashboard data to print.
  */
 export const handlePrintExcel = async (year, month, dashboardData) => {
-  try {
+    try {
         const { userInfo, trips, userMissionRates, userCarLoans, travelTypes } = dashboardData;
         const label = getMonthLabel(year, month);
         const fullName = userInfo?.fullName || 'N/A';
         const roleMissionRates = userMissionRates;
 
-        // Helper function to split large arrays into chunks
         const createTableChunks = (rows, chunkSize = 15) => {
             const chunks = [];
             for (let i = 0; i < rows.length; i += chunkSize) {
@@ -694,7 +764,6 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
             return chunks;
         };
 
-        // Reuse calculation logic
         const calculateTotals = () => {
             const dailyAllowances = new Map();
             let totalMisc = 0;
@@ -731,14 +800,12 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
         const totals = calculateTotals();
         const daysInMonth = getDaysInMonth(year, month);
         const travelTypeNames = travelTypes.map(t => t.nom);
+        const grandTotalTrips = Array.from(totals.dailyAllowances.values()).reduce((sum, { total }) => sum + total, 0);
 
-        // Calculate total distance for the distance table
         const totalDistance = trips.reduce((sum, trip) => sum + (parseFloat(trip.distanceKm) || 0), 0);
 
-        // Generate trips table in chunks to prevent page break issues
         const generateTripsTableInChunks = (daysInMonth, trips, travelTypeNames, travelTypes) => {
-            const chunks = createTableChunks(daysInMonth, 20); // 20 rows per chunk for better page fitting
-            
+            const chunks = createTableChunks(daysInMonth, 20);
             return chunks.map((chunk, index) => `
                 ${index > 0 ? '<div class="page-break"></div>' : ''}
                 <table>
@@ -772,10 +839,8 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
             `).join('');
         };
 
-        // Generate miscellaneous expenses table in chunks
         const generateMiscExpensesTableInChunks = (daysInMonth, trips) => {
             const chunks = createTableChunks(daysInMonth, 20);
-            
             return chunks.map((chunk, index) => `
                 ${index > 0 ? '<div class="page-break"></div>' : ''}
                 <table>
@@ -816,10 +881,8 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
             `).join('');
         };
 
-        // Generate distance table in chunks
         const generateDistanceTableInChunks = (daysInMonth, trips) => {
             const chunks = createTableChunks(daysInMonth, 20);
-            
             return chunks.map((chunk, index) => `
                 ${index > 0 ? '<div class="page-break"></div>' : ''}
                 <table>
@@ -835,11 +898,11 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
                             const trip = trips.find(t => new Date(t.date).toDateString() === day.toDateString());
                             const distance = trip ? parseFloat(trip.distanceKm) || 0 : 0;
                             return `
-                            <tr>
-                                <td>${day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
-                                <td>${trip ? trip.chantier?.designation || 'N/A' : ''}</td>
-                                <td>${distance.toFixed(2)}</td>
-                            </tr>
+                                <tr>
+                                    <td>${day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+                                    <td>${trip ? trip.chantier?.designation || 'N/A' : ''}</td>
+                                    <td>${distance.toFixed(2)}</td>
+                                </tr>
                             `;
                         }).join('')}
                     </tbody>
@@ -847,7 +910,6 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
             `).join('');
         };
 
-        // Create HTML content with enhanced print styles
         const htmlContent = `
         <!DOCTYPE html>
         <html>
@@ -865,7 +927,6 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
                     @bottom-center { content: ""; }
                     @bottom-right { content: ""; }
                 }
-                
                 body {
                     font-family: "Calibri", Arial, sans-serif;
                     font-size: 11px;
@@ -874,25 +935,21 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
                     background: white;
                     color: black;
                 }
-                
                 .header {
                     text-align: center;
                     margin-bottom: 20px;
                     page-break-inside: avoid;
                 }
-                
                 .header h1 {
                     font-size: 18px;
                     color: #4F81BD;
                     margin: 0;
                 }
-                
                 .header .user-info {
                     font-size: 14px;
                     font-weight: bold;
                     margin: 10px 0;
                 }
-                
                 .section-title {
                     font-size: 14px;
                     font-weight: bold;
@@ -903,120 +960,87 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
                     page-break-after: avoid;
                     page-break-inside: avoid;
                 }
-                
                 table {
                     width: 100%;
                     border-collapse: collapse;
                     margin-bottom: 20px;
-                    /* Removed page-break-inside: avoid to allow table breaking */
                 }
-                
-                /* Keep table headers with their content */
                 thead {
                     display: table-header-group;
                     page-break-inside: avoid;
                 }
-                
                 tbody {
                     display: table-row-group;
                 }
-                
-                /* Prevent single table rows from breaking */
                 tr {
                     page-break-inside: avoid;
                 }
-                
-                /* Keep important summary rows together */
                 .total-row {
                     page-break-inside: avoid;
                     page-break-before: avoid;
                 }
-                
-                /* Ensure at least 3 rows stay together before breaking */
                 tr:nth-child(-n+3) {
                     page-break-after: avoid;
                 }
-                
                 th, td {
                     border: 1px solid #000;
                     padding: 6px;
                     text-align: center;
                     font-size: 10px;
                 }
-                
                 th {
                     background-color: #4F81BD;
                     color: white;
                     font-weight: bold;
                 }
-                
                 .text-left {
                     text-align: left;
                 }
-                
                 .text-right {
                     text-align: right;
                 }
-                
+                .text-center {
+                    text-align: center;
+                }
                 .bold {
                     font-weight: bold;
                 }
-                
                 .total-row {
                     background-color: #D3D3D3;
                     font-weight: bold;
                 }
-                
                 .currency::after {
                     content: " MAD";
                 }
-                
-                /* Enhanced print styles */
                 @media print {
-                    body { 
+                    body {
                         -webkit-print-color-adjust: exact;
                         color-adjust: exact;
                     }
-                    
-                    /* Force page breaks for better layout */
                     .page-break {
                         page-break-before: always;
                     }
-                    
-                    /* Ensure headers don't get cut off */
                     .section-title {
                         page-break-after: avoid;
                     }
-                    
-                    /* Keep section titles with some content */
                     .section-title + table {
                         page-break-before: avoid;
                     }
-                    
-                    /* Prevent orphaned headers */
                     thead {
                         page-break-after: avoid;
                     }
-                    
-                    /* Hide any potential URL display elements */
                     .no-print {
                         display: none !important;
                     }
-                    
-                    /* Ensure table headers repeat on each page */
                     table {
                         page-break-inside: auto;
                     }
-                    
                     thead {
                         display: table-header-group;
                     }
-                    
                     tbody {
                         display: table-row-group;
                     }
-                    
-                    /* Better spacing between sections */
                     .section-title:not(:first-of-type) {
                         margin-top: 30px;
                     }
@@ -1028,18 +1052,16 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
                 <div class="user-info">Nom et Prénom : ${fullName}</div>
                 <h1>Note de frais – ${label}</h1>
             </div>
-            
+
             <!-- Section 1: Detailed Trips -->
             <div class="section-title">DÉTAIL DES TRAJETS</div>
             ${generateTripsTableInChunks(daysInMonth, trips, travelTypeNames, travelTypes)}
-            
+
             <!-- Summary Table -->
             <table>
                 <tbody>
                     <tr class="bold">
-                        <td class="text-left">Nombre de jours</td>
-                        <td></td>
-                        <td></td>
+                        <td colspan="3">Nombre de jours</td>
                         ${travelTypeNames.map(typeName => {
                             const count = trips.filter(trip => {
                                 const travelType = travelTypes.find(t => t.id === trip.typeDeDeplacementId);
@@ -1049,9 +1071,7 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
                         }).join('')}
                     </tr>
                     <tr class="bold">
-                        <td class="text-left">Taux de mission</td>
-                        <td></td>
-                        <td></td>
+                        <td colspan="3">Taux de mission</td>
                         ${travelTypeNames.map(typeName => {
                             const travelType = travelTypes.find(t => t.nom === typeName);
                             const missionRate = roleMissionRates.find(rate => rate.typeDeDeplacementId === travelType?.id);
@@ -1060,9 +1080,7 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
                         }).join('')}
                     </tr>
                     <tr class="bold">
-                        <td class="text-left">Total</td>
-                        <td></td>
-                        <td></td>
+                        <td colspan="3">Total</td>
                         ${travelTypeNames.map(typeName => {
                             const travelType = travelTypes.find(t => t.nom === typeName);
                             const count = trips.filter(trip => {
@@ -1075,45 +1093,45 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
                             return `<td class="currency">${total.toFixed(2)}</td>`;
                         }).join('')}
                     </tr>
+                    <tr class="bold">
+                        <td colspan="3">Total General</td>
+                        <td colspan="${travelTypeNames.length}" class="currency text-center">${grandTotalTrips.toFixed(2)}</td>
+                    </tr>
                 </tbody>
             </table>
-            
+
             <!-- Section 2: Miscellaneous Expenses -->
             <div class="section-title">DÉPENSES DIVERSES</div>
             ${generateMiscExpensesTableInChunks(daysInMonth, trips)}
-            
+
             <!-- Total for miscellaneous expenses -->
             <table>
                 <tbody>
                     <tr class="bold total-row">
                         <td colspan="2" class="text-left">Total</td>
                         <td class="currency">${totals.totalMisc.toFixed(2)}</td>
-                        <td></td>
                     </tr>
                 </tbody>
             </table>
-            
+
             <!-- Section 3: Distance Table -->
             <div class="section-title">DISTANCES PARCOURUES</div>
             ${generateDistanceTableInChunks(daysInMonth, trips)}
-            
+
             <!-- Distance summary table -->
             <table>
                 <tbody>
-                    <!-- Total distance -->
                     <tr class="bold total-row">
                         <td colspan="2" class="text-left">Total</td>
                         <td>${totalDistance.toFixed(2)}</td>
                     </tr>
-
-                    <!-- Taux rows: multiple or single -->
                     ${
                         totals.mileageCosts.size > 1
                         ? Array.from(totals.mileageCosts.entries()).map(
                             ([libelle, { rate, distance }]) => `
                                 <tr class="bold">
-                                <td colspan="2" class="text-left">Taux (${libelle})</td>
-                                <td class="currency">${rate.toFixed(2)} - ${distance.toFixed(2)} Km</td>
+                                    <td colspan="2" class="text-left">Taux (${libelle})</td>
+                                    <td class="currency">${rate.toFixed(2)} - ${distance.toFixed(2)} Km</td>
                                 </tr>
                             `
                             ).join('')
@@ -1121,30 +1139,28 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
                             <td colspan="2" class="text-left">Taux</td>
                             <td class="currency">
                                 ${
-                                totals.mileageCosts.size > 0
+                                    totals.mileageCosts.size > 0
                                     ? Array.from(totals.mileageCosts.values())[0].rate.toFixed(2)
                                     : '0.00'
                                 }
                             </td>
-                            </tr>`
+                        </tr>`
                     }
-
-                    <!-- Net à payer -->
                     <tr class="bold total-row">
                         <td colspan="2" class="text-left">Net à payer</td>
                         <td class="currency">
-                        ${
-                            totals.mileageCosts.size > 0
-                            ? Array.from(totals.mileageCosts.values())
-                                .reduce((sum, { total }) => sum + total, 0)
-                                .toFixed(2)
-                            : '0.00'
-                        }
+                            ${
+                                totals.mileageCosts.size > 0
+                                ? Array.from(totals.mileageCosts.values())
+                                    .reduce((sum, { total }) => sum + total, 0)
+                                    .toFixed(2)
+                                : '0.00'
+                            }
                         </td>
                     </tr>
                 </tbody>
             </table>
-            
+
             <!-- Section 4: Récapitulatif -->
             <div class="section-title">RÉCAPITULATIF</div>
             <table>
@@ -1189,21 +1205,17 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
                         `;
                     }).join('')}
                     <tr class="bold total-row">
-                        <td colspan="4" class="text-right">Total Dépense</td>
+                        <td colspan="4" class="text-left">Total Dépense</td>
                         <td class="currency">${totals.grandTotal.toFixed(2)}</td>
                     </tr>
                 </tbody>
             </table>
-            
+
             <script>
-                // Auto-open print dialog when page loads
                 window.onload = function() {
-                    // Set document title for cleaner printing
                     document.title = "Note de frais ${label}";
-                    
                     setTimeout(() => {
                         window.print();
-                        // Close window after printing
                         window.onafterprint = function() {
                             setTimeout(() => {
                                 window.close();
@@ -1216,23 +1228,15 @@ export const handlePrintExcel = async (year, month, dashboardData) => {
         </html>
         `;
 
-        // Create blob and data URL for cleaner document reference
         const blob = new Blob([htmlContent], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
-        
-        // Open with data URL (cleaner than direct HTML writing)
         const printWindow = window.open(url, '_blank', 'width=1200,height=800');
-        
-        // Clean up the URL after use
         setTimeout(() => {
             URL.revokeObjectURL(url);
         }, 5000);
-        
-        // Focus on the new window
         if (printWindow) {
             printWindow.focus();
         }
-
     } catch (err) {
         console.error("❌ handleExcelPrintClean failed:", err);
         alert('Une erreur est survenue lors de la génération du document pour impression.');

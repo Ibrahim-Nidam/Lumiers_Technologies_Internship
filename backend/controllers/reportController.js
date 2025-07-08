@@ -600,6 +600,10 @@ exports.generateExcelReport = async (userId, year, month) => {
             const row = ws.getRow(currentRow);
             const values = [label, '', '', ...travelTypeNames.map(name => data[name])];
             row.values = values;
+            
+            // Merge the empty cells (B and C) with the first cell (A)
+            ws.mergeCells(`A${currentRow}:C${currentRow}`);
+            
             styleRow(row);
             row.font = { bold: true };
             row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
@@ -610,6 +614,10 @@ exports.generateExcelReport = async (userId, year, month) => {
 
         const grandTotalRow = ws.getRow(currentRow);
         grandTotalRow.values = ['Total General', '', '', grandTotalTrips];
+        
+        // Merge the empty cells (B and C) with the first cell (A)
+        ws.mergeCells(`A${currentRow}:C${currentRow}`);
+        
         grandTotalRow.getCell(4).numFmt = '#,##0.00 "MAD"';
         grandTotalRow.font = { bold: true, size: 12 };
         styleRow(grandTotalRow);
@@ -735,7 +743,8 @@ exports.generateExcelReport = async (userId, year, month) => {
         styleRow(netPayerRow, 0);
         netPayerRow.font = { bold: true };
         netPayerRow.getCell(3).numFmt = '#,##0.00 "MAD"';
-        netPayerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
+        // Apply fill only to the "Net à payer" cell (column A)
+        netPayerRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
         currentRow += 3;
 
         // --- SECTION 3: Récapitulatif ---
@@ -768,16 +777,25 @@ exports.generateExcelReport = async (userId, year, month) => {
             currentRow++;
         });
 
-        totals.mileageCosts.forEach(({ distance, total, rate, conditionType, threshold, rateAfter }, libelle) => {
-            const rateDisplay = (conditionType === "THRESHOLD" && threshold && rateAfter !== rate)
-                ? `${rate.toFixed(2)}/${rateAfter.toFixed(2)} (seuil: ${threshold}km)`
-                : rate.toFixed(2);
-            const mileageRow = ws.getRow(currentRow);
-            mileageRow.values = [`Frais kilométrique (${libelle})`, '', `${distance.toFixed(2)} Km`, rateDisplay, total];
-            styleRow(mileageRow);
-            mileageRow.getCell(5).numFmt = '#,##0.00 "MAD"';
+        if (totals.mileageCosts.size > 0) {
+            totals.mileageCosts.forEach(({ distance, total, rate, conditionType, threshold, rateAfter }, libelle) => {
+                const rateDisplay = (conditionType === "THRESHOLD" && threshold && rateAfter !== rate)
+                    ? `${rate.toFixed(2)}/${rateAfter.toFixed(2)} (seuil: ${threshold}km)`
+                    : rate.toFixed(2);
+                const mileageRow = ws.getRow(currentRow);
+                mileageRow.values = [`Frais kilométrique (${libelle})`, '', `${distance.toFixed(2)} Km`, rateDisplay, total];
+                styleRow(mileageRow);
+                mileageRow.getCell(5).numFmt = '#,##0.00 "MAD"';
+                currentRow++;
+            });
+        } else {
+            // Add empty Frais kilométrique row if no data
+            const emptyMileageRow = ws.getRow(currentRow);
+            emptyMileageRow.values = ['Frais kilométrique', '', '', '', ''];
+            styleRow(emptyMileageRow);
+            emptyMileageRow.getCell(5).numFmt = '#,##0.00 "MAD"';
             currentRow++;
-        });
+        }
 
         const finalTotalRow = ws.getRow(currentRow);
         finalTotalRow.values = ['Total Dépense', '', '', '', totals.grandTotal];
@@ -793,13 +811,27 @@ exports.generateExcelReport = async (userId, year, month) => {
         grandTotalCell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
         grandTotalCell.alignment = { horizontal: 'right', vertical: 'middle' };
 
-        // --- Auto-width columns ---
-        ws.columns.forEach(column => {
-            let maxTextLength = 0;
-            column.eachCell({ includeEmpty: true }, cell => {
-                maxTextLength = Math.max(maxTextLength, (cell.value || '').toString().length);
+        // --- IMPROVED Auto-width columns based on content ---
+        ws.columns.forEach((column, index) => {
+            let maxLength = 0;
+            
+            // Check all cells in this column to find the longest content
+            column.eachCell({ includeEmpty: true }, (cell) => {
+                if (cell.value) {
+                    const cellValue = cell.value.toString();
+                    maxLength = Math.max(maxLength, cellValue.length);
+                }
             });
-            column.width = maxTextLength < 12 ? 14 : maxTextLength + 4;
+            
+            // Set minimum width of 12 or use the longest content length
+            const minWidth = 12;
+            column.width = maxLength < minWidth ? minWidth : maxLength + 2; // +2 for padding
+            
+            // Set maximum width to prevent overly wide columns
+            const maxWidth = 50;
+            if (column.width > maxWidth) {
+                column.width = maxWidth;
+            }
         });
 
         // --- Write to file ---
@@ -896,22 +928,33 @@ exports.generatePDFReport = async (userId, year, month) => {
       ]);
     });
 
-    totals.mileageCosts.forEach((data, libelle) => {
-      let rateDisplay;
-      if (data.conditionType === "THRESHOLD" && data.threshold && data.rateAfter !== data.rate) {
-        rateDisplay = `${data.rate.toFixed(2)}/${data.rateAfter.toFixed(2)} (seuil: ${data.threshold}km)`;
-      } else {
-        rateDisplay = data.rate.toFixed(2);
-      }
-
+    // Handle mileage costs - show empty row if no data
+    if (totals.mileageCosts.size === 0) {
       tableBody.push([
-        `Frais kilométrique (${libelle})`,
+        'Frais kilométrique',
         '',
-        { text: `${data.distance.toFixed(2)} Km`, alignment: 'right' },
-        { text: rateDisplay, alignment: 'right' },
-        { text: data.total.toFixed(2), alignment: 'right' }
+        { text: '-', alignment: 'right' },
+        { text: '-', alignment: 'right' },
+        { text: '-', alignment: 'right' }
       ]);
-    });
+    } else {
+      totals.mileageCosts.forEach((data, libelle) => {
+        let rateDisplay;
+        if (data.conditionType === "THRESHOLD" && data.threshold && data.rateAfter !== data.rate) {
+          rateDisplay = `${data.rate.toFixed(2)}/${data.rateAfter.toFixed(2)} (seuil: ${data.threshold}km)`;
+        } else {
+          rateDisplay = data.rate.toFixed(2);
+        }
+
+        tableBody.push([
+          `Frais kilométrique (${libelle})`,
+          '',
+          { text: `${data.distance.toFixed(2)} Km`, alignment: 'right' },
+          { text: rateDisplay, alignment: 'right' },
+          { text: data.total.toFixed(2), alignment: 'right' }
+        ]);
+      });
+    }
 
     tableBody.push([
       { text: 'Total Dépense', colSpan: 4, alignment: 'right', bold: true, fillColor: '#f0f0f0' },
@@ -1059,7 +1102,7 @@ exports.exportPDF = async (req, res, next) => {
   }
 };
 
-async function generateSimplifiedExcelReport(userId, year, month) {
+async function generateUserWorksheet(workbook, userId, year, month) {
     // Fetch user details
     const user = await User.findByPk(userId);
     if (!user) throw new Error(`User with id ${userId} not found`);
@@ -1082,12 +1125,11 @@ async function generateSimplifiedExcelReport(userId, year, month) {
     const travelTypes = await TypeDeDeplacement.findAll();
     const travelTypeNames = travelTypes.map(t => t.nom);
 
-    // Create Excel workbook and worksheet
-    const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('Fiche de Deplacement');
+    // Create worksheet with user's full name as sheet name
+    const ws = workbook.addWorksheet(user.nomComplete);
 
     // Add logo
-    const imgId = wb.addImage({ base64: logo, extension: 'png' });
+    const imgId = workbook.addImage({ base64: logo, extension: 'png' });
     ws.addImage(imgId, { tl: { col: 0, row: 0 }, ext: { width: 120, height: 60 } });
 
     // Add user name
@@ -1145,37 +1187,52 @@ async function generateSimplifiedExcelReport(userId, year, month) {
 
     // Add summary row with calculated totals
     const summaryRow = ws.getRow(currentRow);
+    
+    // Merge cells from column A to C for "Total" label
+    const totalColumnCount = 3; // A, B, C columns
+    const startCol = 'A';
+    const endCol = String.fromCharCode(65 + totalColumnCount - 1); // Convert to column letter (C)
+    ws.mergeCells(`${startCol}${currentRow}:${endCol}${currentRow}`);
+    
     summaryRow.getCell(1).value = 'Total';
-    summaryRow.font = { bold: true };
+    summaryRow.getCell(1).font = { bold: true };
+    summaryRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
+    
+    // Add totals for each travel type
     tripTypeTotals.forEach((total, index) => {
         summaryRow.getCell(4 + index).value = total; // Set static total value (column D=4, E=5, etc.)
+        summaryRow.getCell(4 + index).font = { bold: true };
     });
+    
     summaryRow.eachCell({ includeEmpty: true }, cell => {
         cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
         cell.alignment = { vertical: 'middle', horizontal: 'center' };
     });
 
-    // Auto-width columns
-    ws.columns.forEach(column => {
-        let maxTextLength = 0;
-        column.eachCell({ includeEmpty: true }, cell => {
-            maxTextLength = Math.max(maxTextLength, (cell.value || '').toString().length);
+    // Auto-width columns based on content
+    ws.columns.forEach((column, index) => {
+        let maxLength = 0;
+        
+        // Check header length
+        if (headers[index]) {
+            maxLength = Math.max(maxLength, headers[index].length);
+        }
+        
+        // Check all cells in this column
+        column.eachCell({ includeEmpty: false }, cell => {
+            const cellValue = cell.value ? cell.value.toString() : '';
+            maxLength = Math.max(maxLength, cellValue.length);
         });
-        column.width = maxTextLength < 12 ? 14 : maxTextLength + 4;
+        
+        // Set width with some padding, but with reasonable min/max limits
+        const calculatedWidth = Math.max(8, Math.min(maxLength + 2, 50));
+        column.width = calculatedWidth;
     });
 
-    // Save the file
-    const safeName = user.nomComplete.replace(/\s+/g, '_');
-    const safeLabel = label.replace(/\s+/g, '_');
-    const fileName = `${safeName}_${safeLabel}.xlsx`;
-    const tmpDir = path.join(os.tmpdir(), 'myapp-reports');
-    await fs.ensureDir(tmpDir);
-    const outPath = path.join(tmpDir, fileName);
-    await wb.xlsx.writeFile(outPath);
-    return outPath;
+    return ws;
 }
 
-// API endpoint to generate ZIP file with simplified Excel reports
+// API endpoint to generate Excel file with multiple sheets (one per user)
 exports.generateTripTablesZip = async (req, res, next) => {
     try {
         // Validate query parameters
@@ -1200,63 +1257,44 @@ exports.generateTripTablesZip = async (req, res, next) => {
             ]
         });
 
-        // Generate ZIP file name
+        // Generate Excel file name (using the same format as the previous ZIP name)
         const label = getMonthLabel(+year, +month);
         const safeLabel = label.replace(/\s+/g, '_');
-        const zipName = `fiche_de_deplacement_des_utilisateurs_${safeLabel}.zip`;
+        const excelName = `fiche_de_deplacement_des_utilisateurs_${safeLabel}.xlsx`;
 
-        // Create temporary directory for ZIP
-        const tmpDir = path.join(os.tmpdir(), 'myapp-zips');
-        await fs.ensureDir(tmpDir);
-        const zipPath = path.join(tmpDir, `${uuidv4()}.zip`);
+        // Create Excel workbook
+        const workbook = new ExcelJS.Workbook();
 
-        // Set up ZIP stream
-        const output = fs.createWriteStream(zipPath);
-        const archive = archiver('zip', { zlib: { level: 9 } });
-        archive.pipe(output);
-        archive.on('error', err => next(err));
-
-        // Generate and add Excel reports for each user
-        const excelPaths = [];
+        // Generate worksheet for each user
         for (const user of users) {
             try {
-                const excelPath = await generateSimplifiedExcelReport(user.id, +year, +month);
-                excelPaths.push(excelPath);
-                const fileName = path.basename(excelPath);
-                archive.file(excelPath, { name: fileName });
+                await generateUserWorksheet(workbook, user.id, +year, +month);
             } catch (err) {
-                console.error(`Failed to generate report for user ${user.id}:`, err);
+                console.error(`Failed to generate worksheet for user ${user.id}:`, err);
                 // Continue with other users even if one fails
             }
         }
 
-        // Finalize the ZIP archive
-        await archive.finalize();
+        // Create temporary directory for Excel file
+        const tmpDir = path.join(os.tmpdir(), 'myapp-reports');
+        await fs.ensureDir(tmpDir);
+        const excelPath = path.join(tmpDir, `${uuidv4()}.xlsx`);
 
-        // Send the ZIP file and clean up
-        output.on('close', async () => {
+        // Write the Excel file
+        await workbook.xlsx.writeFile(excelPath);
+
+        // Set response headers
+        res.setHeader('Content-Disposition', `attachment; filename="${excelName}"`);
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        // Send the file and delete it afterward
+        res.download(excelPath, excelName, async err => {
+            if (err) console.error("Download error:", err);
             try {
-                // Delete temporary Excel files
-                for (const excelPath of excelPaths) {
-                    await fs.remove(excelPath);
-                }
-            } catch (err) {
-                console.error('Failed to delete temporary Excel files:', err);
+                await fs.remove(excelPath);
+            } catch (unlinkErr) {
+                console.error('Failed to delete Excel file:', unlinkErr);
             }
-
-            // Set response headers
-            res.setHeader('Content-Disposition', `attachment; filename="${zipName}"`);
-            res.setHeader('Content-Type', 'application/zip');
-
-            // Send the file and delete it afterward
-            res.download(zipPath, zipName, async err => {
-                if (err) console.error("Download error:", err);
-                try {
-                    await fs.remove(zipPath);
-                } catch (unlinkErr) {
-                    console.error('Failed to delete ZIP file:', unlinkErr);
-                }
-            });
         });
 
     } catch (err) {
