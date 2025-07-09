@@ -10,7 +10,7 @@ import AgentDashboard from "../components/dash/AgentDashboard";
 import ManagerDashboard from "../components/dash/ManagerDashboard";
 import ProfileSettings from "../components/dash/ProfileSettings";
 import DistanceDetails from "../components/DistanceDetails";
-import DailyReturnsPage from "../pages/DailyReturnsPage";
+// import DailyReturnsPage from "../pages/DailyReturnsPage";
 
 
 // Manager Dashboard Sub-Pages
@@ -78,7 +78,7 @@ export default function AppRoutes() {
             <Route path="/agentDashboard/:userId" element={<AgentDashboard />} />
 
           <Route path="/profile-settings" element={<ProfileSettings />} />
-          <Route path="/daily-returns" element={<DailyReturnsPage />} />
+          {/* <Route path="/daily-returns" element={<DailyReturnsPage />} /> */}
         </Route>
 
         {/* Fallback */}

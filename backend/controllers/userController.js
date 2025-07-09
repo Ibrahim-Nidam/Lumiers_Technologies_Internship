@@ -1,5 +1,6 @@
 const { User, Role } = require("../models");
 const bcrypt = require("bcryptjs");
+const { Op } = require("sequelize");
 
 // Create user controller for POST /api/users
 exports.createUser = async (req, res) => {
@@ -189,8 +190,21 @@ exports.updateUserRole = async (req, res) => {
 exports.getUsersWithCars = async (req, res) => {
   try {
     const users = await User.findAll({
-      where: { possedeVoiturePersonnelle: true },
-      include: [{ model: Role, as: "role" }],
+      where: {
+        possedeVoiturePersonnelle: true,
+        estActif: true
+      },
+      include: [
+        {
+          model: Role,
+          as: "role",
+          where: {
+            nom: {
+              [Op.notIn]: ["agent", "manager"]
+            }
+          }
+        }
+      ]
     });
 
     const result = users.map(u => ({

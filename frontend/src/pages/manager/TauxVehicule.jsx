@@ -37,7 +37,7 @@ export default function VehiculeRates() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await apiClient.get("/users?withCar=true");
+      const res = await apiClient.get("/users/with-car");
       setUsers(res.data);
       if (res.data.length) setSelectedUserId(res.data[0].id);
     } catch (error) {
