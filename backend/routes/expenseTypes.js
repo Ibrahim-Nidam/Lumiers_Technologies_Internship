@@ -1,12 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
-const {
-  getAllTypes,
-  createType,
-  updateType,
-  deleteType,
-} = require("../controllers/typeDepenseController");
+const { getAllTypes, createType, updateType, deleteType } = require("../controllers/typeDepenseController");
 
 router.get("/", authMiddleware, getAllTypes);
 router.post("/", authMiddleware, createType);

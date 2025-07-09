@@ -14,7 +14,7 @@ const fs = require('fs-extra');
 const path = require('path');
 const logo = require('../utils/base64Logo');
 
-// Helper: format "Month Year" in French
+// Helper: format "Month Year"
 const getMonthLabel = (year, month) =>
     new Date(year, month).toLocaleDateString('fr-FR', {
         month: 'long',
@@ -74,7 +74,6 @@ function getTotalExpenses(depenses) {
 }
 
 /**
- * FIXED: Helper function to calculate kilometric cost.
  * This version only calculates costs for trips where a vehicle rate rule was explicitly selected.
  */
 function calculateTotalKilometricCost(trips, userVehiculeRateRules) {
@@ -601,7 +600,6 @@ exports.generateExcelReport = async (userId, year, month) => {
             const values = [label, '', '', ...travelTypeNames.map(name => data[name])];
             row.values = values;
             
-            // Merge the empty cells (B and C) with the first cell (A)
             ws.mergeCells(`A${currentRow}:C${currentRow}`);
             
             styleRow(row);
@@ -615,7 +613,6 @@ exports.generateExcelReport = async (userId, year, month) => {
         const grandTotalRow = ws.getRow(currentRow);
         grandTotalRow.values = ['Total General', '', '', grandTotalTrips];
         
-        // Merge the empty cells (B and C) with the first cell (A)
         ws.mergeCells(`A${currentRow}:C${currentRow}`);
         
         grandTotalRow.getCell(4).numFmt = '#,##0.00 "MAD"';
@@ -675,7 +672,7 @@ exports.generateExcelReport = async (userId, year, month) => {
         totalExpensesRow.getCell(3).numFmt = '#,##0.00 "MAD"';
         currentRow += 3;
 
-        // --- NEW SECTION: Distance Table ---
+        // --- SECTION: Distance Table ---
         ws.getCell(`A${currentRow}`).value = 'DISTANCES PARCOURUES';
         ws.getCell(`A${currentRow}`).font = { size: 14, bold: true };
         ws.getCell(`A${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
@@ -743,7 +740,6 @@ exports.generateExcelReport = async (userId, year, month) => {
         styleRow(netPayerRow, 0);
         netPayerRow.font = { bold: true };
         netPayerRow.getCell(3).numFmt = '#,##0.00 "MAD"';
-        // Apply fill only to the "Net à payer" cell (column A)
         netPayerRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
         currentRow += 3;
 
@@ -789,7 +785,6 @@ exports.generateExcelReport = async (userId, year, month) => {
                 currentRow++;
             });
         } else {
-            // Add empty Frais kilométrique row if no data
             const emptyMileageRow = ws.getRow(currentRow);
             emptyMileageRow.values = ['Frais kilométrique', '', '', '', ''];
             styleRow(emptyMileageRow);
@@ -928,7 +923,6 @@ exports.generatePDFReport = async (userId, year, month) => {
       ]);
     });
 
-    // Handle mileage costs - show empty row if no data
     if (totals.mileageCosts.size === 0) {
       tableBody.push([
         'Frais kilométrique',
@@ -1171,9 +1165,9 @@ async function generateUserWorksheet(workbook, userId, year, month) {
             ...travelTypeNames.map((typeName, index) => {
                 const used = tripsOnDay.some(trip => trip.typeDeDeplacement?.nom === typeName);
                 if (used) {
-                    tripTypeTotals[index] += 1; // Increment total for this trip type
+                    tripTypeTotals[index] += 1;
                 }
-                return used ? 1 : null; // Set 1 if used, null (empty) if not
+                return used ? 1 : null;
             })
         ];
         const row = ws.getRow(currentRow);
@@ -1188,10 +1182,9 @@ async function generateUserWorksheet(workbook, userId, year, month) {
     // Add summary row with calculated totals
     const summaryRow = ws.getRow(currentRow);
     
-    // Merge cells from column A to C for "Total" label
-    const totalColumnCount = 3; // A, B, C columns
+    const totalColumnCount = 3; 
     const startCol = 'A';
-    const endCol = String.fromCharCode(65 + totalColumnCount - 1); // Convert to column letter (C)
+    const endCol = String.fromCharCode(65 + totalColumnCount - 1); 
     ws.mergeCells(`${startCol}${currentRow}:${endCol}${currentRow}`);
     
     summaryRow.getCell(1).value = 'Total';
@@ -1200,7 +1193,7 @@ async function generateUserWorksheet(workbook, userId, year, month) {
     
     // Add totals for each travel type
     tripTypeTotals.forEach((total, index) => {
-        summaryRow.getCell(4 + index).value = total; // Set static total value (column D=4, E=5, etc.)
+        summaryRow.getCell(4 + index).value = total; 
         summaryRow.getCell(4 + index).font = { bold: true };
     });
     

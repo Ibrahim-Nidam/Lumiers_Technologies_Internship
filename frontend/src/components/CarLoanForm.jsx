@@ -82,7 +82,7 @@ export default function CarLoanForm({
         message={message}
         messageType={messageType}
         onClear={clearMessage}
-        persistent={messageType === "error"} // Error messages stay until manually cleared or fixed
+        persistent={messageType === "error"} 
       />
 
       <div className="flex space-x-4">

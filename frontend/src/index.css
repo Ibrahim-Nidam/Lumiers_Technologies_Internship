@@ -1,8 +1,7 @@
 @import "tailwindcss";
 
-/* Add these color classes to your existing CSS */
 .bg-primary {
-  background-color: var(--primary-color, #a52148); /* Default to blue-500 if not defined */
+  background-color: var(--primary-color, #a52148); 
 }
 
 .text-primary {
@@ -13,7 +12,6 @@
   border-color: var(--primary-color, #a52148);
 }
 
-/* If you want to use CSS custom properties, add this to :root */
 :root {
-  --primary-color: #a52148; /* Update this to match your colors.js primary color */
+  --primary-color: #a52148;
 }

@@ -6,28 +6,22 @@ const { Op } = require("sequelize");
 exports.createUser = async (req, res) => {
   const { name, email, password, cnie, roleId, hasCar, isActive } = req.body;
 
-  // Check that all fields are present and hasCar/isActive are booleans
   if (!name || !email || !password || !cnie || !roleId || hasCar === undefined || isActive === undefined) {
     return res.status(400).json({ error: 'All fields are required.' });
   }
 
   try {
-    // Check CNIE uniqueness
     const existingCnie = await User.findOne({ where: { cartNational: cnie } });
     if (existingCnie) return res.status(400).json({ error: 'CNIE already used.' });
 
-    // Check email uniqueness
     const existingUser = await User.findOne({ where: { courriel: email } });
     if (existingUser) return res.status(400).json({ error: 'Email already used.' });
 
-    // Validate role
     const role = await Role.findByPk(roleId);
     if (!role) return res.status(400).json({ error: 'Invalid role.' });
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create new user with provided role and fields
     const newUser = await User.create({
       nomComplete: name,
       courriel: email,
@@ -117,10 +111,8 @@ exports.resetUserPassword = async (req, res) => {
       return res.status(404).json({ error: "Utilisateur introuvable." });
     }
 
-    // Hash the default password
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
     
-    // Update user's password
     targetUser.motDePasseHache = hashedPassword;
     targetUser.dateModification = new Date();
     
@@ -137,7 +129,7 @@ exports.resetUserPassword = async (req, res) => {
   }
 };
 
-// GET assignable roles (filter out admin and superadmin)
+// GET assignable roles
 exports.getAssignableRoles = async (req, res) => {
   try {
     const roles = await Role.findAll();

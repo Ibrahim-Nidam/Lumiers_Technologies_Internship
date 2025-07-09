@@ -62,24 +62,20 @@ export const useAgentDashboard = (currentUserId) => {
     const currentUserData = getUserData();
     const isViewingOtherUser = currentUserData?.id !== effectiveUserId;
     
-    // Determine the correct full name
     const getFullName = () => {
-      // 1. Prioritize the name passed from the previous page's state.
       if (userNameFromState) {
         return userNameFromState;
       }
-      // 2. If viewing their own dashboard, use their own name.
       if (!isViewingOtherUser) {
         return currentUserData?.nom_complete || currentUserData?.name || 'N/A';
       }
-      // 3. Fallback for edge cases (e.g., direct navigation by manager).
       return `Utilisateur ${effectiveUserId}`;
     };
 
     return {
       trips: getMonthlyTrips(),
       userInfo: {
-        fullName: getFullName(), // <-- USE THE NEW LOGIC HERE
+        fullName: getFullName(),
         isViewingOtherUser,
         targetUserId: effectiveUserId
       },
@@ -361,7 +357,6 @@ export const useAgentDashboard = (currentUserId) => {
       
       const url = `/deplacements/${tripId}/depenses/${expenseId}/justificatif`;
       
-      // The axios interceptor will automatically handle FormData and remove Content-Type
       const response = await apiClient.post(url, form, { headers });
       
       
@@ -468,8 +463,8 @@ export const useAgentDashboard = (currentUserId) => {
   return trips.filter(trip => {
     const tripDate = new Date(trip.date);
     return tripDate.getFullYear() === targetDate.getFullYear() &&
-           tripDate.getMonth() === targetDate.getMonth() &&
-           tripDate.getDate() === targetDate.getDate();
+            tripDate.getMonth() === targetDate.getMonth() &&
+            tripDate.getDate() === targetDate.getDate();
   });
 };
 
@@ -565,9 +560,8 @@ export const useAgentDashboard = (currentUserId) => {
   const isMonthEditable = () => {
   const today = new Date();
   const currentYearToday = today.getFullYear();
-  const currentMonthToday = today.getMonth(); // 0-based
+  const currentMonthToday = today.getMonth();
 
-  // Check if the selected month is the current month
   if (currentYear === currentYearToday && currentMonth === currentMonthToday) {
     return true;
   }
@@ -575,7 +569,7 @@ export const useAgentDashboard = (currentUserId) => {
   // Check if the selected month is the previous month
   let prevMonth = currentMonthToday - 1;
   let prevYear = currentYearToday;
-  if (prevMonth < 0) { // Handle year transition (e.g., January -> December of previous year)
+  if (prevMonth < 0) { 
     prevMonth = 11;
     prevYear -= 1;
   }

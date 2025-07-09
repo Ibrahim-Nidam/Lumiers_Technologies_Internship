@@ -13,12 +13,10 @@ const path = require('path');
 const fs = require('fs-extra');
 
 /**
- * GET /api/deplacements/dates
  * Returns an array of distinct `date` values for the current (or target) user.
  */
 exports.getAvailableDates = async (req, res, next) => {
   try {
-    // managerAccessMiddleware will set req.targetUserId if a manager is requesting another user
     const userId = req.targetUserId || req.user.userId;
 
     const rows = await Deplacement.findAll({
@@ -30,7 +28,6 @@ exports.getAvailableDates = async (req, res, next) => {
       raw: true
     });
 
-    // rows: [ { date: '2025-06-20' }, { date: '2025-06-25' }, … ]
     const dates = rows.map(r => r.date);
     return res.json(dates);
   } catch (err) {
@@ -41,10 +38,8 @@ exports.getAvailableDates = async (req, res, next) => {
 // Helper function to get uploads path
 function getUploadsPath() {
   if (process.pkg) {
-    // Packaged app: uploads are in deploy/dist/uploads/
     return path.join(path.dirname(process.execPath), 'dist', 'uploads');
   } else {
-    // Development: uploads are in backend/uploads/
     return path.join(__dirname, '..', 'uploads');
   }
 }
@@ -59,7 +54,7 @@ const getActingUserId = (req) => {
   return req.user?.userId;
 };
 
-// ─── READ MANY ────────────────────────────────────────────────────────────────
+// ─── READ ALL ────────────────────────────────────────────────────────────────
 exports.getDeplacements = async (req, res) => {
   try {
     const currentUserId = req.user?.userId;
@@ -109,13 +104,11 @@ exports.getDeplacements = async (req, res) => {
           as: "typeDepense",
           attributes: ["id", "nom"],
         },
-        // Add creator for expenses
         {
           model: User,
           as: "creator",
           attributes: ["id", "nomComplete"],
         },
-        // Add modifier for expenses
         {
           model: User,
           as: "modifier",
@@ -128,13 +121,11 @@ exports.getDeplacements = async (req, res) => {
       as: "typeDeDeplacement",
       attributes: ["id", "nom"],
     },
-    // Add creator for trips
     {
       model: User,
       as: "creator",
       attributes: ["id", "nomComplete"],
     },
-    // Add modifier for trips
     {
       model: User,
       as: "modifier",
@@ -212,13 +203,11 @@ exports.getDeplacementsByUserId = async (req, res) => {
               as: "typeDepense",
               attributes: ["id", "nom"],
             },
-            // Add creator for expenses
             {
               model: User,
               as: "creator",
               attributes: ["id", "nomComplete"],
             },
-            // Add modifier for expenses
             {
               model: User,
               as: "modifier",
@@ -231,13 +220,11 @@ exports.getDeplacementsByUserId = async (req, res) => {
           as: "typeDeDeplacement",
           attributes: ["id", "nom"],
         },
-        // Add creator for trips
         {
           model: User,
           as: "creator",
           attributes: ["id", "nomComplete"],
         },
-        // Add modifier for trips
         {
           model: User,
           as: "modifier",
@@ -287,7 +274,7 @@ exports.createDeplacement = async (req, res) => {
     }
 
     const deplacementData = {
-      userId: effectiveUserId, // Always the owner of the trip
+      userId: effectiveUserId,
       date,
       chantierId: chantierId || null,
       typeDeDeplacementId,
@@ -405,7 +392,7 @@ exports.updateDeplacement = async (req, res) => {
         // Manager is making changes - set modifiedBy
         updateData.modifiedBy = actingUserId;
       } else {
-        // Owner is making changes - clear modifiedBy (owner reclaimed control)
+        // Owner is making changes - clear modifiedBy
         updateData.modifiedBy = null;
       }
     }
@@ -417,7 +404,6 @@ exports.updateDeplacement = async (req, res) => {
 
     // Handle expenses individually - only update those that actually changed
     if (depenses !== undefined && Array.isArray(depenses)) {
-      // Get existing expenses
       const existingExpenses = await Depense.findAll({ 
         where: { deplacementId: id },
         order: [['id', 'ASC']]
@@ -594,7 +580,6 @@ exports.removeExpenseJustificatif = async (req, res) => {
     if (!expense) return res.status(404).json({ error: "Expense not found." });
 
     if (expense.cheminJustificatif) {
-      // Use the same helper function as multer
       const uploadsPath = getUploadsPath();
       const filePath = path.join(uploadsPath, path.basename(expense.cheminJustificatif));
       

@@ -108,7 +108,6 @@ const DistanceManager = () => {
       grouped[monthKey].users[userKey].totalDistance += parseFloat(detail.distanceKm);
     });
     
-    // Count unique days as entries
     Object.keys(grouped).forEach(monthKey => {
       let monthEntries = 0;
       Object.keys(grouped[monthKey].users).forEach(userKey => {
@@ -328,11 +327,6 @@ const DistanceManager = () => {
                                                       {segment.distanceKm} km
                                                     </span>
                                                   </div>
-                                                  {/* {segment.vehiculeRateRule && (
-                                                    <div className="text-gray-500">
-                                                      Rate: {segment.vehiculeRateRule.rate || 'N/A'}
-                                                    </div>
-                                                  )} */}
                                                 </div>
                                               </div>
                                               

@@ -14,7 +14,6 @@ export default function AccountApproval() {
   const [filterIsActive, setFilterIsActive] = useState(null);
   const [resettingPassword, setResettingPassword] = useState({});
   
-  // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',

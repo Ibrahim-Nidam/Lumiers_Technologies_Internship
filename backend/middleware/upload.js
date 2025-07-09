@@ -2,23 +2,19 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
-// Helper function to get uploads path (same as in your main server file)
+// Helper function to get uploads path
 function getUploadsPath() {
   if (process.pkg) {
-    // Packaged app: uploads are in deploy/dist/uploads/
     return path.join(path.dirname(process.execPath), 'dist', 'uploads');
   } else {
-    // Development: uploads are in backend/uploads/
     return path.join(__dirname, "../uploads");
   }
 }
 
-// Store files under the correct uploads directory with original filename + timestamp
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadsPath = getUploadsPath();
     
-    // Ensure the directory exists
     if (!fs.existsSync(uploadsPath)) {
       fs.mkdirSync(uploadsPath, { recursive: true });
     }
@@ -34,7 +30,6 @@ const storage = multer.diskStorage({
   }
 });
 
-// Only allow images and pdfs
 const fileFilter = (req, file, cb) => {
   const allowed = ["image/jpeg", "image/png", "application/pdf"];
   const isAllowed = allowed.includes(file.mimetype);
@@ -46,7 +41,7 @@ const upload = multer({
   storage, 
   fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
+    fileSize: 10 * 1024 * 1024 
   }
 });
 

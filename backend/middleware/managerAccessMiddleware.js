@@ -9,12 +9,10 @@ const managerAccessMiddleware = async (req, res, next) => {
       return res.status(401).json({ error: "User not authenticated" });
     }
 
-    // If accessing own data, allow
     if (!targetUserId || parseInt(targetUserId) === parseInt(currentUserId)) {
       return next();
     }
 
-    // Check if current user is a manager
     const currentUser = await User.findByPk(currentUserId, {
       include: [
         {
@@ -29,10 +27,9 @@ const managerAccessMiddleware = async (req, res, next) => {
       return res.status(404).json({ error: "Current user not found" });
     }
 
-    // Check if user has manager role (adjust role name as needed)
     const isManager = currentUser.role?.nom === "manager" || 
-                     currentUser.role?.nom === "Admin" ||
-                     currentUser.role?.nom === "Gestionnaire";
+                      currentUser.role?.nom === "Admin" ||
+                      currentUser.role?.nom === "Gestionnaire";
 
     if (!isManager) {
       return res.status(403).json({ 
@@ -40,13 +37,11 @@ const managerAccessMiddleware = async (req, res, next) => {
       });
     }
 
-    // Verify target user exists
     const targetUser = await User.findByPk(targetUserId);
     if (!targetUser) {
       return res.status(404).json({ error: "Target user not found" });
     }
 
-    // Store target user info for controller use
     req.targetUserId = parseInt(targetUserId);
     req.isManagerAccess = true;
     

@@ -10,14 +10,14 @@ const isDev = !app.isPackaged;
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 400,
-    height: 300,
+    width: 520,
+    height: 650,
     resizable: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      webSecurity: false, // Disable for local app
+      webSecurity: false,
       allowRunningInsecureContent: true
     }
   });
@@ -25,7 +25,6 @@ function createWindow() {
   win.setMenu(null);
   win.loadFile('index.html');
   
-  // Optional: Open DevTools in development
   if (isDev) {
     win.webContents.openDevTools();
   }
@@ -34,7 +33,6 @@ function createWindow() {
 app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
-  // Clean up server process before quitting
   if (serverProcess) {
     exec('taskkill /IM fiche-app.exe /F /T', (err) => {
       if (err) console.error('Cleanup error:', err.message);
@@ -45,7 +43,6 @@ app.on('window-all-closed', () => {
   }
 });
 
-// Launch your fiche-app.exe (hidden)
 ipcMain.handle('start-server', async () => {
   if (serverProcess) {
     return { success: false, message: 'Server already running' };
@@ -56,25 +53,20 @@ ipcMain.handle('start-server', async () => {
     let exePath;
     
     if (isDev) {
-      // Development: look in parent directory
       exePath = path.join(__dirname, '..', exeName);
     } else {
-      // Production: look in resources/app.asar.unpacked or resources
       exePath = path.join(process.resourcesPath, exeName);
     }
     
-    // Check if file exists
     if (!fs.existsSync(exePath)) {
       console.error('Executable not found at:', exePath);
       return { success: false, message: `Executable not found: ${exePath}` };
     }
     
-    // Debug: Check if dist folder exists
     const distPath = isDev 
       ? path.join(__dirname, '..', 'dist')
       : path.join(process.resourcesPath, 'dist');
     
-    // Create default .env if it doesn't exist
     const envPath = isDev 
       ? path.join(__dirname, '..', '.env')
       : path.join(path.dirname(process.execPath), '.env');
@@ -99,12 +91,10 @@ JWT_SECRET=TiriOtfpjMYs2LCapxRkpPmM5E8Gn2CD`;
     serverProcess = spawn(exePath, [], {
       windowsHide: true,
       shell: false,
-      stdio: ['pipe', 'pipe', 'pipe'] // Capture stdout/stderr
+      stdio: ['pipe', 'pipe', 'pipe']
     });
 
-    // Handle process output
     serverProcess.stdout.on('data', (data) => {
-      // Send output to renderer if needed
       if (win && !win.isDestroyed()) {
         win.webContents.send('server-output', data.toString());
       }
@@ -140,7 +130,6 @@ JWT_SECRET=TiriOtfpjMYs2LCapxRkpPmM5E8Gn2CD`;
   }
 });
 
-// Kill all fiche-app.exe instances
 ipcMain.handle('stop-server', async () => {
   try {
     return new Promise((resolve) => {
@@ -159,7 +148,6 @@ ipcMain.handle('stop-server', async () => {
   }
 });
 
-// Resolve local IPv4
 ipcMain.handle('get-local-ip', () => {
   const ifaces = os.networkInterfaces();
   for (const name of Object.keys(ifaces)) {
@@ -172,7 +160,6 @@ ipcMain.handle('get-local-ip', () => {
   return 'localhost';
 });
 
-// Check if server is running
 ipcMain.handle('check-server-status', () => {
   return serverProcess !== null;
 });

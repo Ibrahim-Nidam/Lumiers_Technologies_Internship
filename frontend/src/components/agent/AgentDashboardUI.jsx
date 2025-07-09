@@ -4,12 +4,6 @@ import { useState,useMemo  } from "react"
 import { colors } from "../../colors"
 import { ChevronLeft, ChevronRight, Plus, Trash2, FileSpreadsheet, MapPin, ChevronDown, ChevronUp, Calendar, X, Check, Download, Mail, Printer } from "lucide-react"
 
-// Utility function to get user info by ID
-// const getUserInfo = (userId, allUsers) => {
-//   if (!userId || !allUsers) return null;
-//   const user = allUsers.find(u => u.id === userId);
-//   return user ? { name: user.name, avatar: user.avatar } : null;
-// };
 
 const MultiDayTripCreator = ({ currentYear, currentMonth, daysWithTrips, chantiers, onClose, onCreateTrips }) => {
   const [selectedDays, setSelectedDays] = useState(new Set());
@@ -17,7 +11,7 @@ const MultiDayTripCreator = ({ currentYear, currentMonth, daysWithTrips, chantie
 
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
-  const startOffset = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1; // Adjust for Monday start
+  const startOffset = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
 
   const toggleDay = (day) => {
     if (daysWithTrips.has(day)) return;
@@ -138,7 +132,6 @@ const MultiDayTripCreator = ({ currentYear, currentMonth, daysWithTrips, chantie
 
 // Component for displaying modification tags
 const ModificationTag = ({ creator, modifier, currentUserId }) => {
-  // Don't show tag if current user created and never modified
   if (creator?.id === currentUserId && !modifier) return null;
   
   // Show if manager created for user
@@ -175,7 +168,6 @@ const ModificationTag = ({ creator, modifier, currentUserId }) => {
 const AgentDashboardUI = ({
   // State
   expenseTypes,
-  // userMissionRates,
   expandedDays,
   showYearPicker,
   showAddExpenseType,
@@ -184,7 +176,6 @@ const AgentDashboardUI = ({
   isUpdating,
   userCarLoans,
   chantiers,
-  // allUsers,
   isMonthEditable,
 
   // State setters
@@ -237,8 +228,6 @@ const AgentDashboardUI = ({
     "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
     "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
   ];
-  // console.log('ismonthEditable UI', isMonthEditable());
-  // isMonthEditable();
   const handleAddExpenseType = (tripId) => {
     const typeName = newExpenseTypeName[tripId];
     if (typeName && typeName.trim()) {
@@ -529,10 +518,10 @@ const AgentDashboardUI = ({
                 >
                   {/* Modification Tag for Trip */}
                   <ModificationTag
-  creator={trip.creator}
-  modifier={trip.modifier}
-  currentUserId={currentUserId}
-/>
+                    creator={trip.creator}
+                    modifier={trip.modifier}
+                    currentUserId={currentUserId}
+                  />
 
                   {/* Trip Input Section */}
                   <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start mb-3 sm:mb-4 space-y-3 lg:space-y-0">
@@ -713,10 +702,10 @@ const AgentDashboardUI = ({
                             {/* Modification Tag for Expense */}
                             <div className="lg:col-span-4 mb-2">
                               <ModificationTag
-  creator={expense.creator}
-  modifier={expense.modifier}
-  currentUserId={currentUserId}
-/>
+                                creator={expense.creator}
+                                modifier={expense.modifier}
+                                currentUserId={currentUserId}
+                              />
                             </div>
 
                             <div>

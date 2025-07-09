@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import UserForm from "./UserForm";
-import apiClient from "../utils/axiosConfig"; // ← your configured axios instance
+import apiClient from "../utils/axiosConfig";
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -89,7 +89,6 @@ export default function Register() {
     handleFinalSubmit();
   };
 
-  // Final submission using apiClient
   const handleFinalSubmit = async () => {
     clearMessage();
     setIsLoading(true);
@@ -105,7 +104,6 @@ export default function Register() {
       setForm({ name: "", email: "", password: "", cnie: "", role: "agent" });
       // setTermsAccepted(false);
     } catch (err) {
-      // If server responded with error
       const errorMsg =
         err.response?.data?.error || "Échec de l'inscription. Veuillez réessayer.";
       setMessage(errorMsg);

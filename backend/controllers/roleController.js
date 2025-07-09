@@ -1,10 +1,10 @@
 const { Role } = require('../models');
 const { Op } = require('sequelize');
 
-// Get all roles excluding 'admin' and 'superadmin'
+// Get all roles 
 exports.getAll = async (req, res) => {
   try {
-    const roles = await Role.findAll(); // You can add a limit here to test: limit: 5
+    const roles = await Role.findAll();
     res.json(roles);
   } catch (err) {
     console.error("Error fetching roles:", err);

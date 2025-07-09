@@ -24,7 +24,6 @@ export default function CarLoanRates() {
 
         const res = await apiClient.get("/car-loan-rates");
 
-        // res.data is an array of CarLoan objects, each with a nested `user`
         setCarLoanRates(res.data);
       } catch (err) {
         console.error("Failed to fetch car-loan rates:", err);
@@ -51,7 +50,6 @@ export default function CarLoanRates() {
       });
 
 
-      // Update local state so the UI refreshes
       setCarLoanRates((prev) =>
         prev.map((rate) => (rate.id === id ? res.data : rate))
       );
@@ -140,23 +138,15 @@ export default function CarLoanRates() {
             <h2 className="text-xl font-semibold text-[#a52148]">{userName}</h2>
             <div className="space-y-4">
               {rates.map((rate) => {
-                // Build the avatar letters from the user's nomComplete
                 const avatar = userName
                   .split(" ")
                   .map((n) => n[0])
                   .join("")
                   .toUpperCase();
 
-                // Format “createdAt” as dd/MM/yyyy in French locale
                 const createdAt = new Date(rate.dateCreation).toLocaleDateString("fr-FR");
-
-                // Use rate.libelle as the “location” (e.g. city or company name)
                 const location = rate.libelle;
-
-                // “rate” per km: rate.tarifParKm is a string like "0.500" or a decimal
                 const tarifParKm = parseFloat(rate.tarifParKm).toFixed(3);
-
-                // Determine badge styling based on status
                 let badgeBg, badgeTextColor, badgeDotColor, badgeLabel;
                 if (rate.statut === "approuvé") {
                   badgeBg = "bg-green-100";

@@ -35,10 +35,8 @@ const app = express();
 // ─── Helper Function to Get Uploads Path ───────────────────────────────────
 function getUploadsPath() {
   if (process.pkg) {
-    // Packaged app: uploads are in deploy/dist/uploads/
     return path.join(path.dirname(process.execPath), 'dist', 'uploads');
   } else {
-    // Development: uploads are in backend/uploads/
     return path.join(__dirname, 'uploads');
   }
 }
@@ -59,7 +57,6 @@ function getLocalIP() {
 const localIP = getLocalIP();
 const PORT = process.env.PORT || 3001;
 
-// More specific CORS configuration
 const corsOptions = {
   origin: [
     'http://localhost:3000',
@@ -108,7 +105,6 @@ app.use('/uploads', express.static(getUploadsPath()));
     app.use("/api/trips-and-expenses", tripsAndExpensesRoutes);
     app.use("/api/distance-details", distanceDetailRoutes);
     
-    // Protected test route
     app.get("/api/dashboard-data", authMiddleware, async (req, res) => {
       const userId = req.user.userId;
       return res.json({ message: "Protected data", userId });

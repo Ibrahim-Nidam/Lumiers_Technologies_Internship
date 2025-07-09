@@ -27,11 +27,9 @@ export default function RoleManager() {
     fetchRoles();
   }, []);
 
-  // Handle click outside to cancel edit mode
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (editingId !== null) {
-        // Check if the click is outside any role card or input
         const roleCards = document.querySelectorAll('[data-role-card]');
         const isClickOutside = !Array.from(roleCards).some(card => 
           card.contains(event.target)

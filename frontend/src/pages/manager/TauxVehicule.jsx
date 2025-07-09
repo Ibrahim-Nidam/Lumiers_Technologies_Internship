@@ -169,7 +169,7 @@ export default function VehiculeRates() {
             {selectedUser && (
               <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                 <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold" 
-                     style={{ backgroundColor: colors.primary }}>
+                      style={{ backgroundColor: colors.primary }}>
                   {(selectedUser.name || selectedUser.nomComplete || selectedUser.courriel).charAt(0).toUpperCase()}
                 </div>
                 <div>

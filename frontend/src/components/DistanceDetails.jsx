@@ -5,9 +5,7 @@ import axios from '../utils/axiosConfig';
 import { getStoredUser } from "../utils/storageUtils";
 
 export default function DistanceDetails() {
-  // State for dates where trips exist (available for entering details)
   const [availableDates, setAvailableDates] = useState([]);
-  // State for dates where segments have been entered (for red dots)
   const [datesWithSegments, setDatesWithSegments] = useState([]);
   const [selectedDate, setSelectedDate] = useState('');
   const [vehicleRates, setVehicleRates] = useState([]);
@@ -58,7 +56,6 @@ export default function DistanceDetails() {
     }
   }, [currentMonth, availableDates]);
 
-  // Load dates where trips exist (for date cards)
   const loadAvailableDates = async () => {
     try {
       const user = getStoredUser();
@@ -69,7 +66,6 @@ export default function DistanceDetails() {
     }
   };
 
-  // Load dates where segments exist (for red dots)
   const loadDatesWithSegments = async () => {
     try {
       const response = await axios.get('/distance-details/dates-with-segments');
@@ -161,7 +157,6 @@ export default function DistanceDetails() {
         ));
       }
       setEditingSegment(null);
-      // Refetch dates with segments to update red dots
       await loadDatesWithSegments();
     } catch (error) {
       console.error('Erreur lors de la sauvegarde du segment:', error);
@@ -178,7 +173,6 @@ export default function DistanceDetails() {
         setSegments(segments.filter(s => s.id !== segmentId));
       }
       setEditingSegment(null);
-      // Refetch dates with segments to update red dots
       await loadDatesWithSegments();
     } catch (error) {
       console.error('Erreur lors de la suppression du segment:', error);
@@ -254,7 +248,6 @@ export default function DistanceDetails() {
     setSelectedDate(date);
   };
 
-  // Filter available dates for the current month to populate date cards
   const monthAvailableDates = availableDates.filter(date => date.startsWith(currentMonth));
 
   return (

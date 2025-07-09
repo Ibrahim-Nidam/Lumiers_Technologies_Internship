@@ -1,10 +1,9 @@
-// middleware/authMiddleware.js
 const jwt = require("jsonwebtoken");
 const JWT_SECRET = process.env.JWT_SECRET || "XDPhzwLeitK4Vvj7wWnSOXhhq9tfE3Tq";
 
 module.exports = function (req, res, next) {
   // 1) Look for "Authorization" header
-  const authHeader = req.headers.authorization; // e.g. "Bearer eyJ..."
+  const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ error: "Token manquant ou invalide." });

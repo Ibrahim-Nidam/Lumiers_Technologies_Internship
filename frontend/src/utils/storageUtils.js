@@ -3,7 +3,6 @@
  * @param {Object} updatedUserData - The updated user data
  */
 export const updateStoredCredentials = (updatedUserData) => {
-  // Check both localStorage and sessionStorage for existing data
   const localUser = localStorage.getItem("user");
   const sessionUser = sessionStorage.getItem("user");
   

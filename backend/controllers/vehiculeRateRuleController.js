@@ -7,8 +7,8 @@ exports.getAllRatesByUser = async (req, res) => {
     const includeInactive = req.query.includeInactive === "true";
 
     const whereClause = includeInactive
-      ? { userId }                     // all rules
-      : { userId, active: true };      // only active
+      ? { userId }                     
+      : { userId, active: true };      
 
     const rules = await VehiculeRateRule.findAll({ where: whereClause });
 

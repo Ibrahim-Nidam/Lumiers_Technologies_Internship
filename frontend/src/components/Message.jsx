@@ -14,12 +14,9 @@ import { useEffect } from "react";
  * @return {JSX.Element} The message component
  */
 export default function Message({ message, messageType, onClear, persistent = false }) {
-  // Only auto-clear success messages, not error messages when persistent is true
   useEffect(() => {
     if (!message) return;
     
-    // Auto-clear success messages after 3 seconds
-    // For error messages, only auto-clear if not persistent
     if (messageType === "success" || (messageType === "error" && !persistent)) {
       const timer = setTimeout(() => {
         onClear();

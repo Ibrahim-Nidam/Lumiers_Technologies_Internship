@@ -3,19 +3,17 @@ const { Deplacement, Depense, sequelize } = require('../models');
 
 exports.exportTripsAndExpenses = async (req, res) => {
   try {
-    const userId = req.user.userId; // From authMiddleware
+    const userId = req.user.userId;
 
-    // Calculate date range: first day of last month to last day of current month
     const now = new Date();
     const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth(); // 0-based
+    const currentMonth = now.getMonth();
 
     const lastMonth = currentMonth - 1 < 0 ? 11 : currentMonth - 1;
     const lastMonthYear = currentMonth - 1 < 0 ? currentYear - 1 : currentYear;
     const firstDayLastMonth = new Date(lastMonthYear, lastMonth, 1);
     const lastDayCurrentMonth = new Date(currentYear, currentMonth + 1, 0);
 
-    // Query trips within the date range for the user
     const trips = await Deplacement.findAll({
       where: {
         userId,
@@ -65,7 +63,6 @@ exports.importTripsAndExpenses = async (req, res) => {
   }
 
   try {
-    // Validate input data structure
     if (!data.trips.every(trip => trip.date)) {
       return res.status(400).json({ message: 'Toutes les données de déplacement doivent avoir une date.' });
     }
@@ -78,7 +75,7 @@ exports.importTripsAndExpenses = async (req, res) => {
         } catch (error) {
           throw new Error(`Date invalide dans les données importées: ${trip.date}`);
         }
-      }).filter(date => !isNaN(date.getTime())); // Filter out invalid dates
+      }).filter(date => !isNaN(date.getTime()));
       
       if (importedDates.length === 0) {
         throw new Error('Aucune date valide trouvée dans les données importées.');
@@ -87,7 +84,6 @@ exports.importTripsAndExpenses = async (req, res) => {
       const minDate = new Date(Math.min(...importedDates));
       const maxDate = new Date(Math.max(...importedDates));
       
-      // Extend range to cover full months
       const startOfRange = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
       const endOfRange = new Date(maxDate.getFullYear(), maxDate.getMonth() + 1, 0);
 
@@ -117,7 +113,6 @@ exports.importTripsAndExpenses = async (req, res) => {
       
       existingTrips.forEach(trip => {
         try {
-          // Handle date conversion properly - trip.date might be a Date object or string
           const dateKey = trip.date instanceof Date 
             ? trip.date.toISOString().split('T')[0]
             : new Date(trip.date).toISOString().split('T')[0];
@@ -135,7 +130,6 @@ exports.importTripsAndExpenses = async (req, res) => {
       
       data.trips.forEach(trip => {
         try {
-          // Ensure consistent date format
           const dateKey = new Date(trip.date).toISOString().split('T')[0];
           importedTripsByDate.set(dateKey, trip);
           if (trip.id) {
@@ -149,16 +143,13 @@ exports.importTripsAndExpenses = async (req, res) => {
 
       // Step 5: Handle existing trips that are not in the import
       if (overrideExisting) {
-        // Remove existing trips that are not in the imported data
         for (const [dateKey, existingTrip] of existingTripsByDate) {
           if (!importedTripsByDate.has(dateKey)) {
-            // Delete expenses first (due to foreign key constraint)
             await Depense.destroy({
               where: { deplacementId: existingTrip.id },
               transaction: t,
             });
             
-            // Delete the trip
             await Deplacement.destroy({
               where: { id: existingTrip.id },
               transaction: t,
@@ -172,7 +163,6 @@ exports.importTripsAndExpenses = async (req, res) => {
       for (const tripData of data.trips) {
         try {
           const { id, expenses = [], ...tripFields } = tripData;
-          // Ensure consistent date format
           const dateKey = new Date(tripData.date).toISOString().split('T')[0];
           
           const existingTripByDate = existingTripsByDate.get(dateKey);
@@ -183,13 +173,10 @@ exports.importTripsAndExpenses = async (req, res) => {
 
         // Determine conflict resolution strategy
         if (existingTripByDate && existingTripById) {
-          // Same date and same ID - update existing
           if (existingTripByDate.id === existingTripById.id) {
             tripToUpdate = existingTripByDate;
           } else {
-            // Different trips with same date and ID exists - conflict
             if (overrideExisting) {
-              // Remove the one with same date, keep the one with same ID
               await Depense.destroy({
                 where: { deplacementId: existingTripByDate.id },
                 transaction: t,
@@ -204,41 +191,33 @@ exports.importTripsAndExpenses = async (req, res) => {
             }
           }
         } else if (existingTripByDate) {
-          // Same date, different or no ID
           if (overrideExisting) {
             tripToUpdate = existingTripByDate;
           } else {
-            // Keep existing, skip import
             continue;
           }
         } else if (existingTripById) {
-          // Same ID, different date
           if (overrideExisting) {
             tripToUpdate = existingTripById;
           } else {
-            // Keep existing, skip import
             continue;
           }
         } else {
-          // No conflict - create new
           shouldCreateNew = true;
         }
 
         if (tripToUpdate) {
-          // Update existing trip
           await tripToUpdate.update({
             ...tripFields,
             modifiedBy: userId,
             dateModification: new Date(),
           }, { transaction: t });
 
-          // Delete existing expenses
           await Depense.destroy({
             where: { deplacementId: tripToUpdate.id },
             transaction: t,
           });
 
-          // Insert new expenses
           for (const expenseData of expenses) {
             const { id: expenseId, ...expenseFields } = expenseData;
             await Depense.create({
@@ -250,7 +229,6 @@ exports.importTripsAndExpenses = async (req, res) => {
           }
 
         } else if (shouldCreateNew) {
-          // Create new trip (exclude id to let auto-increment handle it)
           const { id: _, ...tripFieldsWithoutId } = tripFields;
           const newTrip = await Deplacement.create({
             ...tripFieldsWithoutId,
@@ -259,7 +237,6 @@ exports.importTripsAndExpenses = async (req, res) => {
             modifiedBy: userId,
           }, { transaction: t });
 
-          // Insert expenses for the new trip
           for (const expenseData of expenses) {
             const { id: expenseId, ...expenseFields } = expenseData;
             await Depense.create({

@@ -11,8 +11,7 @@ const BackupButton = ({ user }) => {
         },
       });
       
-      // Extract filename from Content-Disposition header if present
-      let filename = 'database-backup.sql'; // default fallback
+      let filename = 'database-backup.sql';
       const disposition = response.headers['content-disposition'];
       if (disposition && disposition.indexOf('attachment') !== -1) {
         const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;

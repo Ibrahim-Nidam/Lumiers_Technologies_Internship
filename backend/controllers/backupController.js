@@ -6,10 +6,8 @@ require('dotenv').config();
 
 function getBackupPath() {
   if (process.pkg) {
-    // Put backups outside the dist folder in packaged mode
     return path.join(path.dirname(process.execPath), '..', 'backups');
   } else {
-    // Development folder
     return path.join(__dirname, '..', 'backups');
   }
 }

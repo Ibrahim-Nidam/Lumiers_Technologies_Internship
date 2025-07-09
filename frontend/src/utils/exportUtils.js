@@ -3,7 +3,6 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
 import logo from './base64Logo';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import JSZip from 'jszip';
 
 /**
  * Returns a human-readable label for the given year and month as a string.
@@ -39,28 +38,23 @@ const getTargetUserFullName = (dashboardData, currentUser) => {
     
     // Try to get name from userInfo (target user's data)
     if (userInfo) {
-        // Check for fullName property
         if (userInfo.fullName && userInfo.fullName.trim()) {
             return userInfo.fullName.trim();
         }
         
-        // Check for firstName and lastName combination
         if (userInfo.firstName && userInfo.lastName) {
             return `${userInfo.firstName.trim()} ${userInfo.lastName.trim()}`;
         }
         
-        // Check for prenom and nom combination (French naming)
         if (userInfo.prenom && userInfo.nom) {
             return `${userInfo.prenom.trim()} ${userInfo.nom.trim()}`;
         }
         
-        // Check for name property
         if (userInfo.name && userInfo.name.trim()) {
             return userInfo.name.trim();
         }
     }
     
-    // Fallback to current user info if userInfo doesn't have complete name
     if (currentUser) {
         if (currentUser.fullName && currentUser.fullName.trim()) {
             return currentUser.fullName.trim();
@@ -79,7 +73,6 @@ const getTargetUserFullName = (dashboardData, currentUser) => {
         }
     }
     
-    // Last resort - try to use userInfo ID or currentUser ID
     if (userInfo?.id) {
         return `Utilisateur ${userInfo.id}`;
     }
@@ -95,7 +88,6 @@ const getTargetUserFullName = (dashboardData, currentUser) => {
  * Helper function to calculate distance costs with threshold logic for export
  */
 const calculateDistanceCostsForExport = (trips, userCarLoans) => {
-    // Group trips by their vehicle rate rule
     const groupedByRate = {};
     const distanceCosts = new Map();
 
@@ -107,7 +99,6 @@ const calculateDistanceCostsForExport = (trips, userCarLoans) => {
         }
     });
 
-    // Calculate costs for each rate rule
     for (const ruleId in groupedByRate) {
         const tripsForRule = groupedByRate[ruleId];
         const rule = userCarLoans?.find(r => r.id === parseInt(ruleId));
@@ -132,12 +123,11 @@ const calculateDistanceCostsForExport = (trips, userCarLoans) => {
                 }
             }
 
-            // Use rule name or a default label
             const ruleLabel = rule.name || rule.libelle || `Règle ${ruleId}`;
             distanceCosts.set(ruleLabel, {
                 distance: totalDistance,
                 total: totalCost,
-                rate: rule.rateBeforeThreshold, // Show the base rate for display
+                rate: rule.rateBeforeThreshold,
                 rateAfter: rule.rateAfterThreshold,
                 threshold: rule.thresholdKm,
                 conditionType: rule.conditionType

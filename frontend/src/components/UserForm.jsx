@@ -14,9 +14,6 @@ import Message from "./Message";
  * @param {Object} passwordValidation An object containing the password requirements and strength.
  * @param {number} passwordStrength The strength of the password, from 0 to 3.
  * @param {Array} strengthLabels The labels for the password strength, from "Trop faible" to "Fort".
- * @param {Array} roles An array of role objects, each with a label, value and description.
- * @param {boolean} carLoanChecked Whether the user has a car loan or not.
- * @param {Function} onToggleCarLoan The function to call when the user toggles the car loan checkbox.
  * @param {boolean} termsAccepted Whether the user has accepted the terms and conditions or not.
  * @param {Function} onToggleTerms The function to call when the user toggles the terms and conditions checkbox.
  * @param {boolean} isLoading Whether the form is being submitted or not.
@@ -33,9 +30,6 @@ setShowPassword,
 passwordValidation,
 passwordStrength,
 strengthLabels,
-// roles,
-// carLoanChecked,
-// onToggleCarLoan,
 // termsAccepted,
 // onToggleTerms,
 isLoading,
@@ -107,18 +101,18 @@ return (
     <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
         <svg
-  className="h-5 w-5 text-slate-400"
-  aria-hidden="true"
-  xmlns="http://www.w3.org/2000/svg"
-  fill="currentColor"
-  viewBox="0 0 24 24"
->
-  <path
-    fillRule="evenodd"
-    d="M4 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H4Zm10 5a1 1 0 0 1 1-1h3a1 1 0 1 1 0 2h-3a1 1 0 0 1-1-1Zm0 3a1 1 0 0 1 1-1h3a1 1 0 1 1 0 2h-3a1 1 0 0 1-1-1Zm0 3a1 1 0 0 1 1-1h3a1 1 0 1 1 0 2h-3a1 1 0 0 1-1-1Zm-8-5a3 3 0 1 1 6 0 3 3 0 0 1-6 0Zm1.942 4a3 3 0 0 0-2.847 2.051l-.044.133-.004.012c-.042.126-.055.167-.042.195.006.013.02.023.038.039.032.025.08.064.146.155A1 1 0 0 0 6 17h6a1 1 0 0 0 .811-.415.713.713 0 0 1 .146-.155c.019-.016.031-.026.038-.04.014-.027 0-.068-.042-.194l-.004-.012-.044-.133A3 3 0 0 0 10.059 14H7.942Z"
-    clipRule="evenodd"
-  />
-</svg>
+            className="h-5 w-5 text-slate-400"
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="currentColor"
+            viewBox="0 0 24 24"
+            >
+            <path
+                fillRule="evenodd"
+                d="M4 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H4Zm10 5a1 1 0 0 1 1-1h3a1 1 0 1 1 0 2h-3a1 1 0 0 1-1-1Zm0 3a1 1 0 0 1 1-1h3a1 1 0 1 1 0 2h-3a1 1 0 0 1-1-1Zm0 3a1 1 0 0 1 1-1h3a1 1 0 1 1 0 2h-3a1 1 0 0 1-1-1Zm-8-5a3 3 0 1 1 6 0 3 3 0 0 1-6 0Zm1.942 4a3 3 0 0 0-2.847 2.051l-.044.133-.004.012c-.042.126-.055.167-.042.195.006.013.02.023.038.039.032.025.08.064.146.155A1 1 0 0 0 6 17h6a1 1 0 0 0 .811-.415.713.713 0 0 1 .146-.155c.019-.016.031-.026.038-.04.014-.027 0-.068-.042-.194l-.004-.012-.044-.133A3 3 0 0 0 10.059 14H7.942Z"
+                clipRule="evenodd"
+            />
+            </svg>
 
 
         </div>
@@ -350,82 +344,6 @@ return (
         )}
     </div>
 
-    {/* Role Selection */}
-    {/* <div>
-        <label
-        htmlFor="role"
-        className="block text-sm font-medium text-slate-700 mb-1"
-        >
-        Type de compte
-        </label>
-        <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <svg
-            className="h-5 w-5 text-slate-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            >
-            <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-            />
-            </svg>
-        </div>
-        <select
-            id="role"
-            name="role"
-            value={form.role}
-            onChange={onChange}
-            className="block w-full pl-10 pr-10 py-2.5 border border-slate-300 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:border-transparent sm:text-sm transition-colors appearance-none"
-            style={{
-            focusRingColor: `${colors.primary}40`,
-            "--tw-ring-color": `${colors.primary}40`,
-            }}
-        >
-            {roles.map((role) => (
-            <option key={role.value} value={role.value}>
-                {role.label} — {role.description}
-            </option>
-            ))}
-        </select>
-        <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-            <svg
-            className="h-5 w-5 text-slate-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-        </div>
-        </div>
-    </div> */}
-
-    {/* Car Loan Checkbox */}
-    {/* <div className="flex items-start">
-        <div className="flex items-center h-5">
-        <input
-            id="possede_voiture_personnelle"
-            name="possede_voiture_personnelle"
-            type="checkbox"
-            checked={carLoanChecked}
-            onChange={onToggleCarLoan}
-            className="h-4 w-4 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
-            style={{ accentColor: colors.primary }}
-        />
-        </div>
-        <div className="ml-3 text-sm">
-        <label
-            htmlFor="possede_voiture_personnelle"
-            className="text-slate-600"
-        >
-            Location <span style={{ color: colors.primary }}>Voiture</span>
-        </label>
-        </div>
-    </div> */}
 
     {/* Terms and Conditions */}
     {/* <div className="flex items-start">

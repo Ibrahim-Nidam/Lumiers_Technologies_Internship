@@ -144,7 +144,7 @@ export default function ProfileSettings() {
         ...(formData.motDePasse ? { motDePasse: formData.motDePasse } : {}),
       };
       updateStoredCredentials({
-      nom_complete: formData.nomComplete.trim(), // Use the field names from your stored user object
+      nom_complete: formData.nomComplete.trim(),
       email: formData.courriel.trim(),
       possede_voiture_personnelle: formData.possedeVoiturePersonnelle,
     });
@@ -355,38 +355,38 @@ export default function ProfileSettings() {
       <MessageDisplay section="general" />
 
       {/* Export and Import Buttons at the Top */}
-<div className="flex flex-wrap justify-between mb-6 gap-2">
-  <button
-    onClick={handleExport}
-    disabled={saving}
-    className="
-      px-4 py-2
-      bg-white text-black
-      border border-green-600
-      rounded-md
-      text-sm sm:text-base
-      disabled:opacity-50 disabled:cursor-not-allowed
-      hover:border-green-700 hover:cursor-pointer
-      focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2
-    "
-  >
-    {saving ? "Exportation..." : "Exporter les données"}
-  </button>
-  <button
-    onClick={() => setShowImportModal(true)}
-    className="
-      px-4 py-2
-      bg-white text-black
-      border border-blue-600
-      rounded-md
-      text-sm sm:text-base
-      hover:border-blue-700 hover:cursor-pointer
-      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-    "
-  >
-    Importer les données
-  </button>
-</div>
+      <div className="flex flex-wrap justify-between mb-6 gap-2">
+        <button
+          onClick={handleExport}
+          disabled={saving}
+          className="
+            px-4 py-2
+            bg-white text-black
+            border border-green-600
+            rounded-md
+            text-sm sm:text-base
+            disabled:opacity-50 disabled:cursor-not-allowed
+            hover:border-green-700 hover:cursor-pointer
+            focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2
+          "
+        >
+          {saving ? "Exportation..." : "Exporter les données"}
+        </button>
+        <button
+          onClick={() => setShowImportModal(true)}
+          className="
+            px-4 py-2
+            bg-white text-black
+            border border-blue-600
+            rounded-md
+            text-sm sm:text-base
+            hover:border-blue-700 hover:cursor-pointer
+            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+          "
+        >
+          Importer les données
+        </button>
+      </div>
 
       {/* Import Modal */}
       {showImportModal && (

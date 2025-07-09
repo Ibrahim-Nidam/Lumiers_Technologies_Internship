@@ -22,7 +22,6 @@ export default function MissionRates() {
 
         const res = await apiClient.get("/mission-rates");
 
-        // Group by user
         const grouped = {};
         res.data.forEach((rate) => {
           const userName = rate.user.nomComplete;
@@ -91,7 +90,6 @@ export default function MissionRates() {
     );
   }
 
-  // Compute status counts
   const pendingCount = allRates.filter((r) => r.statut === "en_attente").length;
   const approvedCount = allRates.filter((r) => r.statut === "approuvé").length;
   const rejectedCount = allRates.filter((r) => r.statut === "rejeté").length;
@@ -129,10 +127,8 @@ export default function MissionRates() {
               .join("")
               .toUpperCase();
 
-            // Format creation date
             const createdAt = new Date(rate.dateCreation).toLocaleDateString("fr-FR");
 
-            // Badge styling
             let badgeBg, badgeTextColor, badgeDotColor, badgeLabel;
             if (rate.statut === "approuvé") {
               badgeBg = "bg-green-100";

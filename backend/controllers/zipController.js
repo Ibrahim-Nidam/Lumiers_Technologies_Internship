@@ -12,13 +12,11 @@ const {
 
 const { User, Deplacement, Depense } = require('../models');
 
-// Helper function to get uploads path (same as in multer config)
+// Helper function to get uploads path 
 function getUploadsPath() {
   if (process.pkg) {
-    // Packaged app: uploads are in deploy/dist/uploads/
     return path.join(path.dirname(process.execPath), 'dist', 'uploads');
   } else {
-    // Development: uploads are in backend/uploads/
     return path.join(__dirname, '..', 'uploads');
   }
 }
@@ -39,12 +37,11 @@ exports.generateZipForUser = async (req, res, next) => {
 
     // 1) Load user and build ZIP filename
     const user = await User.findByPk(userId);
-    const label = getFrenchMonthLabel(+year, +month); // e.g. "juin 2025"
+    const label = getFrenchMonthLabel(+year, +month); 
     const safeName = user.nomComplete.replace(/\s+/g, '_');
     const safeLabel = label.replace(/\s+/g, '_');
     const zipName = `${safeName}_${safeLabel}.zip`;
 
-    // Use a unique temporary path for the ZIP file
     const tmpDir = path.join(os.tmpdir(), 'myapp-zips');
     await fs.ensureDir(tmpDir);
     const zipPath = path.join(tmpDir, `${uuidv4()}.zip`);
@@ -70,7 +67,6 @@ exports.generateZipForUser = async (req, res, next) => {
     for (const trip of trips) {
       for (const exp of trip.depenses) {
         if (exp.cheminJustificatif) {
-          // Use the dynamic uploads path instead of hardcoded path
           const filename = path.basename(exp.cheminJustificatif);
           const fileOnDisk = path.join(uploadsPath, filename);
           
@@ -96,17 +92,14 @@ exports.generateZipForUser = async (req, res, next) => {
     // 5) Finalize ZIP
     await archive.finalize();
 
-    // Set up the response once the ZIP is ready
     output.on('close', async () => {
       try {
-        // Delete temporary report files
         await fs.remove(pdfPath);
         await fs.remove(excelPath);
       } catch (err) {
         console.error('Failed to delete temporary report files:', err);
       }
 
-      // Set the proper filename in response headers
       res.setHeader('Content-Disposition', `attachment; filename="${zipName}"`);
       res.setHeader('Content-Type', 'application/zip');
 

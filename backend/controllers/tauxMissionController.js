@@ -47,10 +47,8 @@ exports.remove = async (req, res) => {
 
 exports.getUserMissionRates = async (req, res) => {
   try {
-    // Get userId from route params, not from req.user
     const userId = req.params.userId;
     
-    // Get user including their role(s)
     const user = await User.findByPk(userId, {
       include: {
         model: Role,

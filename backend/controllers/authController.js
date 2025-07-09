@@ -32,12 +32,10 @@ exports.register = async (req, res) => {
     // Hash the password
     const hashed = await bcrypt.hash(password, 10);
 
-    // Determine role: first user ever -> manager; other users based on password or default agent
     const totalUsers = await User.count();
     let selectedRoleName;
 
     if (totalUsers === 0) {
-      // If no users exist, make this first user the manager
       selectedRoleName = 'manager';
     } 
     // else if (password === 'Manager1.') {

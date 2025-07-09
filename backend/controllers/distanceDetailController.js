@@ -99,7 +99,7 @@ exports.getAllDistanceDetails = async (req, res, next) => {
         { 
           model: User, 
           as: 'user',
-          attributes: ['id', 'nomComplete'] // Only include necessary fields
+          attributes: ['id', 'nomComplete'] 
         }
       ],
       order: [['dateSegment', 'DESC']]
@@ -112,13 +112,12 @@ exports.getAllDistanceDetails = async (req, res, next) => {
 };
 
 
-// Admin: delete any segment by ID
 exports.adminDeleteSegment = async (req, res, next) => {
   try {
     const { id } = req.params;
 
     const deleted = await DistanceDetail.destroy({
-      where: { id } // ❗️pas de filtre userId ici
+      where: { id }
     });
 
     if (!deleted) {

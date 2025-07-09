@@ -43,7 +43,7 @@ exports.updateUserProfile = async (req, res) => {
       nomComplete,
       courriel,
       motDePasse,
-      cartNational, // <-- IMPORTANT: matches frontend formData
+      cartNational, 
       possedeVoiturePersonnelle,
     } = req.body;
 

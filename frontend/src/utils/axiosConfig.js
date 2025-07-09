@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-// Determine appropriate baseURL:
 const getBaseURL = () => {
   const hostname = window.location.hostname;
   const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
@@ -27,8 +26,6 @@ apiClient.interceptors.request.use(
     const token = getToken();
     if (token) config.headers.Authorization = `Bearer ${token}`;
     
-    // IMPORTANT: Handle FormData uploads
-    // Remove Content-Type header for FormData to let browser set it with boundary
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type'];
     }

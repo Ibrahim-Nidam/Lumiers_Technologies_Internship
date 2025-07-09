@@ -8,7 +8,7 @@ export default defineConfig({
   base: './',
   plugins: [react(), tailwindcss(), compression(),visualizer({ open: true }),],
   build: {
-    chunkSizeWarningLimit: 1500, // Optional: suppress large chunk warnings
+    chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -22,7 +22,7 @@ export default defineConfig({
           }
         },
       },
-      treeshake: true, // Make sure tree-shaking is enabled
+      treeshake: true,
     },
   },
 });

@@ -11,10 +11,7 @@ import { colors } from "../colors";
  */
 const getRedirectPath = (role) => {
   switch (role) {
-    case "admin":
-    case "superadmin":
     case "manager":
-    case "supermanager":
       return "/managerDashboard";
     default:
       return "/agentDashboard";
@@ -71,7 +68,6 @@ const [showForgotPasswordMessage, setShowForgotPasswordMessage] = useState(false
   useEffect(() => {
     const { user, token } = getStoredCredentials();
     if (user && token) {
-      // No need to set axios headers manually - interceptor handles it
       navigate(getRedirectPath(user.role));
     }
   }, [navigate]);
@@ -110,12 +106,10 @@ const [showForgotPasswordMessage, setShowForgotPasswordMessage] = useState(false
     setMessage("");
 
     try {
-      // Use apiClient instead of axios directly
       const { data } = await apiClient.post("/auth/login", form);
 
       if (data.user && data.token) {
         storeCredentials(data.user, data.token, rememberMe);
-        // No need to set axios headers manually - interceptor handles it
         setMessage(`Bienvenue, ${data.user.nom_complete} !`);
         setMessageType("success");
         
@@ -139,7 +133,7 @@ const [showForgotPasswordMessage, setShowForgotPasswordMessage] = useState(false
     setShowForgotPasswordMessage(true);
     setTimeout(() => {
       setShowForgotPasswordMessage(false);
-    }, 3000); // Hides the message after 3 seconds
+    }, 3000);
   };
 
   return (

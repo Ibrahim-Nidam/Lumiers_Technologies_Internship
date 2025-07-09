@@ -5,7 +5,6 @@
   const statusDiv = document.getElementById('status');
   const outputDiv = document.getElementById('output');
 
-  // Update UI based on server status
   function updateUI(isRunning) {
     if (isRunning) {
       startBtn.classList.add('hidden');
@@ -28,7 +27,6 @@
     outputDiv.appendChild(messageEl);
     outputDiv.scrollTop = outputDiv.scrollHeight;
     
-    // Remove old messages if too many
     while (outputDiv.children.length > 10) {
       outputDiv.removeChild(outputDiv.firstChild);
     }
@@ -74,7 +72,6 @@
     }
   });
 
-  // Listen for server events
   window.server.onServerOutput((event, data) => {
     showMessage(`Server: ${data.trim()}`, 'output');
   });
@@ -88,12 +85,10 @@
     updateUI(false);
   });
 
-  // Initialize IP and status
   try {
     const ip = await window.server.getLocalIP();
     ipInfo.innerHTML = `<strong>URL:</strong> <a href="http://${ip}:3001" target="_blank">http://${ip}:3001</a>`;
     
-    // Check initial server status
     const isRunning = await window.server.checkStatus();
     updateUI(isRunning);
     

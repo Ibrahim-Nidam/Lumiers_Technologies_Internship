@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Calendar, Search, Filter, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, Search, Filter } from "lucide-react";
 import { FaFileExcel, FaFilePdf, FaFileArchive, FaDownload, FaEdit } from 'react-icons/fa';
 import { useNavigate } from "react-router-dom";
 import apiClient from "../../utils/axiosConfig";
@@ -24,11 +24,6 @@ export default function Consult() {
   // Improved function to check if user has any data
   const getSummaryForUser = (userId) => {
     const summary = summaries.find(s => String(s.userId) === String(userId));
-    // if (summary) {
-    //   console.log(`Summary found for user ${userId}:`, summary);
-    // } else {
-    //   console.log(`No summary found for user ${userId}`);
-    // }
     return summary || {
       totalDistance: 0,
       totalTripCost: 0,
@@ -46,7 +41,6 @@ export default function Consult() {
       summary.justified > 0 || 
       summary.unjustified > 0
     );
-    // console.log(`User ${userId} has data:`, hasData, summary);
     return hasData;
   };
 
@@ -72,12 +66,6 @@ export default function Consult() {
             params: { year: currentYear, month: currentMonth }
           })
         ]);
-        // console.log("Users fetched:", usersRes.data);
-        // console.log("Summaries fetched:", summariesRes.data);
-        
-        // // Additional debugging
-        // console.log("Users count:", usersRes.data?.length);
-        // console.log("Summaries count:", summariesRes.data?.length);
         
         setUsers(usersRes.data || []);
         setSummaries(summariesRes.data || []);
@@ -92,33 +80,6 @@ export default function Consult() {
     fetchData();
   }, [currentYear, currentMonth]);
 
-  // Debug filtered users
-  // useEffect(() => {
-  //   if (users.length > 0) {
-  //     console.log("=== FILTERING DEBUG ===");
-  //     console.log("Total users:", users.length);
-  //     console.log("Search query:", searchQuery);
-  //     console.log("Show only with data:", showOnlyWithData);
-      
-  //     const usersWithData = users.filter(user => userHasData(user.id));
-  //     console.log("Users with data:", usersWithData.length, usersWithData.map(u => ({ id: u.id, name: u.name })));
-      
-  //     const searchFiltered = users.filter(user => 
-  //       user.name.toLowerCase().includes(searchQuery.toLowerCase())
-  //     );
-  //     console.log("After search filter:", searchFiltered.length);
-      
-  //     const finalFiltered = users.filter(user => {
-  //       const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase());
-  //       const hasData = userHasData(user.id);
-  //       const shouldShow = matchesSearch && (!showOnlyWithData || hasData);
-  //       console.log(`User ${user.id} (${user.name}): search=${matchesSearch}, hasData=${hasData}, shouldShow=${shouldShow}`);
-  //       return shouldShow;
-  //     });
-  //     console.log("Final filtered users:", finalFiltered.length);
-  //     console.log("=== END FILTERING DEBUG ===");
-  //   }
-  // }, [users, summaries, searchQuery, showOnlyWithData]);
 
   const goToPreviousMonth = () => {
     let m = currentMonth - 1, y = currentYear;
@@ -220,7 +181,6 @@ export default function Consult() {
     navigate(`/agentDashboard/${user.id}`, { state: { userName: user.name } });
   };
 
-  // Improved filtering logic with better debugging
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name && user.name.toLowerCase().includes(searchQuery.toLowerCase());
     const hasData = userHasData(user.id);
@@ -233,7 +193,6 @@ export default function Consult() {
 
   const handleRLP = async () => {
     try {
-      // Show loading state or disable button during request
       setLoading(true);
       
       const response = await apiClient.get("/report/trip-tables-zip", {
@@ -244,7 +203,6 @@ export default function Consult() {
         responseType: "blob"
       });
       
-      // Extract filename from response headers
       let filename;
       const contentDisposition = response.headers['content-disposition'];
       if (contentDisposition) {
@@ -254,7 +212,6 @@ export default function Consult() {
         }
       }
       
-      // Fallback filename if not found in headers
       if (!filename) {
         const monthDate = new Date(currentYear, currentMonth);
         const frenchMonthYear = monthDate.toLocaleDateString('fr-FR', { 
@@ -264,15 +221,12 @@ export default function Consult() {
         filename = `fiche_de_deplacement_des_utilisateurs_${frenchMonthYear}.zip`;
       }
       
-      // Create and download the blob
       const blob = new Blob([response.data], { type: "application/zip" });
       saveAs(blob, filename);
       
     } catch (err) {
       console.error("RLP export failed:", err);
       
-      // Optional: Show user-friendly error message
-      // You might want to add a toast notification or alert here
       alert("Erreur lors de l'export RLP. Veuillez réessayer.");
       
     } finally {
@@ -280,12 +234,10 @@ export default function Consult() {
     }
   };
 
-  // Calculate statistics more safely
   const totalUsersWithData = users.filter(user => userHasData(user.id)).length;
   const totalDistance = summaries.reduce((sum, s) => sum + (s.totalDistance || 0), 0);
   const totalCost = summaries.reduce((sum, s) => sum + (s.totalTripCost || 0), 0);
 
-  // Show loading state while data is being fetched
   if (loading) {
     return <div className="text-center py-16">Chargement...</div>;
   }
@@ -471,15 +423,6 @@ export default function Consult() {
             </div>
           </div>
 
-          {/* Debug Information (remove in production) */}
-          {/* <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-            <p className="text-sm text-yellow-800">
-              <strong>Debug Info:</strong> Total Users: {users.length}, 
-              Users with Data: {totalUsersWithData}, 
-              Filtered Users: {filteredUsers.length}, 
-              Show Only With Data: {showOnlyWithData ? 'Yes' : 'No'}
-            </p>
-          </div> */}
         </div>
 
         {/* Users Grid */}
@@ -522,7 +465,7 @@ export default function Consult() {
                   </div>
                 </div>
 
-                {/* Stats Section - Fixed Height */}
+                {/* Stats Section */}
                 <div className="p-4 flex-1 flex flex-col justify-center">
                   {hasData ? (
                     <div className="space-y-3">
@@ -575,7 +518,7 @@ export default function Consult() {
                   )}
                 </div>
 
-                {/* Export Buttons - Fixed Position */}
+                {/* Export Buttons  */}
                 <div className="p-4 bg-gray-50 border-t border-gray-100 flex-shrink-0">
                   <div className="grid grid-cols-3 gap-2">
                     <button
@@ -607,7 +550,6 @@ export default function Consult() {
           })}
         </div>
 
-        {/* Empty State */}
         {filteredUsers.length === 0 && (
           <div className="text-center py-16">
             <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">

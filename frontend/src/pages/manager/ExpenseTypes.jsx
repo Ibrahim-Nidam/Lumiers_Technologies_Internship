@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import apiClient from "../../utils/axiosConfig"; // Import the configured axios instance
+import apiClient from "../../utils/axiosConfig";
 import Message from "../../components/Message";
 import ConfirmDialog from "../../components/ConfirmDialog";
 
