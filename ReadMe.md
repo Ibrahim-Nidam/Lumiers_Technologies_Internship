@@ -119,11 +119,16 @@ deploy/
 ├── start.bat            ← Script de lancement
 ├── .env                 ← Fichier de configuration PostgreSQL
 ├── dist/                ← Frontend buildé (React)
-└── uploads/             ← Dossier pour les justificatifs
+├── uploads/             ← Dossier pour les justificatifs
+└── launcher/            ← Dossier contenant la version Electron
+    └── release/         ← Version finale de l'application Electron
+        ├── [Application portable]
+        └── [Version avec installateur]
 ```
 
 ### ➟ Lancement de l'application
 
+#### Option 1 : Version Web (.exe)
 1. Configurez le fichier `.env` dans le dossier `deploy` comme dans l'exemple du mode dev
 2. Double-cliquez sur `start.bat`
 3. Accédez à :
@@ -132,6 +137,13 @@ deploy/
    http://localhost:3001
    ou depuis un autre appareil : http://[votre-ip-locale]:3001
    ```
+
+#### Option 2 : Version Electron (Application de bureau)
+1. Naviguez vers le dossier `deploy/launcher/release/`
+2. Choisissez entre :
+   - **Version portable** : Lancez directement l'exécutable sans installation
+   - **Version avec installateur** : Installez l'application sur votre système
+3. L'application s'ouvrira dans une fenêtre dédiée
 
 ---
 
@@ -169,7 +181,11 @@ Lumiers_Technologies_Internship/
 │   ├── start.bat
 │   ├── .env
 │   ├── dist/
-│   └── uploads/
+│   ├── uploads/
+│   └── launcher/       ← Version Electron
+│       └── release/    ← Applications finales
+│           ├── [Version portable]
+│           └── [Version avec installateur]
 │
 └── README.md
 ```

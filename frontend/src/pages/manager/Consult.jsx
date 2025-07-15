@@ -194,16 +194,19 @@ export default function Consult() {
   const handleRLP = async () => {
     try {
       setLoading(true);
-      
+    
       const response = await apiClient.get("/report/trip-tables-zip", {
-        params: { 
-          year: currentYear, 
-          month: currentMonth 
+        params: {
+          year: currentYear,
+          month: currentMonth
         },
         responseType: "blob"
       });
-      
+    
       let filename;
+      let contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"; // Default to Excel
+      
+      // Extract filename from Content-Disposition header
       const contentDisposition = response.headers['content-disposition'];
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
@@ -212,23 +215,49 @@ export default function Consult() {
         }
       }
       
+      // Extract content type from response headers
+      if (response.headers['content-type']) {
+        contentType = response.headers['content-type'];
+      }
+    
+      // Generate fallback filename if not found in headers
       if (!filename) {
         const monthDate = new Date(currentYear, currentMonth);
-        const frenchMonthYear = monthDate.toLocaleDateString('fr-FR', { 
-          month: 'long', 
-          year: 'numeric' 
+        const frenchMonthYear = monthDate.toLocaleDateString('fr-FR', {
+          month: 'long',
+          year: 'numeric'
         }).replace(/\s+/g, '_');
-        filename = `fiche_de_deplacement_des_utilisateurs_${frenchMonthYear}.zip`;
+        
+        // Use .xlsx extension since backend sends Excel files
+        filename = `fiche_de_deplacement_des_utilisateurs_${frenchMonthYear}.xlsx`;
       }
+    
+      // Create blob with correct content type from server response
+      const blob = new Blob([response.data], { type: contentType });
       
-      const blob = new Blob([response.data], { type: "application/zip" });
-      saveAs(blob, filename);
-      
+      // For better mobile compatibility, try different download methods
+      if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+        // For IE/Edge
+        window.navigator.msSaveOrOpenBlob(blob, filename);
+      } else {
+        // For modern browsers
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Clean up the URL object
+        window.URL.revokeObjectURL(url);
+      }
+    
     } catch (err) {
       console.error("RLP export failed:", err);
-      
       alert("Erreur lors de l'export RLP. Veuillez réessayer.");
-      
     } finally {
       setLoading(false);
     }
@@ -325,14 +354,14 @@ export default function Consult() {
                 >
                   Aujourd'hui
                 </button>
-                {/* <button 
+                <button 
                   onClick={handleRLP}
                   className="flex items-center gap-3 px-6 py-3 rounded-xl text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
                   style={{ backgroundColor: colors.primary }}
                 >
-                  <FaFileArchive className="w-4 h-4" />
+                  <FaFileExcel className="w-4 h-4" />
                   RLP
-                </button> */}
+                </button>
                 <button 
                   onClick={handleMonthlyRecap}
                   className="flex items-center gap-3 px-6 py-3 rounded-xl text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
